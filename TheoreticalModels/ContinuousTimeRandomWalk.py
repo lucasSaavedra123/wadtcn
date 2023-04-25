@@ -29,7 +29,6 @@ class ContinuousTimeRandomWalk(Model):
     
     Original code: https://github.com/AnomDiffDB/DB/blob/master/utils.py
     """
-
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
 
         def find_nearest(array, value):

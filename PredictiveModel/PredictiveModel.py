@@ -5,18 +5,17 @@ from keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import Sequence
 import matplotlib.pyplot as plt
 import keras.backend as K
-import numpy as np
 
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 
-class TrackGeneratorClassification(Sequence):
+class TrackGenerator(Sequence):
     def __init__(self, batches, batch_size, dataset_function):
         self.batches = batches
         self.batch_size = batch_size
         self.dataset_function = dataset_function
 
     def __getitem__(self, item):
-        tracks, _, classes, _ = self.dataset_function(self.batch_size, 0)
+        tracks, classes = self.dataset_function(self.batch_size)
         return tracks, classes
 
     def __len__(self):
@@ -135,7 +134,7 @@ class PredictiveModel(Document):
 
     def __init__(self, trajectory_length, trajectory_time, **kwargs):
         self.architecture = None
-        self.hyperparameters_analysis = self.default_hyperparameters_analysis()
+        self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
 
         if 'simulator_identifier' in kwargs:
@@ -189,11 +188,8 @@ class PredictiveModel(Document):
     def default_hyperparameters_analysis(self):
         raise Exception("default_hyperparameters_analysis should be defined")
 
-    def default_hyperparameters_analysis(self):
-        raise self.__class__.default_hyperparameters_analysis()
-
     def plot_training_history(self):
-        assert self.history_training_info is not None, "There is not history training"
+        assert self.history_training_info is not None, "There is not training history"
 
         TRANSLATION = {
             'loss':'Loss',
@@ -214,23 +210,16 @@ class PredictiveModel(Document):
                 plt.title(f"L={self.trajectory_length}, models={[model.STRING_LABEL for model in self.models_involved_in_predictive_model]}")
                 plt.ylabel(TRANSLATION[metric])
                 plt.xlabel('Epoch')
-                plt.legend(['train', 'test'], loc='upper left')
+                plt.legend(['Train', 'Test'], loc='upper left')
                 plt.grid()
                 plt.show()
 
     def __str__(self):
         return f"{self.type_name}_{str(self.simulator.STRING_LABEL)}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
-    def prepare_dataset(self, training_set_size, test_set_size):
-        trajectories = self.simulator().simulate_trajectories_by_model(training_set_size, self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
-        X_train = self.transform_trajectories_to_input(trajectories)
-        Y_train = self.transform_trajectories_to_output(trajectories)
-
-        trajectories = self.simulator().simulate_trajectories_by_model(test_set_size, self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
-        X_val = self.transform_trajectories_to_input(trajectories)
-        Y_val = self.transform_trajectories_to_output(trajectories)
-
-        return X_train, X_val, Y_train, Y_val
+    def prepare_dataset(self, set_size):
+        trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def save_as_file(self):
         if self.architecture is not None:
@@ -254,7 +243,6 @@ class PredictiveModel(Document):
         else:        
             self.architecture.load_weights(f'{str(self)}.h5')
 
-
     def save(self):
         self.save_as_file()
         super().save()
@@ -277,10 +265,10 @@ class PredictiveModel(Document):
             callbacks = []
 
         history_training_info = self.architecture.fit(
-            TrackGeneratorClassification(self.hyperparameters['training_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+            TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
             epochs=real_epochs,
             callbacks=callbacks,
-            validation_data=TrackGeneratorClassification(self.hyperparameters['validation_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+            validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
         ).history
 
         if self.trained:

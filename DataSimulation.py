@@ -7,7 +7,7 @@ class DataSimulation():
     def STRING_LABEL(self):
         raise NotImplementedError('STRING_LABEL property should be implemented for each DataSimulation object')
 
-    def simulate_trajectories_by_model(self, number_of_trajectories, trajectory_length, model_classes, trajectory_time):
+    def simulate_trajectories_by_model(self, number_of_trajectories, trajectory_length, trajectory_time, model_classes):
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
@@ -19,7 +19,7 @@ class DataSimulation():
 
         return trajectories
 
-    def simulate_trajectories_by_category(self, number_of_trajectories, trajectory_length, categories, trajectory_time):
+    def simulate_trajectories_by_category(self, number_of_trajectories, trajectory_length, trajectory_time, categories):
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
