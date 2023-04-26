@@ -1,6 +1,7 @@
 import numpy as np
 from TheoreticalModels.Model import Model
 from TheoreticalModels.simulation_utils import add_noise_and_offset, symmetric_alpha_levy, mittag_leffler_rand
+from CONSTANTS import EXPERIMENT_PIXEL_SIZE
 
 
 class ContinuousTimeRandomWalk(Model):

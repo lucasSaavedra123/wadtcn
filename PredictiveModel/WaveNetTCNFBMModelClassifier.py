@@ -9,13 +9,13 @@ from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels import ANDI_MODELS, ALL_MODELS
+from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
 
 
-class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
+class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return ANDI_MODELS if self.simulator().STRING_LABEL == 'andi' else ALL_MODELS
+        return [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
 
     @property
     def number_of_models_involved(self):

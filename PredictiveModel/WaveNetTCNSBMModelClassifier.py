@@ -9,13 +9,13 @@ from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels import ANDI_MODELS, ALL_MODELS
+from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive
 
 
-class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
+class WaveNetTCNSBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return ANDI_MODELS if self.simulator().STRING_LABEL == 'andi' else ALL_MODELS
+        return [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
 
     @property
     def number_of_models_involved(self):
@@ -62,7 +62,7 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
     def build_network(self):
         # Net filters and kernels
         initializer = 'he_normal'
-        filters = 64
+        filters = 32
         x1_kernel = 4
         x2_kernel = 2
         x3_kernel = 3

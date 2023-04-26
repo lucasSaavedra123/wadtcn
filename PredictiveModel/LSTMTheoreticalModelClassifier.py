@@ -3,16 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, f1_score
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply
+from keras.layers import Dense, Input, LSTM
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels import ANDI_MODELS, ALL_MODELS
+from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 
 
-class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
+class LSTMTheoreticalModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
         return ANDI_MODELS if self.simulator().STRING_LABEL == 'andi' else ALL_MODELS
@@ -44,79 +44,28 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
             'epsilon': [1e-6, 1e-7, 1e-8],
         }
 
-    def conv_bloc(self, original_x, filters, kernel_size, dilation_rates, initializer):
-        x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
 
-        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(original_x)
-        x_skip = BatchNormalization()(x_skip)
+    """
+    This network comes from paper:
 
-        x = Add()([x, x_skip])
+    Aykut Argun, Giovanni Volpe, Stefano Bo
 
-        return x
+    Classification, Inference, and Segmentation of anomalous
+    diffusion with recurrent neural networks
 
+    Original code: https://github.com/argunaykut/randi/blob/main/classification_train_network.ipynb
+    """
     def build_network(self):
-        # Net filters and kernels
-        initializer = 'he_normal'
-        filters = 64
-        x1_kernel = 4
-        x2_kernel = 2
-        x3_kernel = 3
-        x4_kernel = 10
-        x5_kernel = 20
+        inputs = Input((self.trajectory_length-1, 2))
 
-        dilation_depth = 8
+        x = LSTM(250, return_sequences=True)(inputs)
+        x = LSTM(50)(x)
+        x = Dense(20)(x)
+        outputs = Dense(len(self.models_involved_in_predictive_model), activation="softmax")(x)
 
-        inputs = Input(shape=(self.trajectory_length-1, 2))
+        self.architecture = Model(inputs=inputs, outputs=outputs)                             
 
-        wavenet_dilations = [2**i for i in range(dilation_depth)]
-        conv_1d_tanh = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='tanh') for dilation in wavenet_dilations]
-        conv_1d_sigm = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='sigmoid') for dilation in wavenet_dilations]
-
-        x = Conv1D(filters, 3, padding='causal')(inputs)
-
-        layers_to_add = [x]
-
-        for i in range(dilation_depth):
-            tanh_out = conv_1d_tanh[i](x)
-            sigm_out = conv_1d_sigm[i](x)
-
-            x = Multiply()([tanh_out, sigm_out])
-            x = Conv1D(filters, 1, padding='causal')(x)
-
-            layers_to_add.append(x)
-
-        x = Add()(layers_to_add)
-        x = BatchNormalization()(x)
-
-        x1 = self.conv_bloc(x, filters, x1_kernel, [1,2,4], initializer)
-        x2 = self.conv_bloc(x, filters, x2_kernel, [1,2,4], initializer)
-        x3 = self.conv_bloc(x, filters, x3_kernel, [1,2,4], initializer)
-        x4 = self.conv_bloc(x, filters, x4_kernel, [1,4,8], initializer)
-
-        x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
-        x5 = BatchNormalization()(x5)
-
-        x = concatenate(inputs=[x1, x2, x3, x4, x5])
-
-        x = GlobalMaxPooling1D()(x)
-
-        dense_1 = Dense(units=512, activation='relu')(x)
-        dense_2 = Dense(units=128, activation='relu')(dense_1)
-        output_network = Dense(units=self.number_of_models_involved, activation='softmax')(dense_2)
-
-        self.architecture = Model(inputs=inputs, outputs=output_network)
-
-        optimizer = Adam(lr=self.hyperparameters['lr'],
-                         amsgrad=self.hyperparameters['amsgrad'],
-                         epsilon=self.hyperparameters['epsilon'])
-
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-
+        self.architecture.compile(optimizer='adam', loss="categorical_crossentropy", metrics=["categorical_accuracy"])
         self.architecture.summary()
 
     def predict(self, trajectories):
@@ -144,7 +93,6 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
             axis_reshaped = axis_reshaped - np.mean(axis_reshaped)
             axis_diff = np.diff(axis_reshaped[0, :track_length])
             return axis_diff
-
 
         for index, trajectory in enumerate(trajectories):
             X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), self.trajectory_length)
@@ -185,4 +133,4 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
         plt.clf()
 
     def __str__(self):
-        return f"wavenet_tcn_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"
+        return f"lstm_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"

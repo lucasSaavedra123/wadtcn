@@ -1,7 +1,9 @@
-from TheoreticalModels.Model import Model
 import numpy as np
 from scipy import fftpack
+
 from TheoreticalModels.simulation_utils import add_noise_and_offset
+from CONSTANTS import EXPERIMENT_PIXEL_SIZE
+from TheoreticalModels.Model import Model
 
 
 class FractionalBrownianMotion(Model):
