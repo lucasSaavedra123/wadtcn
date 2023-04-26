@@ -76,8 +76,8 @@ class Model():
                     t=simulation_result['t'],
                     #noise_x=simulation_result['x_noisy']-simulation_result['x'],
                     #noise_y=simulation_result['y_noisy']-simulation_result['y'],
-                    #exponent_type=simulation_result['exponent_type'],
-                    #exponent=simulation_result['exponent'],
+                    exponent_type=simulation_result['exponent_type'],
+                    exponent=simulation_result['exponent'],
                     model_category=self,
                     info=simulation_result['info'],
                     noisy=True
@@ -112,25 +112,6 @@ class Model():
         return self.STRING_LABEL
 
     def andi_simulate_rawly(self, trajectory_length, trajectory_time):
-        model_number = datasets_theory().avail_models_name.index(self.STRING_LABEL)
-
-        retry = True
-
-        #with redirect_stdout(io.StringIO()):
-        """
-        This part should be changes because is too slow
-        """
-
-        """
-        while retry:
-            _,_,X,Y,_,_ = challenge_theory_dataset(1, min_T=trajectory_length, max_T=trajectory_length+1, tasks=2, dimensions=2)
-            retry = Y[1][0] != model_number
-        """
-
-        """
-        The following piece of code is part of the ANDI Challenge Code
-        """
-
         dim = 2
         max_T = trajectory_length
 

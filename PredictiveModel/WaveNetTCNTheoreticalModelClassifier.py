@@ -118,8 +118,6 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 
-        self.architecture.summary()
-
     def predict(self, trajectories):
         X = self.transform_trajectories_to_input(trajectories)
         Y_predicted = self.architecture.predict(X)

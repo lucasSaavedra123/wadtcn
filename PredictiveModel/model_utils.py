@@ -19,3 +19,12 @@ def transform_trajectories_into_displacements(predictive_model, trajectories):
             X[index, :, 1] = (X[index, :, 1] - np.mean(X[index, :, 1]))/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
     return X
+
+def transform_trajectories_into_raw_trajectories(predictive_model, trajectories):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+
+    for index, trajectory in enumerate(trajectories):
+        X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
+        X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
+
+    return X

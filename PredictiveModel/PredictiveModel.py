@@ -8,6 +8,7 @@ import keras.backend as K
 
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 
+
 class TrackGenerator(Sequence):
     def __init__(self, batches, batch_size, dataset_function):
         self.batches = batches
@@ -215,7 +216,7 @@ class PredictiveModel(Document):
                 plt.show()
 
     def __str__(self):
-        return f"{self.type_name}_{str(self.simulator.STRING_LABEL)}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
+        return f"{self.type_name}_{str(self.simulator().STRING_LABEL)}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
     def prepare_dataset(self, set_size):
         trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -254,6 +255,8 @@ class PredictiveModel(Document):
         else:
             real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
 
+        self.architecture.summary()
+
         if self.hyperparameters['with_early_stopping']:
             callbacks = [EarlyStopping(
                 monitor="val_loss",
@@ -264,12 +267,20 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
-        history_training_info = self.architecture.fit(
-            TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
-            epochs=real_epochs,
-            callbacks=callbacks,
-            validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
-        ).history
+        try:
+            history_training_info = self.architecture.fit(
+                TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                epochs=real_epochs,
+                callbacks=callbacks,
+                validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+            ).history
+        except KeyError:
+            history_training_info = self.architecture.fit(
+                TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
+                epochs=real_epochs,
+                callbacks=callbacks,
+                validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
+            ).history
 
         if self.trained:
             for dict_key in history_training_info:

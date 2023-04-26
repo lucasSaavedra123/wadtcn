@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional
+from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional, BatchNormalization, GlobalMaxPooling1D, Add, Multiply
 from keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
@@ -11,7 +11,7 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements
+from .model_utils import transform_trajectories_into_raw_trajectories, transform_trajectories_into_displacements
 
 class HurstExponentModel(PredictiveModel):
 
@@ -84,7 +84,7 @@ class HurstExponentModel(PredictiveModel):
                 'epsilon': 1e-7,
                 'model': AnnealedTransientTimeMotion
             },
-            'epochs': 50
+            'epochs': 5
         }
 
     @classmethod
@@ -98,7 +98,7 @@ class HurstExponentModel(PredictiveModel):
 
     @property
     def models_involved_in_predictive_model(self):
-        return [self.hyperparameters[self.extra_parameters["model"]]]
+        return [self.hyperparameters[self.extra_parameters["model"]]['model']]
 
     def predict(self, trajectories):
         X = self.transform_trajectories_to_input(trajectories)
@@ -115,64 +115,106 @@ class HurstExponentModel(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
 
-    def build_network(self):
-        inputs = Input(shape=(self.trajectory_length, 1))
-        x = Conv1D(64, kernel_size=5, padding='causal', activation='relu')(inputs)
-        x = Bidirectional(LSTM(units=64, return_sequences=True, activation='tanh'))(x)
-        x = Bidirectional(LSTM(units=32, activation='tanh'))(x)
-        x = Dense(units=128, activation='tanh')(x)
-        output_network = Dense(units=1, activation='tanh')(x)
+    def conv_bloc(self, original_x, filters, kernel_size, dilation_rates, initializer):
+        x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
+        x = BatchNormalization()(x)
+        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        x = BatchNormalization()(x)
+        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        x = BatchNormalization()(x)
 
-        keras_model = Model(inputs=inputs, outputs=output_network)
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(original_x)
+        x_skip = BatchNormalization()(x_skip)
+
+        x = Add()([x, x_skip])
+
+        return x
+
+    def build_network(self):
+        inputs = Input(shape=(self.trajectory_length-1, 2))
+        dilation_depth = 8
+        initializer = 'he_normal'
+        filters = 64
+
+        wavenet_dilations = [2**i for i in range(dilation_depth)]
+        conv_1d_tanh = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='tanh') for dilation in wavenet_dilations]
+        conv_1d_sigm = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='sigmoid') for dilation in wavenet_dilations]
+
+        x = Conv1D(filters, 3, padding='causal')(inputs)
+
+        layers_to_add = [x]
+
+        for i in range(dilation_depth):
+            tanh_out = conv_1d_tanh[i](x)
+            sigm_out = conv_1d_sigm[i](x)
+
+            x = Multiply()([tanh_out, sigm_out])
+            x = Conv1D(filters, 1, padding='causal')(x)
+
+            layers_to_add.append(x)
+
+        x = Add()(layers_to_add)
+        x = BatchNormalization()(x)
+
+        x = self.conv_bloc(x, filters, 5, [1,2,4], initializer)
+
+        x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
+        x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
+        x = Dense(units=128, activation='selu')(x)
+        output_network = Dense(units=1, activation='sigmoid')(x)
+
+        self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-            lr=self.hyperparameters[self.extra_parameters["model"].STRING_LABEL]['lr'],
-            epsilon=self.hyperparameters[self.extra_parameters["model"].STRING_LABEL]['epsilon'],
-            amsgrad=self.hyperparameters[self.extra_parameters["model"].STRING_LABEL]['amsgrad']
+            lr=self.hyperparameters[self.extra_parameters["model"]]['lr'],
+            epsilon=self.hyperparameters[self.extra_parameters["model"]]['epsilon'],
+            amsgrad=self.hyperparameters[self.extra_parameters["model"]]['amsgrad']
         )
 
-        keras_model.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
+        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
-        self.architecture = keras_model
-
-    def plot_bias(self, trajectories=None):
-        trajectories = self.simulator().simulate_trajectories(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
+    def plot_bias(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         Y_predicted = self.predict(trajectories).flatten()
 
         difference = Y_predicted - ground_truth
 
-        sns.kdeplot(difference.flatten(), color='blue', shade=True)
+        sns.kdeplot(difference.flatten(), color='blue', fill=True)
         plt.rcParams.update({'font.size': 15})
         plt.ylabel('Frequency', fontsize=15)
         plt.xlabel(r'$\alpha _{P} - \alpha _{GT}$', fontsize=15)
         plt.grid()
         plt.show()
 
-    def plot_predicted_and_ground_truth_distribution(self, trajectories=None):
-        trajectories = self.simulator().simulate_trajectories(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
+    def plot_predicted_and_ground_truth_distribution(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         Y_predicted = self.predict(trajectories).flatten()
 
-        sns.kdeplot(ground_truth, color='green', shade=True)
-        sns.kdeplot(Y_predicted, color='red', shade=True)
+        sns.kdeplot(ground_truth, color='green', fill=True)
+        sns.kdeplot(Y_predicted, color='red', fill=True)
         plt.rcParams.update({'font.size': 15})
         plt.ylabel('Frequency', fontsize=15)
         plt.xlabel(r'Values', fontsize=15)
         plt.grid()
         plt.show()
 
-    def plot_predicted_and_ground_truth_histogram(self, trajectories=None):
-        trajectories = self.simulator().simulate_trajectories(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
+    def plot_predicted_and_ground_truth_histogram(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         Y_predicted = self.predict(trajectories).flatten()
 
-        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 1], [0, 1]])
+        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]])
         plt.rcParams.update({'font.size': 15})
         plt.ylabel('Predicted', fontsize=15)
         plt.xlabel('Ground Truth', fontsize=15)
         plt.grid()
         plt.show()
+
+    @property
+    def type_name(self):
+        return 'hurst_exponent'

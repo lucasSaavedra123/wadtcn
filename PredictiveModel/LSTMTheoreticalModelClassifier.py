@@ -67,7 +67,6 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
         self.architecture = Model(inputs=inputs, outputs=outputs)                             
 
         self.architecture.compile(optimizer='adam', loss="categorical_crossentropy", metrics=["categorical_accuracy"])
-        self.architecture.summary()
 
     def predict(self, trajectories):
         X = self.transform_trajectories_to_input(trajectories)
