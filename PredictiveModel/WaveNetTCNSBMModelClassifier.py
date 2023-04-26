@@ -30,7 +30,7 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
             'batch_size': 32,
             'amsgrad': False,
             'epsilon': 1e-8,
-            'epochs': 100,
+            'epochs': 3,
             'with_early_stopping': True,
             'dropout_rate': 0
         }
@@ -62,7 +62,7 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
     def build_network(self):
         # Net filters and kernels
         initializer = 'he_normal'
-        filters = 32
+        filters = 64
         x1_kernel = 4
         x2_kernel = 2
         x3_kernel = 3
@@ -143,9 +143,7 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
         plt.rcParams.update({'font.size': 15})
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
-        #plt.show()
-        plt.savefig(str(self)+'.jpg')
-        plt.clf()
+        plt.show()
 
-    def __str__(self):
-        return f"wavenet_tcn_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"
+    def type_name(self):
+        return f"wavenet_tcn_sbm_model_classifier"

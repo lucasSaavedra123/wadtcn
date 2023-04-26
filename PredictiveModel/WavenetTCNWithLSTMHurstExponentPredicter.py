@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional, BatchNormalization, Add, Multiply
+from keras.layers import Dense, Input, GlobalMaxPooling1D, LSTM, Bidirectional
 from keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
@@ -9,7 +9,7 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories
+from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -81,7 +81,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
                 'epsilon': 1e-7,
                 'model': AnnealedTransientTimeMotion
             },
-            'epochs': 5
+            'epochs': 1
         }
 
     @classmethod
@@ -114,16 +114,18 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
 
     def build_network(self):
         inputs = Input(shape=(self.trajectory_length-1, 2))
+        filters = 64
         dilation_depth = 8
         initializer = 'he_normal'
-        filters = 32
 
         x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
         x = convolutional_block(self, x, filters, 5, [1,2,4], initializer)
+        #x = GlobalMaxPooling1D()(x)
 
-        #x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='relu'))(x)
-        #x = Bidirectional(LSTM(units=filters//2, activation='relu'))(x)
+        x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
+        x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
+
         x = Dense(units=128, activation='selu')(x)
         output_network = Dense(units=1, activation='sigmoid')(x)
 

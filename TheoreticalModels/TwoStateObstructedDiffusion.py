@@ -253,6 +253,3 @@ class TwoStateObstructedDiffusion(Model):
             i += current_state_length
 
         return state, switching
-
-    def __str__(self):
-        return 'od'

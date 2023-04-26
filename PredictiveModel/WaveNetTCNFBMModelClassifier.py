@@ -26,7 +26,7 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
             'batch_size': 32,
             'amsgrad': False,
             'epsilon': 1e-8,
-            'epochs': 100,
+            'epochs': 3,
             'with_early_stopping': True,
             'dropout_rate': 0
         }
@@ -100,5 +100,5 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
 
-    def __str__(self):
-        return f"wavenet_tcn_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"
+    def type_name(self):
+        return f"wavenet_tcn_fbm_model_classifier"

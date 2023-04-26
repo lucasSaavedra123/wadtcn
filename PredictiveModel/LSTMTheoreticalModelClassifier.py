@@ -116,5 +116,5 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
         plt.savefig(str(self)+'.jpg')
         plt.clf()
 
-    def __str__(self):
-        return f"lstm_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"
+    def type_name(self):
+        return f"lstm_theoretical_model_classifier"
