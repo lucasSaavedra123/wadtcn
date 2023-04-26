@@ -10,7 +10,7 @@ from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import ANDI_MODELS, ALL_MODELS
-from .model_utils import transform_trajectories_into_displacements
+from .model_utils import transform_trajectories_into_displacements, WaveNetEncoder
 
 
 class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
@@ -74,25 +74,7 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
 
         inputs = Input(shape=(self.trajectory_length-1, 2))
 
-        wavenet_dilations = [2**i for i in range(dilation_depth)]
-        conv_1d_tanh = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='tanh') for dilation in wavenet_dilations]
-        conv_1d_sigm = [Conv1D(filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='sigmoid') for dilation in wavenet_dilations]
-
-        x = Conv1D(filters, 3, padding='causal')(inputs)
-
-        layers_to_add = [x]
-
-        for i in range(dilation_depth):
-            tanh_out = conv_1d_tanh[i](x)
-            sigm_out = conv_1d_sigm[i](x)
-
-            x = Multiply()([tanh_out, sigm_out])
-            x = Conv1D(filters, 1, padding='causal')(x)
-
-            layers_to_add.append(x)
-
-        x = Add()(layers_to_add)
-        x = BatchNormalization()(x)
+        x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
         x1 = self.conv_bloc(x, filters, x1_kernel, [1,2,4], initializer)
         x2 = self.conv_bloc(x, filters, x2_kernel, [1,2,4], initializer)
