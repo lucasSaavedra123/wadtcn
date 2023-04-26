@@ -98,7 +98,7 @@ class FractionalBrownianMotion(Model):
         }
 
 class FractionalBrownianMotionSuperDiffusive(FractionalBrownianMotion):
-    STRING_LABEL = 'fbm_sup'
+    #STRING_LABEL = 'fbm_sup'
 
     @classmethod
     def create_random_instance(cls):
@@ -110,7 +110,7 @@ class FractionalBrownianMotionSuperDiffusive(FractionalBrownianMotion):
         return cls(hurst_exponent=selected_hurst_exponent)
 
 class FractionalBrownianMotionSubDiffusive(FractionalBrownianMotion):
-    STRING_LABEL = 'fbm_sub'
+    #STRING_LABEL = 'fbm_sub'
 
     @classmethod
     def create_random_instance(cls):
@@ -122,7 +122,7 @@ class FractionalBrownianMotionSubDiffusive(FractionalBrownianMotion):
         return cls(hurst_exponent=selected_hurst_exponent)
 
 class FractionalBrownianMotionBrownian(FractionalBrownianMotion):
-    STRING_LABEL = 'fbm_brownian'
+    #STRING_LABEL = 'fbm_brownian'
 
     @classmethod
     def create_random_instance(cls):

@@ -10,7 +10,7 @@ from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
-
+from .model_utils import transform_trajectories_into_displacements
 
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
@@ -137,24 +137,7 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
         return self.models_involved_in_predictive_model.index(model.__class__)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = np.zeros((len(trajectories), self.trajectory_length-1, 2))
-
-        def axis_adaptation_to_net(axis_data, track_length):
-            axis_reshaped = np.reshape(axis_data, newshape=[1, len(axis_data)])
-            axis_reshaped = axis_reshaped - np.mean(axis_reshaped)
-            axis_diff = np.diff(axis_reshaped[0, :track_length])
-            return axis_diff
-
-
-        for index, trajectory in enumerate(trajectories):
-            X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), self.trajectory_length)
-            X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), self.trajectory_length)
-
-            if self.simulator().STRING_LABEL == 'andi':
-                X[index, :, 0] = (X[index, :, 0] - np.mean(X[index, :, 0]))/np.std(X[index, :, 0])
-                X[index, :, 1] = (X[index, :, 1] - np.mean(X[index, :, 1]))/np.std(X[index, :, 1])
-
-        return X
+        return transform_trajectories_into_displacements(self, trajectories)
 
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_category(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
