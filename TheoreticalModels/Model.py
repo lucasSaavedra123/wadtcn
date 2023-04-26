@@ -139,7 +139,7 @@ class Model():
             N_models = 1,
             exponents = [self.anomalous_exponent], 
             dimension = dim,
-            models = [datasets_theory().avail_models_name.index(self.__class__.STRING_LABEL)]
+            models = [datasets_theory().avail_models_name.index(self.__class__.STRING_LABEL.split('_')[0])]
         )
 
         # Normalize trajectories
