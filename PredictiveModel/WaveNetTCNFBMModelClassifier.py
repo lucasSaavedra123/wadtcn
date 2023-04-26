@@ -1,8 +1,4 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, f1_score
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
@@ -121,34 +117,6 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
 
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
-
-    def plot_confusion_matrix(self, normalized=True):
-        trajectories = self.simulator().simulate_trajectories_by_category(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
-
-        ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
-        Y_predicted = self.predict(trajectories)
-
-        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
-
-        if normalized:
-            confusion_mat = confusion_mat.astype(
-                'float') / confusion_mat.sum(axis=1)[:, np.newaxis]
-
-        labels = [a_tuple[0] for a_tuple in self.models_involved_in_predictive_model]
-
-        confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
-        sns.set(font_scale=1.5)
-        color_map = sns.color_palette(palette="Blues", n_colors=7)
-        sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
-
-        # Plot matrix
-        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, Y_predicted, average="micro"),2)})')
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel("Ground truth", fontsize=15)
-        plt.xlabel("Predicted label", fontsize=15)
-        #plt.show()
-        plt.savefig(str(self)+'.jpg')
-        plt.clf()
 
     def __str__(self):
         return f"wavenet_tcn_theoretical_model_classifier_{self.trajectory_length}_simulation_{self.simulator().STRING_LABEL}"

@@ -5,6 +5,11 @@ from keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import Sequence
 import matplotlib.pyplot as plt
 import keras.backend as K
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
+from sklearn.metrics import confusion_matrix, f1_score
 
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 
@@ -288,3 +293,71 @@ class PredictiveModel(Document):
         else:
             self.history_training_info = history_training_info
             self.trained = True
+
+    def plot_bias(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
+        Y_predicted = self.predict(trajectories).flatten()
+
+        difference = Y_predicted - ground_truth
+
+        sns.kdeplot(difference.flatten(), color='blue', fill=True)
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel('Frequency', fontsize=15)
+        plt.xlabel(r'$\alpha _{P} - \alpha _{GT}$', fontsize=15)
+        plt.grid()
+        plt.show()
+
+    def plot_predicted_and_ground_truth_distribution(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
+        Y_predicted = self.predict(trajectories).flatten()
+
+        sns.kdeplot(ground_truth, color='green', fill=True)
+        sns.kdeplot(Y_predicted, color='red', fill=True)
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel('Frequency', fontsize=15)
+        plt.xlabel(r'Values', fontsize=15)
+        plt.grid()
+        plt.show()
+
+    def plot_predicted_and_ground_truth_histogram(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
+        Y_predicted = self.predict(trajectories).flatten()
+
+        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]])
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel('Predicted', fontsize=15)
+        plt.xlabel('Ground Truth', fontsize=15)
+        plt.grid()
+        plt.show()
+
+    def plot_confusion_matrix(self, normalized=True):
+        trajectories = self.simulator().simulate_trajectories_by_category(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
+
+        ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
+        Y_predicted = self.predict(trajectories)
+
+        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
+
+        if normalized:
+            confusion_mat = confusion_mat.astype(
+                'float') / confusion_mat.sum(axis=1)[:, np.newaxis]
+
+        labels = [a_tuple[0] for a_tuple in self.models_involved_in_predictive_model]
+
+        confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
+        sns.set(font_scale=1.5)
+        color_map = sns.color_palette(palette="Blues", n_colors=7)
+        sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
+
+        # Plot matrix
+        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, Y_predicted, average="micro"),2)})')
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel("Ground truth", fontsize=15)
+        plt.xlabel("Predicted label", fontsize=15)
+        plt.show()

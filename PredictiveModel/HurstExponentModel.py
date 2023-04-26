@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional, BatchNormalization, Add, Multiply
 from keras.models import Model
 from tensorflow.keras.optimizers import Adam
@@ -157,48 +155,6 @@ class HurstExponentModel(PredictiveModel):
         )
 
         self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
-
-    def plot_bias(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        Y_predicted = self.predict(trajectories).flatten()
-
-        difference = Y_predicted - ground_truth
-
-        sns.kdeplot(difference.flatten(), color='blue', fill=True)
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Frequency', fontsize=15)
-        plt.xlabel(r'$\alpha _{P} - \alpha _{GT}$', fontsize=15)
-        plt.grid()
-        plt.show()
-
-    def plot_predicted_and_ground_truth_distribution(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        Y_predicted = self.predict(trajectories).flatten()
-
-        sns.kdeplot(ground_truth, color='green', fill=True)
-        sns.kdeplot(Y_predicted, color='red', fill=True)
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Frequency', fontsize=15)
-        plt.xlabel(r'Values', fontsize=15)
-        plt.grid()
-        plt.show()
-
-    def plot_predicted_and_ground_truth_histogram(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        Y_predicted = self.predict(trajectories).flatten()
-
-        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]])
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Predicted', fontsize=15)
-        plt.xlabel('Ground Truth', fontsize=15)
-        plt.grid()
-        plt.show()
 
     @property
     def type_name(self):
