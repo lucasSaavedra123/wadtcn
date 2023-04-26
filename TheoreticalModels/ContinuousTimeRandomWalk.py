@@ -6,7 +6,7 @@ from CONSTANTS import EXPERIMENT_PIXEL_SIZE
 
 class ContinuousTimeRandomWalk(Model):
     STRING_LABEL = 'ctrw'
-    ANOMALOUS_EXPONENT_RANGE = [0.1, 0.9]
+    ANOMALOUS_EXPONENT_RANGE = [0.05, 0.95]
 
     @classmethod
     def create_random_instance(cls):

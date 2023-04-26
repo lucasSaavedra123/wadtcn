@@ -5,7 +5,7 @@ from TheoreticalModels.simulation_utils import add_noise_and_offset, generate_di
 
 class AnnealedTransientTimeMotion(Model):
     STRING_LABEL = 'attm'
-    ANOMALOUS_EXPONENT_RANGE = [0.1, 0.9]
+    ANOMALOUS_EXPONENT_RANGE = [0.05, 0.95]
     REGIMES = [1]
     DIFFUSION_COEFFICIENT_RANGE = [0.02, 0.2]
 
