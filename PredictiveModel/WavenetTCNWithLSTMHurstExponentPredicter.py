@@ -1,7 +1,7 @@
 import numpy as np
 from keras.layers import Dense, Input, GlobalMaxPooling1D, LSTM, Bidirectional
 from keras.models import Model
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.legacy import Adam
 
 from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
 from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
@@ -9,13 +9,13 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder
+from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 1000,
+            'training_set_size': 100000,
             'validation_set_size': 12500,
             'with_early_stopping': False,
             'fbm_sub': {
@@ -110,7 +110,12 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         return Y
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+        """
+        Para FBM es mejor la trayectoria en sí
+        Para ATTM es mejor los desplazamientos
+        """
+
+        return transform_trajectories_into_raw_trajectories(self, trajectories)
 
     def build_network(self):
         inputs = Input(shape=(self.trajectory_length-1, 2))

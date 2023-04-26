@@ -6,6 +6,8 @@ from sklearn.metrics import confusion_matrix, f1_score
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
+#from tensorflow.keras.metrics import F1Score
+from tensorflow_addons.metrics import F1Score
 from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
@@ -98,7 +100,7 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
                          amsgrad=self.hyperparameters['amsgrad'],
                          epsilon=self.hyperparameters['epsilon'])
 
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy', F1Score(average='micro', num_classes=self.number_of_models_involved)])
 
     def predict(self, trajectories):
         X = self.transform_trajectories_to_input(trajectories)
