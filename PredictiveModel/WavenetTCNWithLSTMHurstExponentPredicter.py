@@ -15,7 +15,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 100000,
+            'training_set_size': 1000,
             'validation_set_size': 12500,
             'with_early_stopping': False,
             'fbm_sub': {
