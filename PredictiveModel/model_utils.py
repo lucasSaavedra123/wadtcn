@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Conv1D, BatchNormalization, Add
+from keras.layers import Conv1D, BatchNormalization, Add, Layer, Multiply
 
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
@@ -28,6 +28,10 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories)
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
 
+        if predictive_model.simulator().STRING_LABEL == 'andi':
+            X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
+            X[index, :, 1] = X[index, :, 1]/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
+
     return X
 
 def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
@@ -44,3 +48,37 @@ def convolutional_block(predictive_model, original_x, filters, kernel_size, dila
     x = Add()([x, x_skip])
 
     return x
+
+class WaveNetEncoder(Layer):
+    def __init__(self, filters, dilation_depth, initializer='he_normal'):
+        super().__init__()
+        self.dilation_depth = dilation_depth
+        self.filters = filters
+
+        wavenet_dilations = [2**i for i in range(self.dilation_depth)]
+        self.conv_1d_tanh_layers = [Conv1D(self.filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='tanh', kernel_initializer=initializer) for dilation in wavenet_dilations]
+        self.conv_1d_sigm_layers = [Conv1D(self.filters, kernel_size=3, dilation_rate=dilation, padding='causal', activation='sigmoid', kernel_initializer=initializer) for dilation in wavenet_dilations]
+
+        self.first_conv_layer = Conv1D(self.filters, 3, padding='causal', kernel_initializer=initializer)
+        self.wavenet_enconder_convs = [Conv1D(self.filters, kernel_size=1, padding='causal', kernel_initializer=initializer) for _ in wavenet_dilations]
+
+        self.last_batch_normalization = BatchNormalization()
+
+    def call(self, inputs):
+        x = self.first_conv_layer(inputs)
+
+        layers_to_add = [x]
+
+        for i in range(self.dilation_depth):
+            tanh_out = self.conv_1d_tanh_layers[i](x)
+            sigm_out = self.conv_1d_sigm_layers[i](x)
+
+            x = Multiply()([tanh_out, sigm_out])
+            x = self.wavenet_enconder_convs[i](x)
+
+            layers_to_add.append(x)
+
+        x = Add()(layers_to_add)
+        x = self.last_batch_normalization(x)
+
+        return x
