@@ -1,9 +1,8 @@
 from .AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
 from .ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
-from .FractionalBrownianMotion import FractionalBrownianMotion
+from .FractionalBrownianMotion import FractionalBrownianMotion, FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
+from .ScaledBrownianMotion import ScaledBrownianMotion, ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .LevyWalk import LevyWalk
-from .ScaledBrownianMotion import ScaledBrownianMotion
-from .AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
 from .TwoStateObstructedDiffusion import TwoStateObstructedDiffusion
 
 ANDI_MODELS = [
@@ -15,3 +14,8 @@ ANDI_MODELS = [
 ]
 
 ALL_MODELS = ANDI_MODELS + [TwoStateObstructedDiffusion]
+SBM_MODELS = [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
+FBM_MODELS = [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
+SUB_MODELS = SBM_MODELS + FBM_MODELS
+
+STRING_LABEL_TO_MODEL = {model_class: model_class.STRING_LABEL for model_class in ALL_MODELS + SUB_MODELS}

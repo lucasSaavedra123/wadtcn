@@ -99,15 +99,8 @@ class ScaledBrownianMotionSubDiffusive(ScaledBrownianMotion):
     @classmethod
     def create_random_instance(cls):
         selected_range = cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE
-
-        selected_anomalous_exponent = np.random.uniform(
-            selected_range[0], selected_range[1])
-        
-        generalized_diffusion_coefficient = np.random.uniform(
-            low=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[0],
-            high=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[1]
-        )
-
+        selected_anomalous_exponent = np.random.uniform(selected_range[0], selected_range[1])
+        generalized_diffusion_coefficient = np.random.uniform(low=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[0], high=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[1])
         return cls(anomalous_exponent=selected_anomalous_exponent, generalized_diffusion_coefficient=generalized_diffusion_coefficient)
 
 
@@ -117,13 +110,6 @@ class ScaledBrownianMotionBrownian(ScaledBrownianMotion):
     @classmethod
     def create_random_instance(cls):
         selected_range = cls.NOT_EXACT_BROWNIAN_ANOMALOUS_EXPONENT_RANGE
-
-        selected_anomalous_exponent = np.random.uniform(
-            selected_range[0], selected_range[1])
-        
-        generalized_diffusion_coefficient = np.random.uniform(
-            low=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[0],
-            high=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[1]
-        )
-
+        selected_anomalous_exponent = np.random.uniform(selected_range[0], selected_range[1])
+        generalized_diffusion_coefficient = np.random.uniform(low=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[0], high=cls.GENERALIZED_DIFFUSION_COEFFICIENT_RANGE[1])
         return cls(anomalous_exponent=selected_anomalous_exponent, generalized_diffusion_coefficient=generalized_diffusion_coefficient)

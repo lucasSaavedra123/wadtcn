@@ -11,7 +11,7 @@ from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian,
 from .PredictiveModel import PredictiveModel
 from .model_utils import transform_trajectories_into_displacements, convolutional_block
 
-class HurstExponentModel(PredictiveModel):
+class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
 
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):

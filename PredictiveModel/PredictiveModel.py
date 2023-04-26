@@ -329,7 +329,7 @@ class PredictiveModel(Document):
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         Y_predicted = self.predict(trajectories).flatten()
 
-        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]])
+        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]], cmap='hot')
         plt.rcParams.update({'font.size': 15})
         plt.ylabel('Predicted', fontsize=15)
         plt.xlabel('Ground Truth', fontsize=15)
