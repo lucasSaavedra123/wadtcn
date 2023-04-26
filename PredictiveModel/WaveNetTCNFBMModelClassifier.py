@@ -10,7 +10,7 @@ from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
-from .model_utils import transform_trajectories_into_displacements
+from .model_utils import transform_trajectories_into_displacements, convolutional_block
 
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
@@ -43,21 +43,6 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
             'batch_size': [8, 32, 128, 256, 512],
             'epsilon': [1e-6, 1e-7, 1e-8],
         }
-
-    def conv_bloc(self, original_x, filters, kernel_size, dilation_rates, initializer):
-        x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
-
-        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(original_x)
-        x_skip = BatchNormalization()(x_skip)
-
-        x = Add()([x, x_skip])
-
-        return x
 
     def build_network(self):
         # Net filters and kernels
@@ -93,10 +78,10 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
         x = Add()(layers_to_add)
         x = BatchNormalization()(x)
 
-        x1 = self.conv_bloc(x, filters, x1_kernel, [1,2,4], initializer)
-        x2 = self.conv_bloc(x, filters, x2_kernel, [1,2,4], initializer)
-        x3 = self.conv_bloc(x, filters, x3_kernel, [1,2,4], initializer)
-        x4 = self.conv_bloc(x, filters, x4_kernel, [1,4,8], initializer)
+        x1 = convolutional_block(self, x, filters, x1_kernel, [1,2,4], initializer)
+        x2 = convolutional_block(self, x, filters, x2_kernel, [1,2,4], initializer)
+        x3 = convolutional_block(self, x, filters, x3_kernel, [1,2,4], initializer)
+        x4 = convolutional_block(self, x, filters, x4_kernel, [1,4,8], initializer)
 
         x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
         x5 = BatchNormalization()(x5)

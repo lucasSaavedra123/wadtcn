@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional, BatchNormalization, GlobalMaxPooling1D, Add, Multiply
+from keras.layers import Dense, Input, LSTM, Conv1D, Bidirectional, BatchNormalization, Add, Multiply
 from keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
@@ -11,7 +11,7 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_raw_trajectories, transform_trajectories_into_displacements
+from .model_utils import transform_trajectories_into_displacements, convolutional_block
 
 class HurstExponentModel(PredictiveModel):
 
@@ -115,21 +115,6 @@ class HurstExponentModel(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
 
-    def conv_bloc(self, original_x, filters, kernel_size, dilation_rates, initializer):
-        x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
-        x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        x = BatchNormalization()(x)
-
-        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(original_x)
-        x_skip = BatchNormalization()(x_skip)
-
-        x = Add()([x, x_skip])
-
-        return x
-
     def build_network(self):
         inputs = Input(shape=(self.trajectory_length-1, 2))
         dilation_depth = 8
@@ -156,7 +141,7 @@ class HurstExponentModel(PredictiveModel):
         x = Add()(layers_to_add)
         x = BatchNormalization()(x)
 
-        x = self.conv_bloc(x, filters, 5, [1,2,4], initializer)
+        x = convolutional_block(self, x, filters, 5, [1,2,4], initializer)
 
         x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
         x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
