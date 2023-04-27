@@ -6,8 +6,9 @@ import numpy as np
 from Trajectory import Trajectory
 from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD
 from andi_datasets.datasets_theory  import datasets_theory
-#from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Function
-
+from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Functio
+from andi_datasets.datasets_challenge import challenge_phenom_dataset
+from .simulation_utils import blockPrint, enablePrint
 
 def normalize(trajs, variance=None):    
     '''
@@ -147,12 +148,56 @@ class Model():
         new_trajs = np.concatenate((np.zeros((new_trajs.shape[0], 1)), new_trajs), axis = 1)
         dataset[:, 2:] = new_trajs.reshape(dataset[:, 2:].shape)
 
-        #trajectory_raw = X[1][0]
-        #x = trajectory_raw[:trajectory_length]
-        #y = trajectory_raw[trajectory_length:]
+        #x = dataset[0][2:trajectory_length+2]
+        #y = dataset[0][trajectory_length+2:]
 
-        x = dataset[0][2:trajectory_length+2]
-        y = dataset[0][trajectory_length+2:]
+        N = 1
+
+        X2 = [[],[],[]]
+        Y2 = [[],[],[]]
+
+        n_per_model = max(1, int(1.1*N/5))                    
+        for model in range(5):
+            dataset_mod = dataset[dataset[:, 0] == model].copy()
+            dataset_mod = dataset_mod[:n_per_model, :]
+            try:
+                dataset_2 = np.concatenate((dataset_2, dataset_mod), axis = 0) 
+            except:
+                dataset_2 = dataset_mod
+
+        # Shuffle trajectories and noise                
+        p = np.random.permutation(dataset_2.shape[0])                
+        diffusion_coefficients_t2 = diffusion_coefficients[p].copy()
+        loc_error_amplitude_t2 = loc_error_amplitude[p].copy()
+        min_T = max_T
+        dataset_2 = dataset_2[p]
+        # Saving noise wityh correct number of elements
+        #if return_noise:
+        #    loc_noise_t2[dim-1] = loc_error_amplitude_t2[:N]
+        #    diff_noise_t2[dim-1] = diffusion_coefficients_t2[:N]
+
+        for traj in dataset_2[:N, :]:             
+            # Cutting trajectories
+            cut_T = np.random.randint(min_T, max_T+1) 
+            traj_cut = datasets_theory()._cut_trajectory(traj[2:], cut_T, dim=dim).tolist() 
+            # Saving dataset   
+            X2[dim-1].append(traj_cut)
+            Y2[dim-1].append(np.around(traj[0], 2))    
+
+        """
+        model_number = datasets_theory().avail_models_name.index(self.__class__.STRING_LABEL.split('_')[0])
+
+        retry = True
+        while retry:
+            blockPrint()
+            _, _, X, Y, _, _ = challenge_theory_dataset(1, min_T=trajectory_length, max_T=trajectory_length+1, tasks=2, dimensions=2)
+            enablePrint()
+            retry = Y[1][0] != model_number
+        """
+
+        trajectory_raw = X2[1][0]
+        x = trajectory_raw[:trajectory_length]
+        y = trajectory_raw[trajectory_length:]
 
         return {
             'x': x,
@@ -161,6 +206,6 @@ class Model():
             #'x_noisy': noisy_x,
             #'y_noisy': noisy_y,
             'exponent_type': 'anomalous',
-            'exponent': self.anomalous_exponent,
+            'exponent': np.round(self.anomalous_exponent,2),
             'info': {}
         }

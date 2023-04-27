@@ -221,11 +221,14 @@ class PredictiveModel(Document):
                 plt.show()
 
     def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{str(self.simulator().STRING_LABEL)}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
+        return f"{self.type_name}_{self.trajectory_length}_{self.simulator().STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
     def prepare_dataset(self, set_size):
         trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+
+    def model_to_label(self, model):
+        return self.models_involved_in_predictive_model.index(model.__class__)
 
     def save_as_file(self):
         if self.architecture is not None:
@@ -337,18 +340,15 @@ class PredictiveModel(Document):
         plt.show()
 
     def plot_confusion_matrix(self, normalized=True):
-        trajectories = self.simulator().simulate_trajectories_by_category(self.hyperparameters['validation_set_size'], self.trajectory_length, self.models_involved_in_predictive_model, self.trajectory_time)
-
+        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
         Y_predicted = self.predict(trajectories)
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
 
-        if normalized:
-            confusion_mat = confusion_mat.astype(
-                'float') / confusion_mat.sum(axis=1)[:, np.newaxis]
+        confusion_mat = confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis] if normalized else confusion_mat
 
-        labels = [a_tuple[0] for a_tuple in self.models_involved_in_predictive_model]
+        labels = [model.STRING_LABEL for model in self.models_involved_in_predictive_model]
 
         confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
         sns.set(font_scale=1.5)
@@ -360,4 +360,6 @@ class PredictiveModel(Document):
         plt.rcParams.update({'font.size': 15})
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
-        plt.show()
+        #plt.show()
+        plt.savefig(str(self)+'.jpg')
+        plt.clf()

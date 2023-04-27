@@ -1,5 +1,5 @@
 import numpy as np
-
+import sys, os
 
 """
 This method comes from paper:
@@ -100,3 +100,11 @@ def add_noise_and_offset(track_length, x, y):
     x_noisy = x_noisy + offset_x
     y_noisy = y_noisy + offset_y
     return x, x_noisy, y, y_noisy
+
+# Disable
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__

@@ -1,5 +1,6 @@
 import numpy as np
 from keras.layers import Conv1D, BatchNormalization, Add, Layer, Multiply
+from tensorflow.keras.utils import to_categorical
 
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
@@ -33,6 +34,22 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories)
             X[index, :, 1] = X[index, :, 1]/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
     return X
+
+def transform_trajectories_to_categorical_vector(predictive_model, trajectories):
+    Y_as_vectors = np.empty((len(trajectories), predictive_model.number_of_models_involved))
+
+    for index, trajectory in enumerate(trajectories):
+        Y_as_vectors[index, :] = to_categorical(predictive_model.model_to_label(trajectory.model_category), num_classes=predictive_model.number_of_models_involved)
+
+    return Y_as_vectors
+
+def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), 1))
+
+    for index, trajectory in enumerate(trajectories):
+        Y[index, 0] = trajectory.hurst_exponent()
+
+    return Y
 
 def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
     x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)

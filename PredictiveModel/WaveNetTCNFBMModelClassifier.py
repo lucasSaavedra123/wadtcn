@@ -6,7 +6,7 @@ from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder
+from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_to_categorical_vector
 
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
@@ -87,15 +87,7 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
         return Y_predicted
 
     def transform_trajectories_to_output(self, trajectories):
-        Y_as_vectors = np.empty((len(trajectories), self.number_of_models_involved))
-
-        for index, trajectory in enumerate(trajectories):
-            Y_as_vectors[index, :] = to_categorical(self.model_to_label(trajectory.model_category), num_classes=self.number_of_models_involved)
-
-        return Y_as_vectors
-
-    def model_to_label(self, model):
-        return self.models_involved_in_predictive_model.index(model.__class__)
+        return transform_trajectories_to_categorical_vector(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)

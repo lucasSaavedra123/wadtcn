@@ -10,6 +10,7 @@ from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionB
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
 from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories
+from TheoreticalModels import ANDI_MODELS
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -81,7 +82,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
                 'epsilon': 1e-7,
                 'model': AnnealedTransientTimeMotion
             },
-            'epochs': 1
+            'epochs': 5
         }
 
     @classmethod
@@ -114,8 +115,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         Para FBM es mejor la trayectoria en sí
         Para ATTM es mejor los desplazamientos
         """
-
-        return transform_trajectories_into_raw_trajectories(self, trajectories)
+        return transform_trajectories_into_displacements(self, trajectories)
 
     def build_network(self):
         inputs = Input(shape=(self.trajectory_length-1, 2))
