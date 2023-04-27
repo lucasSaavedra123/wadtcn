@@ -99,7 +99,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_hurst_exponent(trajectories)
+        return transform_trajectories_to_hurst_exponent(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
@@ -112,8 +112,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
 
         x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
-        x = convolutional_block(self, x, filters, 5, [1,2,4], initializer)
-        #x = GlobalMaxPooling1D()(x)
+        x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
 
         x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
         x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
