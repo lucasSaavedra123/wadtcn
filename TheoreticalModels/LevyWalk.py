@@ -5,7 +5,7 @@ from TheoreticalModels.simulation_utils import add_noise_and_offset
 
 class LevyWalk(Model):
     STRING_LABEL = 'lw'
-    ANOMALOUS_EXPONENT_RANGE = [1.1, 1.9]
+    ANOMALOUS_EXPONENT_RANGE = [1.05, 1.95]
     VELOCITY_RANGE = [0.002, 0.005] #um/ms
 
     @classmethod

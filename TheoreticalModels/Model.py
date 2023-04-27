@@ -162,9 +162,9 @@ class Model():
             retry = Y[1][0] != model_number
         """
 
-        trajectory_raw = X2[1][0]
-        x = trajectory_raw[:trajectory_length]
-        y = trajectory_raw[trajectory_length:]
+        #trajectory_raw = X2[1][0]
+        #x = trajectory_raw[:trajectory_length]
+        #y = trajectory_raw[trajectory_length:]
 
         return {
             'x': x,
