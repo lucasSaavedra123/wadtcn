@@ -10,9 +10,31 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix, f1_score
+import matplotlib.patches as mpatches
 
+from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 
+def tool_equal_dicts(d1, d2, ignore_keys):
+    d1_filtered = {k:v for k,v in d1.items() if k not in ignore_keys}
+    d2_filtered = {k:v for k,v in d2.items() if k not in ignore_keys}
+    return d1_filtered == d2_filtered
+
+def tool_include_classifier(old_hyperparameter, current_hyperparameter):
+    return tool_equal_dicts(old_hyperparameter, current_hyperparameter, ['epochs']) and current_hyperparameter['epochs'] >= old_hyperparameter['epochs']
+
+def generate_new_dictionary(dictionary):
+    return {k:v for k,v in dictionary.items()}
+
+def generate_colors_for_hyperparameters_list(hyperparameter_values):
+    color_list = ['red', 'blue', 'green', 'orange', 'purple', 'pink', 'brown', 'olive', 'cyan', 'black', 'magenta', 'navy', 'lime', 'yellow']
+    
+    hyperparameter_value_to_color = {}
+
+    for index, hyperparameter_value in enumerate(hyperparameter_values):
+        hyperparameter_value_to_color[hyperparameter_value] = color_list[index % len(color_list)]
+
+    return hyperparameter_value_to_color
 
 class TrackGenerator(Sequence):
     def __init__(self, batches, batch_size, dataset_function):
@@ -50,6 +72,8 @@ class PredictiveModel(Document):
         # Stack names and lists position
         hyperparameters_to_analyze = cls.default_hyperparameters_analysis()
 
+        networks_list = []
+
         if len(hyperparameters_to_analyze) > 0:
             stack_names = [k for k, v in hyperparameters_to_analyze.items()]
             stack = [0 for i in stack_names]
@@ -74,10 +98,18 @@ class PredictiveModel(Document):
                     print('Evaluating params: {}'.format(network.hyperparameters))
 
                     #Check if this configuration it was already trained
-                    if cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, hyperparameters=network.hyperparameters, trained=True).count() == 0:
+
+                    classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
+
+                    if len(classifiers) == 0:
                         network.fit()
                         network.enable_database_persistance()
                         network.save()
+                        networks_list.append(network)
+                    elif len(classifiers) == 1:
+                        networks_list.append(classifiers[-1])
+                    else:
+                        raise Exception(f'More than one classifier was returned ({len(classifiers)})')
 
                     stack[tos] += 1
                 elif tos == (len(stack) - 1) and stack[tos] == len(hyperparameters_to_analyze[stack_names[tos]]):
@@ -105,43 +137,89 @@ class PredictiveModel(Document):
                 else:
                     analysis_ended = True        
 
-        return cls.post_grid_search_analysis(trajectory_length, trajectory_time, initial_epochs, steps, **kwargs)
+        return cls.post_grid_search_analysis(networks_list, trajectory_length, trajectory_time, initial_epochs, steps, **kwargs)
 
     @classmethod
-    def post_grid_search_analysis(cls, trajectory_length, trajectory_time, current_epochs, step, **kwargs):
-        networks = cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True)
+    def post_grid_search_analysis(cls, networks, trajectory_length, trajectory_time, current_epochs, step, **kwargs):
+        networks_list = []
 
         if len(networks) == 1:
             print(f"Hyperparameter Search Finished. Hyperparameters selected: {networks[0].hyperparameters}")
             return networks[0].hyperparameters
+        else:
+            networks = sorted(networks, key=lambda x: x.history_training_info['val_loss'][-1])
+            networks = networks[:len(networks)//2]
 
-        networks = sorted(networks, key=lambda x: x.history_training_info['val_loss'][-1])
-        networks = networks[:len(networks)//2]
-
-        if len(networks) == 1:
-            print(f"Hyperparameter Search Finished. Hyperparameters selected: {networks[0].hyperparameters}")
-            return networks[0].hyperparameters
+            if len(networks) == 1:
+                print(f"Hyperparameter Search Finished. Hyperparameters selected: {networks[0].hyperparameters}")
+                return networks[0].hyperparameters
 
         print(f"Now will keep training train {len(networks)} networks...")
 
         for network in networks:
-            network = cls(trajectory_length, trajectory_time, **kwargs)
-            network.hyperparameters['epochs'] = current_epochs + step
-            print('Evaluating params: {}'.format(network.hyperparameters))
-
-            #Check if this configuration it was already trained
-            if cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, hyperparameters=network.hyperparameters, trained=True).count() == 0:
+            #network = cls(trajectory_length, trajectory_time, **kwargs)
+            network.enable_database_persistance()
+            network.load_as_file()
+            
+            if network.hyperparameters['epochs'] < current_epochs + step:
+                network.hyperparameters['epochs'] = current_epochs + step
+                print('Evaluating params: {}'.format(network.hyperparameters))
                 network.fit()
-                network.enable_database_persistance()
                 network.save()
+                networks_list.append(network)
+            else:
+                networks_list.append(networks[-1])
 
-        return cls.post_grid_search_analysis(trajectory_length, trajectory_time, current_epochs + step, step, **kwargs)
+        return cls.post_grid_search_analysis(networks_list, trajectory_length, trajectory_time, current_epochs + step, step, **kwargs)
 
+    @classmethod
+    def plot_hyperparameter_search(cls, trajectory_length, trajectory_time, discriminator=None, **kwargs):    
+        max_epochs = float("-inf")
+
+        if discriminator is not None and not type(discriminator) is dict:
+            hyperparameter_values = cls.default_hyperparameters_analysis()[discriminator]
+            hyperparameter_value_to_color = generate_colors_for_hyperparameters_list(hyperparameter_values)
+
+        for predictive_model in [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator]:
+            new_error = np.array(predictive_model.history_training_info['val_loss'])
+
+            max_epochs = max(max_epochs, len(new_error))
+
+            if discriminator is None:
+                plt.plot(range(1, len(new_error)+1), new_error)
+            elif type(discriminator) is dict:
+                if discriminator == predictive_model.hyperparameters:
+                    plt.plot(range(1, len(new_error)+1), new_error, color='red')
+                else:
+                    plt.plot(range(1, len(new_error)+1), new_error, color='grey')
+            else:
+                plt.plot(range(1, len(new_error)+1), new_error, color = hyperparameter_value_to_color[predictive_model.hyperparameters[discriminator]])
+
+        plt.title(f"L={trajectory_length}")
+        plt.ylabel('Relative Average Trajectory Error')
+        plt.xlim([1,max_epochs])
+
+        plt.xlabel('Epoch')
+        plt.grid()
+
+        if discriminator is not None:
+            if not type(discriminator) is dict:
+                handles = []
+
+                for hyperparameter_value in hyperparameter_values:
+                    handles.append(mpatches.Patch(color=hyperparameter_value_to_color[hyperparameter_value], label=f"{discriminator}={hyperparameter_value}"))
+            else:
+                handles = [mpatches.Patch(color='red', label='Selected Hyperparameter'), mpatches.Patch(color='grey', label='Not Selected Hyperparameters')]
+
+            plt.legend(handles=handles)
+
+        plt.show()
 
     def __init__(self, trajectory_length, trajectory_time, **kwargs):
         self.architecture = None
         self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
+        self.early_stopping = False
 
         if 'simulator_identifier' in kwargs:
             simulator_identifier = kwargs['simulator_identifier']
@@ -187,6 +265,12 @@ class PredictiveModel(Document):
     def disable_database_persistance(self):
         self.db_persistance = False
 
+    def enable_early_stopping(self):
+        self.early_stopping = True
+
+    def disable_early_stopping(self):
+        self.early_stopping = False
+
     def default_hyperparameters(self):
         raise Exception("default_hyperparameters should be defined")
     
@@ -221,7 +305,7 @@ class PredictiveModel(Document):
                 plt.show()
 
     def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{self.simulator().STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
+        return f"{self.type_name}_{self.trajectory_length}_{self.simulator.STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
     def prepare_dataset(self, set_size):
         trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -233,7 +317,7 @@ class PredictiveModel(Document):
     def save_as_file(self):
         if self.architecture is not None:
             if self.db_persistance:
-                if self.model_weights is not None:
+                if self.model_weights.get() is not None:
                     self.model_weights.replace(pickle.dumps(self.architecture.get_weights()))
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
@@ -265,7 +349,7 @@ class PredictiveModel(Document):
 
         self.architecture.summary()
 
-        if self.hyperparameters['with_early_stopping']:
+        if self.early_stopping:
             callbacks = [EarlyStopping(
                 monitor="val_loss",
                 min_delta=1e-3,
@@ -277,17 +361,17 @@ class PredictiveModel(Document):
 
         try:
             history_training_info = self.architecture.fit(
-                TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
             ).history
         except KeyError:
             history_training_info = self.architecture.fit(
-                TrackGenerator(self.hyperparameters['training_set_size']//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=TrackGenerator(self.hyperparameters['validation_set_size']//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
             ).history
 
         if self.trained:
@@ -298,7 +382,7 @@ class PredictiveModel(Document):
             self.trained = True
 
     def plot_bias(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
         Y_predicted = self.predict(trajectories).flatten() * 2
@@ -313,7 +397,7 @@ class PredictiveModel(Document):
         plt.show()
 
     def plot_predicted_and_ground_truth_distribution(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
         Y_predicted = self.predict(trajectories).flatten() * 2
@@ -327,7 +411,7 @@ class PredictiveModel(Document):
         plt.show()
 
     def plot_predicted_and_ground_truth_histogram(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
         Y_predicted = self.predict(trajectories).flatten() * 2
@@ -340,7 +424,7 @@ class PredictiveModel(Document):
         plt.show()
 
     def plot_confusion_matrix(self, normalized=True):
-        trajectories = self.simulator().simulate_trajectories_by_model(self.hyperparameters['validation_set_size'], self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
         Y_predicted = self.predict(trajectories)
 

@@ -59,10 +59,6 @@ class Model():
     def model_color(cls):
         return cls.MODEL_COLORS[cls.STRING_LABEL]
 
-    @classmethod
-    def numeric_label(cls):
-        return cls.STRING_LABELS.index(cls.string_label())
-
     def simulate_trajectory(self, trajectory_length, trajectory_time, from_andi=False):
         resimulate = True
 

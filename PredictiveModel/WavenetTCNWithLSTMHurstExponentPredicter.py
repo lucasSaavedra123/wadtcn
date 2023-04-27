@@ -9,16 +9,13 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories
+from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories, transform_trajectories_to_hurst_exponent
 from TheoreticalModels import ANDI_MODELS
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 100000,
-            'validation_set_size': 12500,
-            'with_early_stopping': False,
             'fbm_sub': {
                 'lr': 0.0001,
                 'batch_size': 64,
@@ -82,7 +79,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
                 'epsilon': 1e-7,
                 'model': AnnealedTransientTimeMotion
             },
-            'epochs': 5
+            'epochs': 100
         }
 
     @classmethod
@@ -99,22 +96,12 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         return [self.hyperparameters[self.extra_parameters["model"]]['model']]
 
     def predict(self, trajectories):
-        X = self.transform_trajectories_to_input(trajectories)
-        return self.architecture.predict(X)
+        return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        Y = np.empty((len(trajectories), 1))
-
-        for index, trajectory in enumerate(trajectories):
-            Y[index, 0] = trajectory.hurst_exponent()
-
-        return Y
+        return transform_trajectories_to_hurst_exponent(trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        """
-        Para FBM es mejor la trayectoria en sí
-        Para ATTM es mejor los desplazamientos
-        """
         return transform_trajectories_into_displacements(self, trajectories)
 
     def build_network(self):

@@ -1,7 +1,8 @@
 import numpy as np
 from keras.layers import Conv1D, BatchNormalization, Add, Layer, Multiply
 from tensorflow.keras.utils import to_categorical
-
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply
+from keras.models import Model
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -16,7 +17,7 @@ def transform_trajectories_into_displacements(predictive_model, trajectories):
         X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), predictive_model.trajectory_length)
         X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), predictive_model.trajectory_length)
 
-        if predictive_model.simulator().STRING_LABEL == 'andi':
+        if predictive_model.simulator.STRING_LABEL == 'andi':
             X[index, :, 0] = (X[index, :, 0] - np.mean(X[index, :, 0]))/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
             X[index, :, 1] = (X[index, :, 1] - np.mean(X[index, :, 1]))/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
@@ -29,7 +30,7 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories)
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
 
-        if predictive_model.simulator().STRING_LABEL == 'andi':
+        if predictive_model.simulator.STRING_LABEL == 'andi':
             X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
             X[index, :, 1] = X[index, :, 1]/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
@@ -99,3 +100,36 @@ class WaveNetEncoder(Layer):
         x = self.last_batch_normalization(x)
 
         return x
+
+def build_wavenet_tcn_classifier_for(predictive_model):
+    initializer = 'he_normal'
+    filters = 64
+    x1_kernel = 4
+    x2_kernel = 2
+    x3_kernel = 3
+    x4_kernel = 10
+    x5_kernel = 20
+
+    dilation_depth = 8
+
+    inputs = Input(shape=(predictive_model.trajectory_length-1, 2))
+
+    x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
+
+    x1 = convolutional_block(predictive_model, x, filters, x1_kernel, [1,2,4], initializer)
+    x2 = convolutional_block(predictive_model, x, filters, x2_kernel, [1,2,4], initializer)
+    x3 = convolutional_block(predictive_model, x, filters, x3_kernel, [1,2,4], initializer)
+    x4 = convolutional_block(predictive_model, x, filters, x4_kernel, [1,4,8], initializer)
+
+    x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
+    x5 = BatchNormalization()(x5)
+
+    x = concatenate(inputs=[x1, x2, x3, x4, x5])
+
+    x = GlobalMaxPooling1D()(x)
+
+    dense_1 = Dense(units=512, activation='relu')(x)
+    dense_2 = Dense(units=128, activation='relu')(dense_1)
+    output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
+
+    predictive_model.architecture = Model(inputs=inputs, outputs=output_network)

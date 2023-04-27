@@ -12,7 +12,7 @@ from .model_utils import transform_trajectories_into_displacements, transform_tr
 class LSTMTheoreticalModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return ANDI_MODELS if self.simulator().STRING_LABEL == 'andi' else ALL_MODELS
+        return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
 
     @property
     def number_of_models_involved(self):
@@ -21,13 +21,10 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 100000,
             'validation_set_size': 12500,
             'batch_size': 32,
             'amsgrad': False,
             'epochs': 100,
-            'with_early_stopping': True,
-            'dropout_rate': 0
         }
 
     @classmethod

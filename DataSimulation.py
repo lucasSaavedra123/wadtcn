@@ -3,9 +3,7 @@ from numpy.random import choice
 
 
 class DataSimulation():
-    @property
-    def STRING_LABEL(self):
-        raise NotImplementedError('STRING_LABEL property should be implemented for each DataSimulation object')
+    STRING_LABEL = 'default'
 
     def simulate_trajectories_by_model(self, number_of_trajectories, trajectory_length, trajectory_time, model_classes):
         trajectories = []
@@ -33,17 +31,13 @@ class DataSimulation():
         return trajectories
 
 class CustomDataSimulation(DataSimulation):
-    @property
-    def STRING_LABEL(self):
-        return 'custom'
+    STRING_LABEL = 'custom'
 
     def __init__(self):
         self.andi = False
 
 class AndiDataSimulation(DataSimulation):
-    @property
-    def STRING_LABEL(self):
-        return 'andi'
+    STRING_LABEL = 'andi'
 
     def __init__(self):
         self.andi = True
