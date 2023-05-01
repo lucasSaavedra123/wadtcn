@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Dense, Input, GlobalMaxPooling1D, LSTM, Bidirectional
+from keras.layers import Dense, Input, LSTM, Bidirectional
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
@@ -9,7 +9,7 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_into_raw_trajectories, transform_trajectories_to_hurst_exponent
+from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_to_hurst_exponent
 from TheoreticalModels import ANDI_MODELS
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
@@ -87,7 +87,7 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            'batch_size': [16, 32, 64, 128],
+            'batch_size': [8, 16, 32, 64],
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
 

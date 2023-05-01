@@ -1,13 +1,11 @@
 import numpy as np
 from keras.layers import Dense, Input, LSTM
 from keras.models import Model
-from tensorflow.keras.optimizers.legacy import Adam
-from tensorflow.keras.utils import to_categorical
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 
-from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector, transform_trajectories_to_hurst_exponent
+from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
 
 class LSTMTheoreticalModelClassifier(PredictiveModel):
     @property
@@ -21,10 +19,11 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'validation_set_size': 12500,
             'batch_size': 32,
             'amsgrad': False,
+            'epsilon': 1e-6,
             'epochs': 100,
+            'lr': 0.01
         }
 
     @classmethod

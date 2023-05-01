@@ -101,9 +101,8 @@ class WaveNetEncoder(Layer):
 
         return x
 
-def build_wavenet_tcn_classifier_for(predictive_model):
+def build_wavenet_tcn_classifier_for(predictive_model, filters=64):
     initializer = 'he_normal'
-    filters = 64
     x1_kernel = 4
     x2_kernel = 2
     x3_kernel = 3
@@ -125,6 +124,40 @@ def build_wavenet_tcn_classifier_for(predictive_model):
     x5 = BatchNormalization()(x5)
 
     x = concatenate(inputs=[x1, x2, x3, x4, x5])
+
+    x = GlobalMaxPooling1D()(x)
+
+    dense_1 = Dense(units=512, activation='relu')(x)
+    dense_2 = Dense(units=128, activation='relu')(dense_1)
+    output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
+
+    predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
+def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
+    initializer = 'he_normal'
+    x1_kernel = 4
+    x2_kernel = 2
+    x3_kernel = 3
+    x4_kernel = 10
+    x5_kernel = 6
+    x6_kernel = 20
+
+    dilation_depth = 8
+
+    inputs = Input(shape=(predictive_model.trajectory_length-1, 2))
+
+    x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
+
+    x1 = convolutional_block(predictive_model, x, filters, x1_kernel, [1,2,4], initializer)
+    x2 = convolutional_block(predictive_model, x, filters, x2_kernel, [1,2,4], initializer)
+    x3 = convolutional_block(predictive_model, x, filters, x3_kernel, [1,2,4], initializer)
+    x4 = convolutional_block(predictive_model, x, filters, x4_kernel, [1,4,8], initializer)
+    x5 = convolutional_block(predictive_model, x, filters, x5_kernel, [1,2,4], initializer)
+
+    x6 = Conv1D(filters=filters, kernel_size=x6_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
+    x6 = BatchNormalization()(x6)
+
+    x = concatenate(inputs=[x1, x2, x3, x4, x5, x6])
 
     x = GlobalMaxPooling1D()(x)
 

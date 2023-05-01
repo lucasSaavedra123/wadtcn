@@ -1,18 +1,9 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, f1_score
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add
-from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
-from tensorflow.keras.utils import to_categorical
-from tensorflow import make_ndarray
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import ANDI_MODELS, ALL_MODELS
-from .model_utils import transform_trajectories_into_displacements, WaveNetEncoder, convolutional_block, build_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
-from tensorflow.keras import backend as K
+from .model_utils import transform_trajectories_into_displacements, build_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
 
 
 class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
@@ -27,11 +18,11 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'lr': 0.001,
             'batch_size': 32,
             'amsgrad': False,
-            'epsilon': 1e-8,
+            'epsilon': 1e-6,
             'epochs': 100,
+            'lr': 0.01
         }
 
     @classmethod
@@ -39,9 +30,8 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            #'batch_size': [8, 32, 128, 256, 512],
-            'batch_size': [8, 32],
-            'epsilon': [1e-6, 1e-7, 1e-8],
+            'batch_size': [8, 16, 32, 64],
+            'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
     def build_network(self):

@@ -20,8 +20,8 @@ def tool_equal_dicts(d1, d2, ignore_keys):
     d2_filtered = {k:v for k,v in d2.items() if k not in ignore_keys}
     return d1_filtered == d2_filtered
 
-def tool_include_classifier(old_hyperparameter, current_hyperparameter):
-    return tool_equal_dicts(old_hyperparameter, current_hyperparameter, ['epochs']) and current_hyperparameter['epochs'] >= old_hyperparameter['epochs']
+def tool_include_classifier(current_hyperparameter, old_hyperparameter):
+    return tool_equal_dicts(old_hyperparameter, current_hyperparameter, ['epochs'])
 
 def generate_new_dictionary(dictionary):
     return {k:v for k,v in dictionary.items()}
@@ -94,19 +94,21 @@ class PredictiveModel(Document):
                     network = cls(trajectory_length, trajectory_time, **kwargs)
                     for i in range(len(stack_names)):
                         network.hyperparameters[stack_names[i]] = hyperparameters_to_analyze[stack_names[i]][stack[i]]
-                    network.hyperparameters['epochs'] = initial_epochs
-                    print('Evaluating params: {}'.format(network.hyperparameters))
 
                     #Check if this configuration it was already trained
-
                     classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
 
                     if len(classifiers) == 0:
+                        network.hyperparameters['epochs'] = initial_epochs
+                        print('Evaluating params: {}'.format(network.hyperparameters))
                         network.fit()
                         network.enable_database_persistance()
                         network.save()
                         networks_list.append(network)
                     elif len(classifiers) == 1:
+                        print('Evaluating params: {}'.format(classifiers[-1].hyperparameters))
+                        classifiers[-1].enable_database_persistance()
+                        classifiers[-1].load_as_file()
                         networks_list.append(classifiers[-1])
                     else:
                         raise Exception(f'More than one classifier was returned ({len(classifiers)})')
@@ -141,13 +143,11 @@ class PredictiveModel(Document):
 
     @classmethod
     def post_grid_search_analysis(cls, networks, trajectory_length, trajectory_time, current_epochs, step, **kwargs):
-        networks_list = []
-
         if len(networks) == 1:
             print(f"Hyperparameter Search Finished. Hyperparameters selected: {networks[0].hyperparameters}")
             return networks[0].hyperparameters
         else:
-            networks = sorted(networks, key=lambda x: x.history_training_info['val_loss'][-1])
+            networks = sorted(networks, key=lambda x: x.history_training_info['val_loss'][current_epochs-1])
             networks = networks[:len(networks)//2]
 
             if len(networks) == 1:
@@ -159,18 +159,16 @@ class PredictiveModel(Document):
         for network in networks:
             #network = cls(trajectory_length, trajectory_time, **kwargs)
             network.enable_database_persistance()
-            network.load_as_file()
+            #network.load_as_file()
+
+            print('Evaluating params: {}'.format(network.hyperparameters))
             
             if network.hyperparameters['epochs'] < current_epochs + step:
                 network.hyperparameters['epochs'] = current_epochs + step
-                print('Evaluating params: {}'.format(network.hyperparameters))
                 network.fit()
                 network.save()
-                networks_list.append(network)
-            else:
-                networks_list.append(networks[-1])
 
-        return cls.post_grid_search_analysis(networks_list, trajectory_length, trajectory_time, current_epochs + step, step, **kwargs)
+        return cls.post_grid_search_analysis(networks, trajectory_length, trajectory_time, current_epochs + step, step, **kwargs)
 
     @classmethod
     def plot_hyperparameter_search(cls, trajectory_length, trajectory_time, discriminator=None, **kwargs):    
