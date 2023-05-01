@@ -7,11 +7,10 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 
 from TheoreticalModels import ALL_SUB_MODELS
 
-DatabaseHandler.connect_to_atlas('admin', 'admin', 'cluster0.9aachhp.mongodb.net')
-
 TRAJECTORY_LENGTHS = [25, 50]
 
-"""
+DatabaseHandler.connect_to_atlas('admin', 'admin', 'cluster0.9aachhp.mongodb.net')
+
 for trajectory_length in TRAJECTORY_LENGTHS:
     for predictive_model_class in [
         WaveNetTCNTheoreticalModelClassifier,
@@ -22,8 +21,5 @@ for trajectory_length in TRAJECTORY_LENGTHS:
 
     for class_model in ALL_SUB_MODELS:
         WavenetTCNWithLSTMHurstExponentPredicter(trajectory_length, trajectory_length, initial_epochs=5, steps=5, simulator=AndiDataSimulation, model=class_model.STRING_LABEL)
-"""
-
-WaveNetTCNTheoreticalModelClassifier.plot_hyperparameter_search(25, 25, simulator=AndiDataSimulation)
 
 DatabaseHandler.disconnect()
