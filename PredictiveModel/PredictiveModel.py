@@ -3,6 +3,7 @@ import pickle
 from mongoengine import Document, IntField, FileField, DictField, FloatField, BooleanField, StringField
 from keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import Sequence
+from tensorflow import device, config
 import matplotlib.pyplot as plt
 import keras.backend as K
 import matplotlib.pyplot as plt
@@ -357,20 +358,23 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
-        try:
-            history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
-                epochs=real_epochs,
-                callbacks=callbacks,
-                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
-            ).history
-        except KeyError:
-            history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
-                epochs=real_epochs,
-                callbacks=callbacks,
-                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
-            ).history
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        with device(device_name):
+            try:
+                history_training_info = self.architecture.fit(
+                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    epochs=real_epochs,
+                    callbacks=callbacks,
+                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+                ).history
+            except KeyError:
+                history_training_info = self.architecture.fit(
+                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
+                    epochs=real_epochs,
+                    callbacks=callbacks,
+                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
+                ).history
 
         if self.trained:
             for dict_key in history_training_info:
