@@ -9,6 +9,7 @@ from TheoreticalModels import ALL_SUB_MODELS
 
 TRAJECTORY_LENGTHS = [25, 50]
 
+
 DatabaseHandler.connect_to_atlas('admin', 'admin', 'cluster0.9aachhp.mongodb.net')
 
 for trajectory_length in TRAJECTORY_LENGTHS:
