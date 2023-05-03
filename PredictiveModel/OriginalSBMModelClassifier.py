@@ -7,7 +7,7 @@ from .model_utils import transform_trajectories_into_displacements, transform_tr
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate
 from keras.models import Model
 
-class WaveNetTCNSBMModelClassifier(PredictiveModel):
+class OriginalSBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
         return [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
@@ -17,8 +17,13 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
             'lr': 0.01,
             'batch_size': 16,
             'amsgrad': True,
-            'epsilon': 1e-6
+            'epsilon': 1e-6,
+            'epochs': 100
         }
+
+    @classmethod
+    def default_hyperparameters_analysis(self):
+        pass
 
     def build_network(self):
         # Network filters and kernels
@@ -103,9 +108,9 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
-        optimizer = Adam(lr=self.net_params['lr'],
-                         epsilon=self.net_params['epsilon'],
-                         amsgrad=self.net_params['amsgrad'])
+        optimizer = Adam(lr=self.hyperparameters['lr'],
+                         epsilon=self.hyperparameters['epsilon'],
+                         amsgrad=self.hyperparameters['amsgrad'])
 
         self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 

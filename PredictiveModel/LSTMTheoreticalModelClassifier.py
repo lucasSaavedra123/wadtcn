@@ -16,9 +16,7 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
 
     @classmethod
     def default_hyperparameters_analysis(self):
-        return {
-            'batch_size': [8, 32, 128, 256, 512],
-        }
+        pass
 
     """
     This network comes from paper:

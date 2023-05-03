@@ -18,7 +18,12 @@ class OriginalFBMModelClassifier(PredictiveModel):
             'batch_size': 16,
             'amsgrad': True,
             'epsilon': 1e-6
+            'epochs': 100
         }
+
+    @classmethod
+    def default_hyperparameters_analysis(self):
+        pass
 
     def build_network(self):
         # Network filters and kernels
@@ -103,9 +108,9 @@ class OriginalFBMModelClassifier(PredictiveModel):
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
-        optimizer = Adam(lr=self.net_params['lr'],
-                         epsilon=self.net_params['epsilon'],
-                         amsgrad=self.net_params['amsgrad'])
+        optimizer = Adam(lr=self.hyperparameters['lr'],
+                         epsilon=self.hyperparameters['epsilon'],
+                         amsgrad=self.hyperparameters['amsgrad'])
 
         self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 

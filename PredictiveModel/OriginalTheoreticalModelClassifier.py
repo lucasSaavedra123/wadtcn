@@ -13,8 +13,13 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
             'lr': 0.001,
             'batch_size': 32,
             'amsgrad': False,
-            'epsilon': 1e-8
+            'epsilon': 1e-8,
+            'epochs': 100
         }
+
+    @classmethod
+    def default_hyperparameters_analysis(self):
+        pass
 
     def build_network(self):
         initializer = 'he_normal'
@@ -86,9 +91,9 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-                        lr=self.net_params['lr'],
-                        amsgrad=self.net_params['amsgrad'],
-                        epsilon=self.net_params['epsilon']
+                        lr=self.hyperparameters['lr'],
+                        amsgrad=self.hyperparameters['amsgrad'],
+                        epsilon=self.hyperparameters['epsilon']
                     )
 
         self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])

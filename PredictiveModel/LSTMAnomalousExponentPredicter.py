@@ -18,12 +18,7 @@ class LSTMAnomalousExponentPredicter(PredictiveModel):
 
     @classmethod
     def default_hyperparameters_analysis(self):
-        return {
-            'lr': [1e-2, 1e-3, 1e-4, 1e-5],
-            'amsgrad': [False, True],
-            'batch_size': [8, 32, 128, 256, 512],
-            'epsilon': [1e-6, 1e-7, 1e-8],
-        }
+        pass
 
 
     """
