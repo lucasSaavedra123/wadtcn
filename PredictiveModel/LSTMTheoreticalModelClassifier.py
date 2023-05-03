@@ -8,14 +8,6 @@ from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
 
 class LSTMTheoreticalModelClassifier(PredictiveModel):
-    @property
-    def models_involved_in_predictive_model(self):
-        return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
-
-    @property
-    def number_of_models_involved(self):
-        return len(self.models_involved_in_predictive_model)
-
     def default_hyperparameters(self):
         return {
             'batch_size': 32,

@@ -34,7 +34,7 @@ class LSTMAnomalousExponentPredicter(PredictiveModel):
     Classification, Inference, and Segmentation of anomalous
     diffusion with recurrent neural networks
 
-    Original code: https://github.com/argunaykut/randi/blob/main/classification_train_network.ipynb
+    Original code: https://github.com/argunaykut/randi/blob/main/inference_train_network.ipynb
     """
     def build_network(self):
         inputs = Input((self.trajectory_length-1, 2))
@@ -61,4 +61,4 @@ class LSTMAnomalousExponentPredicter(PredictiveModel):
 
     @property
     def type_name(self):
-        return f"lstm_anomalous_exponent_predicter"
+        return f"lstm_anomalous_exponent_inference"

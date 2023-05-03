@@ -1,4 +1,5 @@
 import pickle
+import os
 
 from mongoengine import Document, IntField, FileField, DictField, FloatField, BooleanField, StringField
 from keras.callbacks import EarlyStopping
@@ -214,6 +215,26 @@ class PredictiveModel(Document):
             plt.legend(handles=handles)
 
         plt.show()
+
+    @classmethod
+    def it_does_already_be_trained(cls, trajectory_length, trajectory_time, simulator, from_db=True):
+        if from_db:
+            classifiers = cls.objects(
+                trajectory_length=trajectory_length,
+                trajectory_time=trajectory_time,
+                simulator_identifier=simulator.STRING_LABEL,
+                trained=True
+            )
+            
+            if len(classifiers) == 0:
+                return False
+            if len(classifiers) == 1:
+                return True
+            elif len(classifiers) > 1:
+                raise Exception('There are more than one classifier persisted of the same characteristics')
+        else:
+            #return os.path.exists(f'{str(self)}.h5')
+            return False
 
     def __init__(self, trajectory_length, trajectory_time, **kwargs):
         self.architecture = None

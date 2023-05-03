@@ -25,7 +25,7 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
         x4_kernel = 10
         x5_kernel = 20
 
-        inputs = Input(shape=(self.track_length - 1, 1))
+        inputs = Input(shape=(self.trajectory_length - 1, 1))
         x1 = Conv1D(filters=filters, kernel_size=x1_kernel, padding='causal', activation='relu',
                     kernel_initializer=initializer)(inputs)
         x1 = BatchNormalization()(x1)
