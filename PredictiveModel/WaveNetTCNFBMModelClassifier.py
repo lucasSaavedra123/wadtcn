@@ -10,10 +10,6 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
     def models_involved_in_predictive_model(self):
         return [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
 
-    @property
-    def number_of_models_involved(self):
-        return len(self.models_involved_in_predictive_model)
-
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {

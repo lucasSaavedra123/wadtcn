@@ -16,25 +16,17 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
     def number_of_models_involved(self):
         return len(self.models_involved_in_predictive_model)
 
-    #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
             'batch_size': 32,
-            'amsgrad': False,
-            'epsilon': 1e-6,
             'epochs': 100,
-            'lr': 0.01
         }
 
     @classmethod
     def default_hyperparameters_analysis(self):
         return {
-            'lr': [1e-2, 1e-3, 1e-4, 1e-5],
-            'amsgrad': [False, True],
             'batch_size': [8, 32, 128, 256, 512],
-            'epsilon': [1e-6, 1e-7, 1e-8],
         }
-
 
     """
     This network comes from paper:

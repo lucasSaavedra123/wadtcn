@@ -11,10 +11,6 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
     def models_involved_in_predictive_model(self):
         return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
 
-    @property
-    def number_of_models_involved(self):
-        return len(self.models_involved_in_predictive_model)
-
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {

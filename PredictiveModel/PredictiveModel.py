@@ -259,6 +259,10 @@ class PredictiveModel(Document):
                 extra_parameters = kwargs
             )
 
+    @property
+    def number_of_models_involved(self):
+        return len(self.models_involved_in_predictive_model)
+
     def enable_database_persistance(self):
         self.db_persistance = True
 

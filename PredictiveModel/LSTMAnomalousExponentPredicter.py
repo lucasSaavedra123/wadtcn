@@ -3,16 +3,10 @@ from keras.layers import Dense, Input, LSTM
 from keras.models import Model
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 
 from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_anomalous_exponent
 
 class LSTMAnomalousExponentPredicter(PredictiveModel):
-    @property
-    def number_of_models_involved(self):
-        return len(self.models_involved_in_predictive_model)
-
-    #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
             'batch_size': 32,
