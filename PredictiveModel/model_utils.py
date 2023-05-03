@@ -1,7 +1,6 @@
 import numpy as np
-from keras.layers import Conv1D, BatchNormalization, Add, Layer, Multiply
 from tensorflow.keras.utils import to_categorical
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer
 from keras.models import Model
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
@@ -44,13 +43,28 @@ def transform_trajectories_to_categorical_vector(predictive_model, trajectories)
 
     return Y_as_vectors
 
+
 def transform_trajectories_to_change_point_time(predictive_model, trajectories):
-    Y_as_vectors = np.empty((len(trajectories), 1))
+    Y_as_vectors = np.empty((len(trajectories), 2))
+
+    """
+    np.sin((2*np.pi*Y[:,1])/traj_length) # sine of the switching time
+        label_inf[:,3]=np.cos((2*np.pi*Y[:,1])/traj_length)
+    """
 
     for index, trajectory in enumerate(trajectories):
-        Y_as_vectors[index, :] = trajectory.info['change_point_time']/predictive_model.trajectory_length
+        Y_as_vectors[index, 0] = np.sin((2*np.pi*trajectory.info['change_point_time'])/predictive_model.trajectory_length)
+        Y_as_vectors[index, 1] = np.cos((2*np.pi*trajectory.info['change_point_time'])/predictive_model.trajectory_length)
 
     return Y_as_vectors
+
+def transform_trajectories_to_anomalous_exponent(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), 1))
+
+    for index, trajectory in enumerate(trajectories):
+        Y[index, 0] = trajectory.anomalous_exponent 
+
+    return Y
 
 def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
     Y = np.empty((len(trajectories), 1))

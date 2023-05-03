@@ -81,3 +81,5 @@ class AndiDataSimulation(DataSimulation):
                     noisy=True
                 )
             )
+
+        return trajectories

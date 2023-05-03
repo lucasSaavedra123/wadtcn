@@ -15,6 +15,7 @@ import matplotlib.patches as mpatches
 
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
+from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 
 def tool_equal_dicts(d1, d2, ignore_keys):
     d1_filtered = {k:v for k,v in d1.items() if k not in ignore_keys}
@@ -449,3 +450,7 @@ class PredictiveModel(Document):
         #plt.show()
         plt.savefig(str(self)+'.jpg')
         plt.clf()
+
+    @property
+    def models_involved_in_predictive_model(self):
+        return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
