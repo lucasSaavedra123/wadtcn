@@ -44,6 +44,14 @@ def transform_trajectories_to_categorical_vector(predictive_model, trajectories)
 
     return Y_as_vectors
 
+def transform_trajectories_to_change_point_time(predictive_model, trajectories):
+    Y_as_vectors = np.empty((len(trajectories), 1))
+
+    for index, trajectory in enumerate(trajectories):
+        Y_as_vectors[index, :] = trajectory.info['change_point_time']/predictive_model.trajectory_length
+
+    return Y_as_vectors
+
 def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
     Y = np.empty((len(trajectories), 1))
 
