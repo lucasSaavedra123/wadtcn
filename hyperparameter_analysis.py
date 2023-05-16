@@ -7,16 +7,16 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 
 from TheoreticalModels import ALL_SUB_MODELS
 
+
 TRAJECTORY_LENGTHS = [25, 50]
 
-
-DatabaseHandler.connect_to_atlas('admin', 'admin', 'cluster0.9aachhp.mongodb.net')
+DatabaseHandler.connect_to_local('anomalous_diffusion')
 
 for trajectory_length in TRAJECTORY_LENGTHS:
     for predictive_model_class in [
         WaveNetTCNTheoreticalModelClassifier,
         WaveNetTCNFBMModelClassifier,
-        WaveNetTCNSBMModelClassifier,
+        WaveNetTCNSBMModelClassifier
     ]:
         predictive_model_class.analyze_hyperparameters(trajectory_length, trajectory_length, initial_epochs=5, steps=5, simulator=AndiDataSimulation)
 
