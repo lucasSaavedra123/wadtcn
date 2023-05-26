@@ -12,7 +12,10 @@ class DatabaseHandler():
 
     @classmethod
     def connect_over_network(cls, username, password, ip, collection_name, port=27017, retryWrites=True, w="majority"):
-        connect(host=f"mongodb://{username}:{password}@{ip}:{port}/{collection_name}?retryWrites={str(retryWrites).lower()}&w={w}")
+        if username is None and password is None:
+            connect(host=f"mongodb://{ip}:{port}/{collection_name}?retryWrites={str(retryWrites).lower()}&w={w}")
+        else:
+            connect(host=f"mongodb://{username}:{password}@{ip}:{port}/{collection_name}?retryWrites={str(retryWrites).lower()}&w={w}")
 
     @classmethod
     def disconnect(cls):
