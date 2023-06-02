@@ -10,14 +10,23 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
     def models_involved_in_predictive_model(self):
         return [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
 
-    #These will be updated after hyperparameter search
+    @classmethod
+    def selected_hyperparameters(cls):
+        return {
+            'batch_size': 8,
+            'amsgrad': True,
+            'epsilon': 1e-8,
+            'epochs': 100,
+            'lr': 0.0001
+        }
+
     def default_hyperparameters(self):
         return {
-            'batch_size': 32,
-            'amsgrad': False,
-            'epsilon': 1e-6,
+            'batch_size': 8,
+            'amsgrad': True,
+            'epsilon': 1e-8,
             'epochs': 100,
-            'lr': 0.01
+            'lr': 0.0001
         }
 
     @classmethod
