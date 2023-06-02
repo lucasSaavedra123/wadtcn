@@ -8,6 +8,16 @@ from .model_utils import transform_trajectories_into_displacements, transform_tr
 
 
 class OriginalTheoreticalModelClassifier(PredictiveModel):
+    @classmethod
+    def selected_hyperparameters(self):
+        return {
+            'lr': 0.001,
+            'batch_size': 32,
+            'amsgrad': False,
+            'epsilon': 1e-8,
+            'epochs': 100
+        }
+
     def default_hyperparameters(self):
         return {
             'lr': 0.001,
@@ -22,6 +32,7 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
         pass
 
     def build_network(self):
+        # Net filters and kernels
         initializer = 'he_normal'
         filters = 32
         x1_kernel = 4
@@ -30,7 +41,7 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
         x4_kernel = 10
         x5_kernel = 20
 
-        inputs = Input(shape=(self.trajectory_length - 1, 1))
+        inputs = Input(shape=(self.trajectory_length - 1, 2))
         x1 = Conv1D(filters=filters, kernel_size=x1_kernel, padding='causal', activation='relu',
                     kernel_initializer=initializer)(inputs)
         x1 = BatchNormalization()(x1)

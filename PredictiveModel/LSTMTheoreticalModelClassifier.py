@@ -8,6 +8,13 @@ from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
 
 class LSTMTheoreticalModelClassifier(PredictiveModel):
+    @classmethod
+    def selected_hyperparameters(self):
+        return {
+            'batch_size': 32,
+            'epochs': 100,
+        }
+
     def default_hyperparameters(self):
         return {
             'batch_size': 32,
