@@ -5,6 +5,7 @@ from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
 from .model_utils import transform_trajectories_into_displacements, build_more_complex_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
 
+
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):

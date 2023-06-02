@@ -21,7 +21,6 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
             'lr': 0.001
         }
 
-
     def default_hyperparameters(self):
         return {
             'batch_size': 64,
