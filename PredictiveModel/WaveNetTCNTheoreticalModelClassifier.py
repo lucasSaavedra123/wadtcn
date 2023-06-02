@@ -11,14 +11,24 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
     def models_involved_in_predictive_model(self):
         return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
 
-    #These will be updated after hyperparameter search
+    @classmethod
+    def selected_hyperparameters(cls):
+        return {
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-08,
+            'epochs': 100,
+            'lr': 0.001
+        }
+
+
     def default_hyperparameters(self):
         return {
-            'batch_size': 32,
-            'amsgrad': False,
-            'epsilon': 1e-6,
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-08,
             'epochs': 100,
-            'lr': 0.01
+            'lr': 0.001
         }
 
     @classmethod
