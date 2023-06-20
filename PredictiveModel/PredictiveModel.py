@@ -174,7 +174,7 @@ class PredictiveModel(Document):
         return cls.post_grid_search_analysis(networks, trajectory_length, trajectory_time, current_epochs + step, step, **kwargs)
 
     @classmethod
-    def plot_hyperparameter_search(cls, trajectory_length, trajectory_time, discriminator=None, **kwargs):    
+    def plot_hyperparameter_search(cls, trajectory_length, trajectory_time, discriminator=None, title=None, **kwargs):    
         max_epochs = float("-inf")
 
         if discriminator is not None and not type(discriminator) is dict:
@@ -196,7 +196,11 @@ class PredictiveModel(Document):
             else:
                 plt.plot(range(1, len(new_error)+1), new_error, color = hyperparameter_value_to_color[predictive_model.hyperparameters[discriminator]])
 
-        plt.title(f"L={trajectory_length}")
+        if title is not None:
+            plt.title(f"{title}")
+        else:
+            plt.title(f"L={trajectory_length}")
+
         plt.ylabel('Validation Loss')
         plt.xlim([1,max_epochs])
 

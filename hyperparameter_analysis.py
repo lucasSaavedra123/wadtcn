@@ -7,16 +7,19 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 
 from TheoreticalModels import ALL_SUB_MODELS
 
-DatabaseHandler.connect_to_local('anomalous_diffusion')
+#DatabaseHandler.connect_to_local('anomalous_diffusion')
+DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion')
 
 for predictive_model_class in [
-    WaveNetTCNTheoreticalModelClassifier,
-    WaveNetTCNFBMModelClassifier,
+    #WaveNetTCNTheoreticalModelClassifier,
+    #WaveNetTCNFBMModelClassifier,
     WaveNetTCNSBMModelClassifier
 ]:
     predictive_model_class.analyze_hyperparameters(25, 25, initial_epochs=5, steps=5, simulator=AndiDataSimulation)
 
+"""
 for class_model in ALL_SUB_MODELS:
     WavenetTCNWithLSTMHurstExponentPredicter(25, 25, initial_epochs=5, steps=5, simulator=AndiDataSimulation, model=class_model.STRING_LABEL)
+"""
 
 DatabaseHandler.disconnect()
