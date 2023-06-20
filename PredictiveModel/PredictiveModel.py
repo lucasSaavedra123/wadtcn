@@ -197,7 +197,7 @@ class PredictiveModel(Document):
                 plt.plot(range(1, len(new_error)+1), new_error, color = hyperparameter_value_to_color[predictive_model.hyperparameters[discriminator]])
 
         plt.title(f"L={trajectory_length}")
-        plt.ylabel('Relative Average Trajectory Error')
+        plt.ylabel('Validation Loss')
         plt.xlim([1,max_epochs])
 
         plt.xlabel('Epoch')
