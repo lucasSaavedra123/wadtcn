@@ -261,7 +261,7 @@ class PredictiveModel(Document):
             hyperparameters = kwargs['hyperparameters']
             del kwargs['hyperparameters']
         else:
-            hyperparameters = self.default_hyperparameters()
+            hyperparameters = self.default_hyperparameters(**kwargs)
 
         if 'id' in kwargs:
             super().__init__(
@@ -386,21 +386,15 @@ class PredictiveModel(Document):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
+        device_name = '/gpu:0'
+
         with device(device_name):
-            try:
-                history_training_info = self.architecture.fit(
-                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
-                    epochs=real_epochs,
-                    callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
-                ).history
-            except KeyError:
-                history_training_info = self.architecture.fit(
-                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset),
-                    epochs=real_epochs,
-                    callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.hyperparameters[self.extra_parameters['model']]['batch_size'], self.prepare_dataset), shuffle=True
-                ).history
+            history_training_info = self.architecture.fit(
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                epochs=real_epochs,
+                callbacks=callbacks,
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+            ).history
 
         if self.trained:
             for dict_key in history_training_info:

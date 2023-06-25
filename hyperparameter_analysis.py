@@ -17,6 +17,6 @@ for predictive_model_class in [
     predictive_model_class.analyze_hyperparameters(25, 25, initial_epochs=5, steps=5, simulator=AndiDataSimulation)
 
 for class_model in ALL_SUB_MODELS:
-    WavenetTCNWithLSTMHurstExponentPredicter(25, 25, initial_epochs=5, steps=5, simulator=AndiDataSimulation, model=class_model.STRING_LABEL)
+    WavenetTCNWithLSTMHurstExponentPredicter.analyze_hyperparameters(25, 25, initial_epochs=5, steps=5, simulator=AndiDataSimulation, model=class_model.STRING_LABEL)
 
 DatabaseHandler.disconnect()
