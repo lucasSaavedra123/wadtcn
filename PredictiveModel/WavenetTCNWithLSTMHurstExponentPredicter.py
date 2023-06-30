@@ -10,7 +10,6 @@ from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionB
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
 from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_to_hurst_exponent
-from TheoreticalModels import ANDI_MODELS
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search

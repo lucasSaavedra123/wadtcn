@@ -99,7 +99,11 @@ class PredictiveModel(Document):
                         network.hyperparameters[stack_names[i]] = hyperparameters_to_analyze[stack_names[i]][stack[i]]
 
                     #Check if this configuration it was already trained
-                    classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
+                    if 'model' in kwargs:
+                        first_classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
+                        classifiers = [classifier for classifier in first_classifiers if classifier.extra_parameters['model'] == kwargs['model']]
+                    else:
+                        classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
 
                     if len(classifiers) == 0:
                         network.hyperparameters['epochs'] = initial_epochs
