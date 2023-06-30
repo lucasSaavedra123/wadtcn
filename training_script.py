@@ -57,9 +57,12 @@ print("Number of Lengths:", len(final_lengths))
 for length in final_lengths:
     print("Training for length:", length)
 
-    if len([network for network in already_trained_networks if network.trajectory_length == length]) == 0:
+    networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
+
+    if len(networks_of_length) == 0:
         classifier = WaveNetTCNTheoreticalModelClassifier(length, length, simulator=AndiDataSimulation)
         classifier.enable_early_stopping()
+        classifier.enable_database_persistance()
         classifier.fit()
         classifier.save()
     else:

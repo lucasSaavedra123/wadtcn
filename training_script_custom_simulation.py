@@ -1,5 +1,6 @@
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import CustomDataSimulation
+from TheoreticalModels import ALL_MODELS
 from PredictiveModel.WaveNetTCNFBMModelClassifier import WaveNetTCNFBMModelClassifier
 from PredictiveModel.WaveNetTCNSBMModelClassifier import WaveNetTCNSBMModelClassifier
 from PredictiveModel.WavenetTCNWithLSTMHurstExponentPredicter import WavenetTCNWithLSTMHurstExponentPredicter
@@ -14,7 +15,11 @@ from PredictiveModel.OriginalTheoreticalModelClassifier import OriginalTheoretic
 from scipy.io import loadmat
 from Trajectory import Trajectory
 
+from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME
+
 import numpy as np
+
+
 mat_data = loadmat('all_tracks_thunder_localizer.mat')
 # Orden en la struct [BTX|mAb] [CDx|Control|CDx-Chol]
 dataset = []
@@ -54,11 +59,13 @@ already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulato
 
 print("Number of Lengths:", len(final_lengths))
 
-for length in [25]:
+for length in final_lengths:
     print("Training for length:", length)
 
-    if len([network for network in already_trained_networks if network.trajectory_length == length]) == 0:
-        classifier = WaveNetTCNTheoreticalModelClassifier(length, length, simulator=CustomDataSimulation)
+    networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
+
+    if len(networks_of_length) == 0:
+        classifier = WaveNetTCNTheoreticalModelClassifier(length, EXPERIMENT_TIME_FRAME_BY_FRAME * length, simulator=CustomDataSimulation)
         classifier.enable_early_stopping()
         classifier.enable_database_persistance()
         classifier.fit()
