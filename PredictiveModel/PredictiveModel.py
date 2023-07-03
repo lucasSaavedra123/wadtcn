@@ -90,8 +90,10 @@ class PredictiveModel(Document):
                 number_of_combinations *= len(hyperparameters_to_analyze[stack_names[i]])
             print("Total of combinations:{}".format(number_of_combinations))
 
+            combination_index = 1
             # Run the analysis
             while not analysis_ended:
+                
                 if tos == (len(stack) - 1) and stack[tos] < len(hyperparameters_to_analyze[stack_names[tos]]):
                     K.clear_session()
                     network = cls(trajectory_length, trajectory_time, **kwargs)
@@ -107,19 +109,20 @@ class PredictiveModel(Document):
 
                     if len(classifiers) == 0:
                         network.hyperparameters['epochs'] = initial_epochs
-                        print('Evaluating params: {}'.format(network.hyperparameters))
+                        print('{}) Evaluating params: {}'.format(combination_index, network.hyperparameters))
                         network.fit()
                         network.enable_database_persistance()
                         network.save()
                         networks_list.append(network)
                     elif len(classifiers) == 1:
-                        print('Evaluating params: {}'.format(classifiers[-1].hyperparameters))
+                        print('{}) Evaluating params: {}'.format(combination_index, classifiers[-1].hyperparameters))
                         classifiers[-1].enable_database_persistance()
                         classifiers[-1].load_as_file()
                         networks_list.append(classifiers[-1])
                     else:
                         raise Exception(f'More than one classifier was returned ({len(classifiers)})')
 
+                    combination_index += 1
                     stack[tos] += 1
                 elif tos == (len(stack) - 1) and stack[tos] == len(hyperparameters_to_analyze[stack_names[tos]]):
                     stack[tos] = 0
