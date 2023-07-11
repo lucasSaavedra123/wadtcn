@@ -83,7 +83,6 @@ class AnnealedTransientTimeMotion(Model):
 
             d, t = generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, 0.12, 0.10)
 
-
             number_of_steps =int(t/time_per_step)
 
             if trajectory_length < number_of_steps:
