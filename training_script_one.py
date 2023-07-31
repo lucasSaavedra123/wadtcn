@@ -1,10 +1,12 @@
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import AndiDataSimulation
 from PredictiveModel.OriginalTheoreticalModelClassifier import OriginalTheoreticalModelClassifier
-
+import time as time
+import tqdm
 from scipy.io import loadmat
 from Trajectory import Trajectory
 
+"""
 import numpy as np
 mat_data = loadmat('all_tracks_thunder_localizer.mat')
 # Orden en la struct [BTX|mAb] [CDx|Control|CDx-Chol]
@@ -36,17 +38,18 @@ for data in dataset:
     for trajectory in trajectories:
         if not trajectory.is_immobile(1.8) and trajectory.length >= 25:
             lengths.append(trajectory.length)
+"""
 
-final_lengths = list(set(sorted(lengths)))
-final_lengths = final_lengths[:len(final_lengths)//2]
+#final_lengths = list(set(sorted(lengths)))
+#final_lengths = final_lengths[:len(final_lengths)//2]
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
 already_trained_networks = OriginalTheoreticalModelClassifier.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=OriginalTheoreticalModelClassifier.selected_hyperparameters())
 
-print("Number of Lengths:", len(final_lengths))
+#print("Number of Lengths:", len(final_lengths))
 
-for length in final_lengths:
+for length in tqdm.tqdm(range(25,1000,25)):
     print("Training for length:", length)
 
     if len([network for network in already_trained_networks if network.trajectory_length == length]) == 0:
@@ -56,6 +59,7 @@ for length in final_lengths:
         classifier.fit()
         classifier.save()
     else:
-        print("Already trained!")
+        time.sleep(0.1)
+        #print("Already trained!")
 
 DatabaseHandler.disconnect()
