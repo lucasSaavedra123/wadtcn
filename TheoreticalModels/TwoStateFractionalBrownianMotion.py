@@ -33,13 +33,13 @@ class TwoStateFractionalBrownianMotion(Model):
         assert (d0_state > 0), "Invalid Diffusion coefficient state-0"
         assert (d1_state > 0), "Invalid Diffusion coefficient state-1"
         assert (k_state0 > 0), "Invalid switching rate state-0"
-        assert (k_state0 > 0), "Invalid switching rate state-1"
+        assert (k_state1 > 0), "Invalid switching rate state-1"
         assert (h_state1 > 0) and (h_state1 < 0.5), "Invalid hurst exponent state-1"
         self.k_state0 = k_state0
         self.k_state1 = k_state1
         self.h_state1 = h_state1
-        self.d_state0 = d0_state * 1000000  # Convert from um^2 -> nm^2
-        self.d_state1 = d1_state * 1000000  # Convert from um^2 -> nm^2
+        self.d_state0 = d0_state * 1e6  # Convert from um^2 -> nm^2
+        self.d_state1 = d1_state * 1e6  # Convert from um^2 -> nm^2
 
     """
     def get_d_state0(self):
@@ -62,7 +62,7 @@ class TwoStateFractionalBrownianMotion(Model):
 
         state, switching = self.simulate_switching_states(trajectory_length)
 
-        SIMULATION_NUMBER_OF_SUBSTEPS = 10
+        SIMULATION_NUMBER_OF_SUBSTEPS = 50
         I = SIMULATION_NUMBER_OF_SUBSTEPS * trajectory_length
         t = np.arange(0, trajectory_time, trajectory_time/trajectory_length)
 
@@ -81,7 +81,7 @@ class TwoStateFractionalBrownianMotion(Model):
         D = np.zeros(shape=I)
 
         h_dict = {0:0.5, 1:self.h_state1}
-        d_dict = {0:self.d_state0, 1:self.d_state1}
+        d_dict = {0:self.d_state0/1e6, 1:self.d_state1/1e6}
 
         time_H = np.vectorize(h_dict.get)(state)
         time_D = np.vectorize(d_dict.get)(state)
@@ -90,19 +90,19 @@ class TwoStateFractionalBrownianMotion(Model):
             H[i*SIMULATION_NUMBER_OF_SUBSTEPS:(i+1)*SIMULATION_NUMBER_OF_SUBSTEPS] = time_H[i]
             D[i*SIMULATION_NUMBER_OF_SUBSTEPS:(i+1)*SIMULATION_NUMBER_OF_SUBSTEPS] = time_D[i]
 
-        for index, t_i in enumerate(t[1:]):
+        for index, t_i in enumerate(t):
             accumulate_value_x = 0
             accumulate_value_y = 0
 
-            for value in range((index+1)*SIMULATION_NUMBER_OF_SUBSTEPS):
+            for value in range(index*SIMULATION_NUMBER_OF_SUBSTEPS):
                 accumulate_value_x += X_NORMAL_VALUES[value] * (np.sqrt(2*D[value]*H[value]) * ((t_i-S[value]) ** (H[value]-(1/2))))
                 accumulate_value_y += Y_NORMAL_VALUES[value] * (np.sqrt(2*D[value]*H[value]) * ((t_i-S[value]) ** (H[value]-(1/2))))
 
-            x[index+1] = accumulate_value_x
-            y[index+1] = accumulate_value_y
+            x[index] = accumulate_value_x
+            y[index] = accumulate_value_y
 
-        x = x * 10
-        y = y * 10
+        x = x * 1000
+        y = y * 1000
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
         #t = simulate_track_time(trajectory_length, trajectory_time)
@@ -115,82 +115,8 @@ class TwoStateFractionalBrownianMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': None,
             'exponent': None,
-            'info': {'switching': switching, 'state': state}
+            'info': {'switching': switching, 'state': state, 'h': time_H, 'd': time_D, 'h_0': 0.5, 'h_1': self.h_state1, 'd_0': self.d_state0, 'd_1': self.d_state1}
         }
-
-    def simulate_track_only_state0(self, trajectory_length, trajectory_time):
-        x = np.random.normal(loc=0, scale=1, size=trajectory_length)
-        y = np.random.normal(loc=0, scale=1, size=trajectory_length)
-
-        for i in range(trajectory_length):
-            x[i] = x[i] * np.sqrt(2 * self.D_state0 * (trajectory_time / trajectory_length))
-            y[i] = y[i] * np.sqrt(2 * self.D_state0 * (trajectory_time / trajectory_length))
-
-        x = np.cumsum(x)
-        y = np.cumsum(y)
-
-        x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
-
-        t = simulate_track_time(trajectory_length, trajectory_time)
-
-        return x_noisy, y_noisy, x, y, t
-
-    def simulate_track_only_state1(self, trajectory_length, trajectory_time):
-        initial_pos_x = np.random.normal(loc=0, scale=5)
-        initial_pos_y = np.random.normal(loc=0, scale=5)
-
-        confinement_region_min_x, confinement_region_max_x = self.simulate_confinement_region(initial_pos_x)
-        confinement_region_min_y, confinement_region_max_y = self.simulate_confinement_region(initial_pos_y)
-
-        x = np.zeros(shape=trajectory_length)
-        y = np.zeros(shape=trajectory_length)
-
-        jumps_x = np.random.normal(loc=0, scale=5, size=trajectory_length)
-        jumps_y = np.random.normal(loc=0, scale=5, size=trajectory_length)
-
-        x[0], y[0] = initial_pos_x, initial_pos_y
-
-        for i in range(1, trajectory_length):
-            if jumps_x[i] > 0:
-                if x[i - 1] + jumps_x[i] > confinement_region_max_x:
-                    x[i] = x[i - 1]
-                else:
-                    x[i] = x[i - 1] + jumps_x[i]
-
-            else:
-                if x[i - 1] + jumps_x[i] < confinement_region_min_x:
-                    x[i] = x[i - 1]
-                else:
-                    x[i] = x[i - 1] + jumps_x[i]
-
-            if jumps_y[i] > 0:
-                if y[i - 1] + jumps_y[i] > confinement_region_max_y:
-                    y[i] = y[i - 1]
-                else:
-                    y[i] = y[i - 1] + jumps_y[i]
-
-            else:
-                if y[i - 1] + jumps_y[i] < confinement_region_min_y:
-                    y[i] = y[i - 1]
-                else:
-                    y[i] = y[i - 1] + jumps_y[i]
-
-        x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
-
-        t = simulate_track_time(trajectory_length, trajectory_time)
-
-        return x_noisy, y_noisy, x, y, t
-
-    def simulate_confinement_region(self, initial_pos):
-        confinement_region_size = np.random.uniform(low=self.MIN_LEN_CONFINEMENT_AREA,
-                                                    high=self.MAX_LEN_CONFINEMENT_AREA)
-        offset_region = initial_pos + np.random.uniform(low=(-confinement_region_size / 2),
-                                                        high=(confinement_region_size / 2))
-
-        confinement_region_max = offset_region + (confinement_region_size / 2)
-        confinement_region_min = offset_region - (confinement_region_size / 2)
-
-        return confinement_region_min, confinement_region_max
 
     def simulate_switching_states(self, trajectory_length):
         # Residence time
