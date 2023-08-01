@@ -78,7 +78,6 @@ class TwoStateImmobilizedDiffusion(Model):
         H = np.zeros(shape=I)
         D = np.zeros(shape=I)
 
-        """
         h_dict = {
             0:0.5,
             1:self.h_state1
@@ -87,17 +86,6 @@ class TwoStateImmobilizedDiffusion(Model):
         d_dict = {
             0:self.d_state0,
             1:self.d_state1
-        }
-        """
-
-        h_dict = {
-            0:0.2,
-            1:0.5
-        }
-
-        d_dict = {
-            0:0.05 * 1e6,
-            1:0.9 * 1e6
         }
 
         time_H = np.vectorize(h_dict.get)(state)
@@ -123,9 +111,6 @@ class TwoStateImmobilizedDiffusion(Model):
 
             x.append(accumulate_value_x)
             y.append(accumulate_value_y)
-
-        #x = np.cumsum([0] + list(np.diff(x) * 1000))
-        #y = np.cumsum([0] + list(np.diff(y) * 1000))
 
         x = np.array(x)
         y = np.array(y)
@@ -155,11 +140,8 @@ class TwoStateImmobilizedDiffusion(Model):
 
     def simulate_switching_states(self, trajectory_length):
         # Residence time
-        #res_time0 = 1 / self.k_state0
-        #res_time1 = 1 / self.k_state1
-        res_time0 = 25
-        res_time1 = 25
-
+        res_time0 = 1 / self.k_state0
+        res_time1 = 1 / self.k_state1
 
         # Compute each t_state according to exponential laws
         t_state0 = np.random.exponential(scale=res_time0, size=trajectory_length)
