@@ -13,7 +13,7 @@ class TwoStateImmobilizedDiffusion(Model):
     State-1: Immobilized Diffusion
     """
     STRING_LABEL = 'tfbm'
-    D_RANGE = [0.05, 0.2]
+    D_RANGE = [0.05, 0.8]
     K0_RANGE = [0.01, 0.08]
     K1_RANGE = [0.007, 0.2]
     H1_RANGE = [0.05/2, 0.95/2]
@@ -38,8 +38,8 @@ class TwoStateImmobilizedDiffusion(Model):
         self.k_state0 = k_state0
         self.k_state1 = k_state1
         self.h_state1 = h_state1
-        self.d_state0 = d0_state #* 1e6  # Convert from um^2 -> nm^2
-        self.d_state1 = d1_state #* 1e6  # Convert from um^2 -> nm^2
+        self.d_state0 = d0_state * 1e6  # Convert from um^2 -> nm^2
+        self.d_state1 = d1_state * 1e6  # Convert from um^2 -> nm^2
 
     """
     def get_d_state0(self):
