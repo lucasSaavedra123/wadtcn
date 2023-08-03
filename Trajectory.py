@@ -1,7 +1,8 @@
-from mongoengine import Document, FloatField, ListField, DictField, BooleanField
-import matplotlib.pyplot as plt
+import math
 
 import numpy as np
+import matplotlib.pyplot as plt
+from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 
 #Example about how to read trajectories from .mat
 """
@@ -208,6 +209,19 @@ class Trajectory(Document):
 
         plt.show()
 
+    def plot_confinement_states(self, v_th=11, window_size=3, show=True):
+        x = self.get_noisy_x().tolist()
+        y = self.get_noisy_y().tolist()
+
+        state_to_color = {1:'red', 0:'black'}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size))
+
+        for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+            plt.plot([x1, x2], [y1, y2], states_as_color[i], marker='X')  
+
+        if show:
+            plt.show()
+
     def __str__(self):
         anomalous_exponent_string = "%.2f" % self.anomalous_exponent if self.anomalous_exponent is not None else None
         return f"Model: {self.model_category}, Anomalous Exponent: {anomalous_exponent_string}, Trajectory Length: {self.length}"
@@ -232,3 +246,68 @@ class Trajectory(Document):
         criteria = (rad_gir / mean_delta_r) * np.sqrt(np.pi/2)
         
         return criteria <= threshold
+
+    def confinement_states(self,v_th=11,window_size=3):
+        """
+        This method is the Object-Oriented Python implementation of the algorithm proposed in the referenced 
+        paper to identify periods of transient confinement within individual trajectories.
+
+        Sikora, G., Wyłomańska, A., Gajda, J., Solé, L., Akin, E. J., Tamkun, M. M., & Krapf, D. (2017).
+
+        Elucidating distinct ion channel populations on the surface of hippocampal neurons via single-particle
+        tracking recurrence analysis. Physical review. E, 96(6-1), 062404.
+        https://doi.org/10.1103/PhysRevE.96.062404
+        """
+
+        class Circle:
+            def __init__(self, point_i, point_j):
+                self.point_i = point_i
+                self.point_j = point_j
+
+                midpoint_x = (self.point_i[0] + self.point_j[0])/2
+                midpoint_y = (self.point_i[1] + self.point_j[1])/2
+                self.midpoint = [midpoint_x, midpoint_y]
+
+                self.diameter = math.dist(self.point_i, self.point_j)
+
+                self._count_cache = None
+                self._index_points_inside_area_cache = None
+
+            def count_number_of_times_the_walker_position_lies_within_circle(self, points):
+                self._count_cache = 0
+                self._index_points_inside_area_cache = []
+                for index, point in enumerate(points):
+                    if math.dist(point, self.midpoint) < (self.diameter/2):
+                        self._count_cache += 1
+                        self._index_points_inside_area_cache.append(index)
+
+            @property
+            def count(self):
+                return self._count_cache
+
+            @property
+            def index_points_inside_area(self):
+                return self._index_points_inside_area_cache
+
+        x = self.get_noisy_x().tolist()
+        y = self.get_noisy_y().tolist()
+
+        points = list(zip(x,y))
+
+        circles = []
+
+        for i in range(1,self.length):
+            new_circle = Circle(points[i-1], points[i])
+            new_circle.count_number_of_times_the_walker_position_lies_within_circle(points)
+            circles.append(new_circle)
+
+        states = np.zeros(self.length)
+
+        for sub_circles in [circles[i:i+window_size] for i in range(0,len(circles),window_size)]:
+            circles_windows_count = sum([sub_circle.count for sub_circle in sub_circles])
+
+            if circles_windows_count > v_th:
+                for sub_circle in sub_circles:
+                    states[sub_circle.index_points_inside_area] = 1
+
+        return states.tolist()
