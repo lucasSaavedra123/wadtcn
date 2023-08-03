@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 
 #Example about how to read trajectories from .mat
@@ -312,27 +313,30 @@ class Trajectory(Document):
 
         return states.tolist()
 
-  def mean_squared_displacement(self, non_linear=True):
-      x = self.get_noisy_x()
-      y = self.get_noisy_y()
-      time_length = (self.get_time()[-1] - self.get_time()[0])
-      data = np.sqrt(x ** 2 + y ** 2)
-      n_data = np.size(data)
-      number_of_delta_t = np.int((n_data - 1))
-      t_vec = np.arange(1, np.int(number_of_delta_t))
-  
-      msd = np.zeros([len(t_vec), 1])
-      for dt, ind in zip(t_vec, range(len(t_vec))):
-          squared_displacement = (data[1 + dt:] - data[:-1 - dt]) ** 2
-          msd[ind] = np.mean(squared_displacement, axis=0)
-  
-      msd = np.array(msd)
-  
-      t_vec = np.linspace(0.0001, time_length, len(x) - 2)
-      msd = np.array(msd).ravel()
-      if non_linear:
-          a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0), (2, np.inf)), maxfev=2000)
-      else:
-          a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0, -np.inf), (2, np.inf, np.inf)), maxfev=2000)
-  
-      return t_vec, msd, a
+    def mean_squared_displacement(self, non_linear=True):
+        def linear_func(x, beta, d):
+            return d * (x ** 1)
+
+        x = self.get_noisy_x()
+        y = self.get_noisy_y()
+        time_length = (self.get_time()[-1] - self.get_time()[0])
+        data = np.sqrt(x ** 2 + y ** 2)
+        n_data = np.size(data)
+        number_of_delta_t = np.int((n_data - 1))
+        t_vec = np.arange(1, np.int(number_of_delta_t))
+
+        msd = np.zeros([len(t_vec), 1])
+        for dt, ind in zip(t_vec, range(len(t_vec))):
+            squared_displacement = (data[1 + dt:] - data[:-1 - dt]) ** 2
+            msd[ind] = np.mean(squared_displacement, axis=0)
+
+        msd = np.array(msd)
+
+        t_vec = np.linspace(0.0001, time_length, len(x) - 2)
+        msd = np.array(msd).ravel()
+        if non_linear:
+            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0), (2, np.inf)), maxfev=2000)
+        else:
+            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0, -np.inf), (2, np.inf, np.inf)), maxfev=2000)
+
+        return t_vec, msd, a
