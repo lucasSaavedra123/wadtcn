@@ -314,6 +314,9 @@ class Trajectory(Document):
         return states.tolist()
 
     def mean_squared_displacement(self, non_linear=True):
+        """
+        Code Obtained from https://github.com/hectorbm/DL_anomalous_diffusion/blob/ab13739cb8fdb947dd1ebc9a8f537668eb26266a/Tools/analysis_tools.py#L36C67-L36C67
+        """
         def linear_func(x, beta, d):
             return d * (x ** 1)
 
