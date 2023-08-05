@@ -2,14 +2,14 @@ import numpy as np
 from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
+from TheoreticalModels import FBM_MODELS
 from .model_utils import transform_trajectories_into_displacements, build_more_complex_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
 
 
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
+        return FBM_MODELS
 
     @classmethod
     def selected_hyperparameters(cls):
