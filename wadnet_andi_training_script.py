@@ -33,6 +33,6 @@ for length in tqdm.tqdm(lengths):
     length_and_f1_score['length'].append(length)
     length_and_f1_score['f1'].append(classifier.model_micro_f1_score())
 
-pd.DataFrame(length_and_f1_score).to_csv('result.csv', index=False)
+    pd.DataFrame(length_and_f1_score).to_csv('result.csv', index=False)
 
 DatabaseHandler.disconnect()
