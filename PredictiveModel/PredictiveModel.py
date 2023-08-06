@@ -188,7 +188,12 @@ class PredictiveModel(Document):
             hyperparameter_values = cls.default_hyperparameters_analysis()[discriminator]
             hyperparameter_value_to_color = generate_colors_for_hyperparameters_list(hyperparameter_values)
 
-        for predictive_model in [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator]:
+        if 'model' not in kwargs:
+            models_to_show = [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator]
+        else:
+            models_to_show = [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator and kwargs['model'] == d.extra_parameters['model']]
+
+        for predictive_model in models_to_show:
             new_error = np.array(predictive_model.history_training_info['val_loss'])
 
             max_epochs = max(max_epochs, len(new_error))
