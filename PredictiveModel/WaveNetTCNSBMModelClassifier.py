@@ -2,13 +2,13 @@ import numpy as np
 from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive
+from TheoreticalModels import SBM_MODELS
 from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector, build_more_complex_wavenet_tcn_classifier_for
 
 class WaveNetTCNSBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
+        return SBM_MODELS
 
     @property
     def number_of_models_involved(self):

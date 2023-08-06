@@ -461,6 +461,12 @@ class PredictiveModel(Document):
         plt.grid()
         plt.show()
 
+    def model_micro_f1_score(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
+        Y_predicted = self.predict(trajectories)
+        return f1_score(ground_truth, Y_predicted, average="micro")
+
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)

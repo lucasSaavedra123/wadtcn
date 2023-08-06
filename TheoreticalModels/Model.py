@@ -60,45 +60,44 @@ class Model():
         return cls.MODEL_COLORS[cls.STRING_LABEL]
 
     def simulate_trajectory(self, trajectory_length, trajectory_time, from_andi=False):
-        resimulate = True
+        if from_andi:
+            simulation_result = self.andi_simulate_rawly(trajectory_length, trajectory_time)
+            
+            trajectory = Trajectory(
+                simulation_result['x'],
+                simulation_result['y'],
+                t=simulation_result['t'],
+                #noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                #noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                exponent_type=simulation_result['exponent_type'],
+                exponent=simulation_result['exponent'],
+                model_category=self,
+                info=simulation_result['info'],
+                noisy=True
+            )
+        else:
+            simulation_result = self.custom_simulate_rawly(trajectory_length, trajectory_time)
 
-        while resimulate:
-            if from_andi:
-                simulation_result = self.andi_simulate_rawly(trajectory_length, trajectory_time)
-                resimulate = False
-                
-                trajectory = Trajectory(
-                    simulation_result['x'],
-                    simulation_result['y'],
-                    t=simulation_result['t'],
-                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
-                    exponent_type=simulation_result['exponent_type'],
-                    exponent=simulation_result['exponent'],
-                    model_category=self,
-                    info=simulation_result['info'],
-                    noisy=True
-                )
-            else:
-                simulation_result = self.custom_simulate_rawly(trajectory_length, trajectory_time)
+            trajectory = Trajectory(
+                simulation_result['x'],
+                simulation_result['y'],
+                t=simulation_result['t'],
+                noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                exponent_type=simulation_result['exponent_type'],
+                exponent=simulation_result['exponent'],
+                model_category=self,
+                info=simulation_result['info']
+            )
 
-                trajectory = Trajectory(
-                    simulation_result['x'],
-                    simulation_result['y'],
-                    t=simulation_result['t'],
-                    noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    noise_y=simulation_result['y_noisy']-simulation_result['y'],
-                    exponent_type=simulation_result['exponent_type'],
-                    exponent=simulation_result['exponent'],
-                    model_category=self,
-                    info=simulation_result['info']
-                )
+            check_one = (min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
+            check_two = (min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)
+            check_three = ('switching' in simulation_result['info'] and not simulation_result['info']['switching'])
+            check_four = trajectory.is_immobile(IMMOBILE_THRESHOLD)
+            resimulate = any([check_one, check_two, check_three, check_four])
 
-                #check_one = (min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
-                #check_two = (min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)
-                check_three = ('switching' in simulation_result['info'] and not simulation_result['info']['switching'])
-                check_four = trajectory.is_immobile(IMMOBILE_THRESHOLD)
-                resimulate = any([check_three,check_four])
+            if resimulate:
+                trajectory = self.__class__.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=False)
 
         return trajectory
 
