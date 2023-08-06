@@ -21,6 +21,7 @@ for length in tqdm.tqdm(lengths):
     if len(networks_of_length) == 0:
         classifier = WaveNetTCNTheoreticalModelClassifier(length, length, simulator=AndiDataSimulation)
         classifier.enable_early_stopping()
+        classifier.enable_database_persistance()
         classifier.fit()
         classifier.save()
     else:
@@ -28,7 +29,7 @@ for length in tqdm.tqdm(lengths):
         classifier = networks_of_length[0]
         classifier.enable_database_persistance()
         classifier.load_as_file()
-    
+
     length_and_f1_score['length'].append(length)
     length_and_f1_score['f1'].append(classifier.model_micro_f1_score())
 

@@ -21,6 +21,7 @@ for length in tqdm.tqdm(lengths):
     if len(networks_of_length) == 0:
         classifier = LSTMTheoreticalModelClassifier(length, length, simulator=AndiDataSimulation)
         classifier.enable_early_stopping()
+        classifier.enable_database_persistance()
         classifier.fit()
         classifier.save()
     else:
