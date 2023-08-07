@@ -13,14 +13,14 @@ from .model_utils import transform_trajectories_into_displacements, transform_tr
 class LSTMTheoreticalModelClassifier(PredictiveModel):
     @classmethod
     def selected_hyperparameters(self):
-        return {}
+        return {'None': 'None'}
 
     def default_hyperparameters(self):
-        return {}
+        return {'None': 'None'}
 
     @classmethod
     def default_hyperparameters_analysis(self):
-        pass
+        return None
 
     """
     This network comes from paper:
