@@ -63,13 +63,14 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
 
     def transform_trajectories_to_input(self, trajectories):
         X = np.zeros((len(trajectories), (self.trajectory_length-1)//self.block_size, self.block_size))
+        thr=1e-10
 
         for trajectory_index, trajectory in enumerate(trajectories):
             disp_x = np.diff(trajectory.get_noisy_x())
             disp_y = np.diff(trajectory.get_noisy_y())
 
-            disp_x = (disp_x - np.mean(trajectory.get_noisy_x()))/(np.std(trajectory.get_noisy_x()) if np.std(trajectory.get_noisy_x())!= 0 else 1)
-            disp_y = (disp_y - np.mean(trajectory.get_noisy_y()))/(np.std(trajectory.get_noisy_y()) if np.std(trajectory.get_noisy_y())!= 0 else 1)
+            disp_x = (disp_x - np.mean(disp_x))/(np.std(disp_x) if np.std(disp_x) > thr else 1)
+            disp_y = (disp_y - np.mean(disp_y))/(np.std(disp_y) if np.std(disp_y) > thr else 1)
             raw = []
 
             for i in range(self.trajectory_length-1):
