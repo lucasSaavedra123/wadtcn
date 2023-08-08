@@ -29,60 +29,15 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
 
     def default_hyperparameters(self, **kwargs):
         model_string_to_hyperparameters_dictionary = {
-            'fbm_sub': {
-                'lr': 0.0001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-6,
-            },
-            'fbm_brownian': {
-                'lr': 0.0001,
-                'batch_size': 16,
-                'amsgrad': True,
-                'epsilon': 1e-7,
-            },
-            'fbm_sup': {
-                'lr': 0.001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-7,
-            },
-            'sbm_sub': {
-                'lr': 0.0001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-6,
-            },
-            'sbm_brownian': {
-                'lr': 0.0001,
-                'batch_size': 16,
-                'amsgrad': True,
-                'epsilon': 1e-7,
-            },
-            'sbm_sup': {
-                'lr': 0.001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-7,
-            },
-            'lw': {
-                'lr': 0.001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-7,
-            },
-            'ctrw': {
-                'lr': 0.001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-7,
-            },
-            'attm': {
-                'lr': 0.001,
-                'batch_size': 64,
-                'amsgrad': False,
-                'epsilon': 1e-7,
-            },
+            'fbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
+            'fbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
+            'fbm_sup': {'lr': 0.0001, 'batch_size': 8, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
+            'sbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
+            'sbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-07, 'epochs': 100},
+            'sbm_sup': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
+            'lw': {'lr': 0.001, 'batch_size': 64, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
+            'ctrw': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
+            'attm': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 100},
         }
 
         hyperparameters = model_string_to_hyperparameters_dictionary[kwargs["model"]]
