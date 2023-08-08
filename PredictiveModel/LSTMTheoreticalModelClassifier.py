@@ -121,3 +121,6 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
             return 4
         else:
             return 8
+
+    def __str__(self):
+        return f"randi_classification_{self.trajectory_length}"
