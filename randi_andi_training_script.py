@@ -7,7 +7,8 @@ from PredictiveModel.LSTMTheoreticalModelClassifier import LSTMTheoreticalModelC
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
-lengths = list(range(25,1000,25))
+#lengths = list(range(25,1000,25))
+lengths = [25, 65, 125, 225, 425, 825]
 already_trained_networks = LSTMTheoreticalModelClassifier.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=LSTMTheoreticalModelClassifier.selected_hyperparameters())
 
 length_and_f1_score = {
