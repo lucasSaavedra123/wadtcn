@@ -3,9 +3,31 @@ from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
-from .model_utils import transform_trajectories_into_displacements, build_more_complex_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer
+from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
 from keras.models import Model
+from tensorflow.keras.utils import Sequence
+
+import numpy as np
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate
+from keras.callbacks import EarlyStopping
+from tensorflow import device, config
+
+from .PredictiveModel import PredictiveModel
+from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
+from CONSTANTS import *
+
+class TrackGenerator(Sequence):
+    def __init__(self, batches, batch_size, dataset_function):
+        self.batches = batches
+        self.batch_size = batch_size
+        self.dataset_function = dataset_function
+
+    def __getitem__(self, item):
+        tracks, classes = self.dataset_function(self.batch_size)
+        return tracks, classes
+
+    def __len__(self):
+        return self.batches
 
 class OriginalFBMModelClassifier(PredictiveModel):
     @property
@@ -17,7 +39,17 @@ class OriginalFBMModelClassifier(PredictiveModel):
             'lr': 0.01,
             'batch_size': 16,
             'amsgrad': True,
-            'epsilon': 1e-6
+            'epsilon': 1e-6,
+            'epochs': 100
+        }
+
+    @classmethod
+    def selected_hyperparameters(self):
+        return {
+            'lr': 0.01,
+            'batch_size': 16,
+            'amsgrad': True,
+            'epsilon': 1e-6,
             'epochs': 100
         }
 
@@ -36,7 +68,7 @@ class OriginalFBMModelClassifier(PredictiveModel):
         x5_kernel_size = 6
         x6_kernel_size = 20
 
-        inputs = Input(shape=(self.trajectory_length-1, 1))
+        inputs = Input(shape=(self.trajectory_length-1, 2))
         x1 = Conv1D(filters=filters_size, kernel_size=x1_kernel_size, padding='causal', activation='relu',
                     kernel_initializer=initializer)(inputs)
         x1 = BatchNormalization()(x1)
@@ -104,7 +136,7 @@ class OriginalFBMModelClassifier(PredictiveModel):
         x_concat = concatenate(inputs=[x1, x2, x3, x4, x5, x6])
         dense_1 = Dense(units=615, activation='relu')(x_concat)
         dense_2 = Dense(units=150, activation='relu')(dense_1)
-        output_network = Dense(units=self.output_categories, activation='softmax')(dense_2)
+        output_network = Dense(units=self.number_of_models_involved, activation='softmax')(dense_2)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -128,3 +160,36 @@ class OriginalFBMModelClassifier(PredictiveModel):
 
     def type_name(self):
         return f"wavenet_tcn_fbm_model_classifier"
+
+    def fit(self):
+        self.build_network()
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [
+                EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")
+            ]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+
+        with device(device_name):
+            history_training_info = self.architecture.fit(
+                X_train,
+                Y_train,
+                epochs=self.hyperparameters['epochs'],
+                callbacks=callbacks,
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+            ).history
+
+        self.history_training_info = history_training_info
+        self.trained = True
