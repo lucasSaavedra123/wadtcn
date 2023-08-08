@@ -202,7 +202,7 @@ class PredictiveModel(Document):
                 plt.plot(range(1, len(new_error)+1), new_error)
             elif type(discriminator) is dict:
                 if discriminator == predictive_model.hyperparameters:
-                    plt.plot(range(1, len(new_error)+1), new_error, color='red')
+                    plt.plot(range(1, len(new_error)+1), new_error, color='red', zorder=999)
                 else:
                     plt.plot(range(1, len(new_error)+1), new_error, color='grey')
             else:
