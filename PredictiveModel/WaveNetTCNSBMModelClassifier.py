@@ -63,6 +63,6 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
 
-
+    @property
     def type_name(self):
         return f"wavenet_tcn_sbm_model_classifier"

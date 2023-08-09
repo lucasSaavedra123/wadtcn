@@ -95,4 +95,4 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
 
     @property
     def type_name(self):
-        return 'hurst_exponent'
+        return 'wavenet_hurst_exponent'

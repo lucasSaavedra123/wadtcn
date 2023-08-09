@@ -374,7 +374,7 @@ class PredictiveModel(Document):
 
             if weights is not None:
                 self.architecture.set_weights(weights)
-        else:        
+        else:
             self.architecture.load_weights(f'{str(self)}.h5')
 
     def save(self):
