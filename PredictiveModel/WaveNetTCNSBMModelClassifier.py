@@ -2,26 +2,35 @@ import numpy as np
 from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
-from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive
+from TheoreticalModels import SBM_MODELS
 from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector, build_more_complex_wavenet_tcn_classifier_for
 
 class WaveNetTCNSBMModelClassifier(PredictiveModel):
     @property
     def models_involved_in_predictive_model(self):
-        return [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
+        return SBM_MODELS
 
     @property
     def number_of_models_involved(self):
         return len(self.models_involved_in_predictive_model)
 
-    #These will be updated after hyperparameter search
+    @classmethod
+    def selected_hyperparameters(cls):
+        return {
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-06,
+            'epochs': 100, 
+            'lr': 0.001
+        }
+
     def default_hyperparameters(self):
         return {
-            'batch_size': 32,
-            'amsgrad': False,
-            'epsilon': 1e-6,
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-06,
             'epochs': 100,
-            'lr': 0.01
+            'lr': 0.001
         }
 
     @classmethod
@@ -54,6 +63,6 @@ class WaveNetTCNSBMModelClassifier(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_displacements(self, trajectories)
 
-
+    @property
     def type_name(self):
         return f"wavenet_tcn_sbm_model_classifier"

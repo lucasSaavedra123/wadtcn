@@ -1,11 +1,19 @@
+import tqdm
+import pandas as pd
+import numpy as np
+from scipy.io import loadmat
+
+
+from Trajectory import Trajectory
 from DatabaseHandler import DatabaseHandler
-from DataSimulation import AndiDataSimulation
-from PredictiveModel.OriginalTheoreticalModelClassifier import OriginalTheoreticalModelClassifier
+from DataSimulation import CustomDataSimulation
+from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
+from TheoreticalModels import ALL_MODELS
+DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
+
 
 from scipy.io import loadmat
 from Trajectory import Trajectory
-
-import numpy as np
 mat_data = loadmat('all_tracks_thunder_localizer.mat')
 # Orden en la struct [BTX|mAb] [CDx|Control|CDx-Chol]
 dataset = []
@@ -37,25 +45,37 @@ for data in dataset:
         if not trajectory.is_immobile(1.8) and trajectory.length >= 25:
             lengths.append(trajectory.length)
 
-final_lengths = list(set(sorted(lengths)))
-final_lengths = final_lengths[len(final_lengths)//2:]
+lengths = np.unique(np.sort(np.array(lengths)))
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
+already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
 
-already_trained_networks = OriginalTheoreticalModelClassifier.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=OriginalTheoreticalModelClassifier.selected_hyperparameters())
+length_and_f1_score = {
+    'length': [],
+    'f1': []
+}
 
-print("Number of Lengths:", len(final_lengths))
+for length in tqdm.tqdm(lengths):
+    print(length)
+    networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
 
-for length in final_lengths:
-    print("Training for length:", length)
-
-    if len([network for network in already_trained_networks if network.trajectory_length == length]) == 0:
-        classifier = OriginalTheoreticalModelClassifier(length, length, simulator=AndiDataSimulation)
+    if len(networks_of_length) == 0:
+        classifier = WaveNetTCNTheoreticalModelClassifier(length, length, simulator=CustomDataSimulation)
         classifier.enable_early_stopping()
         classifier.enable_database_persistance()
         classifier.fit()
         classifier.save()
     else:
-        print("Already trained!")
+        assert len(networks_of_length) == 1
+        classifier = networks_of_length[0]
+        classifier.enable_database_persistance()
+        classifier.load_as_file()
+
+    length_and_f1_score['length'].append(length)
+    length_and_f1_score['f1'].append(classifier.model_micro_f1_score())
+
+    if length == 25:
+        classifier.plot_confusion_matrix()
+
+    pd.DataFrame(length_and_f1_score).to_csv('result.csv', index=False)
 
 DatabaseHandler.disconnect()

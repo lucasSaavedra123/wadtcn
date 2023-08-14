@@ -188,7 +188,12 @@ class PredictiveModel(Document):
             hyperparameter_values = cls.default_hyperparameters_analysis()[discriminator]
             hyperparameter_value_to_color = generate_colors_for_hyperparameters_list(hyperparameter_values)
 
-        for predictive_model in [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator]:
+        if 'model' not in kwargs:
+            models_to_show = [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator]
+        else:
+            models_to_show = [d for d in cls.objects.all() if d.trajectory_length == trajectory_length and d.trajectory_time == trajectory_time and kwargs['simulator'] == d.simulator and kwargs['model'] == d.extra_parameters['model']]
+
+        for predictive_model in models_to_show:
             new_error = np.array(predictive_model.history_training_info['val_loss'])
 
             max_epochs = max(max_epochs, len(new_error))
@@ -197,7 +202,7 @@ class PredictiveModel(Document):
                 plt.plot(range(1, len(new_error)+1), new_error)
             elif type(discriminator) is dict:
                 if discriminator == predictive_model.hyperparameters:
-                    plt.plot(range(1, len(new_error)+1), new_error, color='red')
+                    plt.plot(range(1, len(new_error)+1), new_error, color='red', zorder=999)
                 else:
                     plt.plot(range(1, len(new_error)+1), new_error, color='grey')
             else:
@@ -369,7 +374,7 @@ class PredictiveModel(Document):
 
             if weights is not None:
                 self.architecture.set_weights(weights)
-        else:        
+        else:
             self.architecture.load_weights(f'{str(self)}.h5')
 
     def save(self):
@@ -453,6 +458,12 @@ class PredictiveModel(Document):
         plt.xlabel('Ground Truth', fontsize=15)
         plt.grid()
         plt.show()
+
+    def model_micro_f1_score(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
+        Y_predicted = self.predict(trajectories)
+        return f1_score(ground_truth, Y_predicted, average="micro")
 
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)

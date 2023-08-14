@@ -1,7 +1,9 @@
-from mongoengine import Document, FloatField, ListField, DictField, BooleanField
-import matplotlib.pyplot as plt
+import math
 
 import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 
 #Example about how to read trajectories from .mat
 """
@@ -208,6 +210,19 @@ class Trajectory(Document):
 
         plt.show()
 
+    def plot_confinement_states(self, v_th=11, window_size=3, show=True):
+        x = self.get_noisy_x().tolist()
+        y = self.get_noisy_y().tolist()
+
+        state_to_color = {1:'red', 0:'black'}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size))
+
+        for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+            plt.plot([x1, x2], [y1, y2], states_as_color[i], marker='X')  
+
+        if show:
+            plt.show()
+
     def __str__(self):
         anomalous_exponent_string = "%.2f" % self.anomalous_exponent if self.anomalous_exponent is not None else None
         return f"Model: {self.model_category}, Anomalous Exponent: {anomalous_exponent_string}, Trajectory Length: {self.length}"
@@ -232,3 +247,99 @@ class Trajectory(Document):
         criteria = (rad_gir / mean_delta_r) * np.sqrt(np.pi/2)
         
         return criteria <= threshold
+
+    def confinement_states(self,v_th=11,window_size=3):
+        """
+        This method is the Object-Oriented Python implementation of the algorithm proposed in the referenced 
+        paper to identify periods of transient confinement within individual trajectories.
+
+        Sikora, G., Wyłomańska, A., Gajda, J., Solé, L., Akin, E. J., Tamkun, M. M., & Krapf, D. (2017).
+
+        Elucidating distinct ion channel populations on the surface of hippocampal neurons via single-particle
+        tracking recurrence analysis. Physical review. E, 96(6-1), 062404.
+        https://doi.org/10.1103/PhysRevE.96.062404
+        """
+
+        class Circle:
+            def __init__(self, point_i, point_j):
+                self.point_i = point_i
+                self.point_j = point_j
+
+                midpoint_x = (self.point_i[0] + self.point_j[0])/2
+                midpoint_y = (self.point_i[1] + self.point_j[1])/2
+                self.midpoint = [midpoint_x, midpoint_y]
+
+                self.diameter = math.dist(self.point_i, self.point_j)
+
+                self._count_cache = None
+                self._index_points_inside_area_cache = None
+
+            def count_number_of_times_the_walker_position_lies_within_circle(self, points):
+                self._count_cache = 0
+                self._index_points_inside_area_cache = []
+                for index, point in enumerate(points):
+                    if math.dist(point, self.midpoint) < (self.diameter/2):
+                        self._count_cache += 1
+                        self._index_points_inside_area_cache.append(index)
+
+            @property
+            def count(self):
+                return self._count_cache
+
+            @property
+            def index_points_inside_area(self):
+                return self._index_points_inside_area_cache
+
+        x = self.get_noisy_x().tolist()
+        y = self.get_noisy_y().tolist()
+
+        points = list(zip(x,y))
+
+        circles = []
+
+        for i in range(1,self.length):
+            new_circle = Circle(points[i-1], points[i])
+            new_circle.count_number_of_times_the_walker_position_lies_within_circle(points)
+            circles.append(new_circle)
+
+        states = np.zeros(self.length)
+
+        for sub_circles in [circles[i:i+window_size] for i in range(0,len(circles),window_size)]:
+            circles_windows_count = sum([sub_circle.count for sub_circle in sub_circles])
+
+            if circles_windows_count > v_th:
+                for sub_circle in sub_circles:
+                    states[sub_circle.index_points_inside_area] = 1
+
+        return states.tolist()
+
+    def mean_squared_displacement(self, non_linear=True):
+        """
+        Code Obtained from https://github.com/hectorbm/DL_anomalous_diffusion/blob/ab13739cb8fdb947dd1ebc9a8f537668eb26266a/Tools/analysis_tools.py#L36C67-L36C67
+        """
+        def linear_func(x, beta, d):
+            return d * (x ** 1)
+
+        x = self.get_noisy_x()
+        y = self.get_noisy_y()
+        time_length = (self.get_time()[-1] - self.get_time()[0])
+        data = np.sqrt(x ** 2 + y ** 2)
+        n_data = np.size(data)
+        number_of_delta_t = np.int((n_data - 1))
+        t_vec = np.arange(1, np.int(number_of_delta_t))
+
+        msd = np.zeros([len(t_vec), 1])
+        for dt, ind in zip(t_vec, range(len(t_vec))):
+            squared_displacement = (data[1 + dt:] - data[:-1 - dt]) ** 2
+            msd[ind] = np.mean(squared_displacement, axis=0)
+
+        msd = np.array(msd)
+
+        t_vec = np.linspace(0.0001, time_length, len(x) - 2)
+        msd = np.array(msd).ravel()
+        if non_linear:
+            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0), (2, np.inf)), maxfev=2000)
+        else:
+            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0, -np.inf), (2, np.inf, np.inf)), maxfev=2000)
+
+        return t_vec, msd, a
