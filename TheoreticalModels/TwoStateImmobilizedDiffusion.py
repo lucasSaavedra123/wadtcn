@@ -14,7 +14,7 @@ class TwoStateImmobilizedDiffusion(Model):
     State-1: Immobilized Diffusion
     """
     STRING_LABEL = 'id'
-    D_RANGE = [0.05, 0.8]
+    D_RANGE = [0.02, 0.2]
     K0_RANGE = [0.01, 0.08]
     K1_RANGE = [0.007, 0.2]
     H1_RANGE = [0.05/2, 0.95/2]
