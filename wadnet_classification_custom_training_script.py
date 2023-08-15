@@ -9,6 +9,8 @@ from DatabaseHandler import DatabaseHandler
 from DataSimulation import CustomDataSimulation
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
 from TheoreticalModels import ALL_MODELS
+from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME
+
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
 
@@ -59,7 +61,7 @@ for length in tqdm.tqdm(lengths):
     networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
 
     if len(networks_of_length) == 0:
-        classifier = WaveNetTCNTheoreticalModelClassifier(length, length, simulator=CustomDataSimulation)
+        classifier = WaveNetTCNTheoreticalModelClassifier(length, length * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation)
         classifier.enable_early_stopping()
         classifier.enable_database_persistance()
         classifier.fit()
