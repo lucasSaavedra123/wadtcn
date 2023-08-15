@@ -3,6 +3,7 @@ import numpy as np
 from TheoreticalModels.Model import Model
 from TheoreticalModels.simulation_utils import add_noise_and_offset
 
+
 def simulate_track_time(track_length, track_time):
     t = np.linspace(0, track_time, track_length)
     return t
@@ -38,8 +39,8 @@ class TwoStateImmobilizedDiffusion(Model):
         self.k_state0 = k_state0
         self.k_state1 = k_state1
         self.h_state1 = h_state1
-        self.d_state0 = d0_state * 1e6  # Convert from um^2 -> nm^2
-        self.d_state1 = d1_state * 1e6  # Convert from um^2 -> nm^2
+        self.d_state0 = d0_state * 1000000  # Convert from um^2 -> nm^2
+        self.d_state1 = d1_state * 1000000  # Convert from um^2 -> nm^2
 
     """
     def get_d_state0(self):
@@ -59,7 +60,8 @@ class TwoStateImmobilizedDiffusion(Model):
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
         n = trajectory_length
         T = trajectory_time
-        SIMULATION_NUMBER_OF_SUBSTEPS = 1
+        delta_t = T/n
+        SIMULATION_NUMBER_OF_SUBSTEPS = 100
         I = SIMULATION_NUMBER_OF_SUBSTEPS * trajectory_length
 
         M1 = 0
@@ -68,11 +70,15 @@ class TwoStateImmobilizedDiffusion(Model):
         assert M2 > M1, f"M1={M1}, M2={M2}"
 
         S = np.linspace(M1, M2, I)
+        T = np.arange(0,T+delta_t,delta_t)
         LAMBDA = (M2-M1)/I
 
-        X_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
-        Y_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
+        #X_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
+        #Y_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
         
+        X_NORMAL_VALUES = np.random.normal(loc=0, scale=1, size=I) * np.sqrt(2 * LAMBDA)
+        Y_NORMAL_VALUES = np.random.normal(loc=0, scale=1, size=I) * np.sqrt(2 * LAMBDA)
+
         state, switching = self.simulate_switching_states(trajectory_length)
         
         H = np.zeros(shape=I)
@@ -98,22 +104,19 @@ class TwoStateImmobilizedDiffusion(Model):
         x = [0]
         y = [0]
 
-        t = np.arange(0,T,T/n)
+        SQRT_RESULT = np.sqrt(2*D*H)
+        POWER_RESULT = H-(1/2)
 
-        for index, t_i in enumerate(t[1:]):
-            accumulate_value_x = 0
-            accumulate_value_y = 0
-
-            for sub_index in range(index*SIMULATION_NUMBER_OF_SUBSTEPS):
-                a = (t_i-S[sub_index]) ** (H[sub_index]-(1/2))
-                accumulate_value_x += X_NORMAL_VALUES[sub_index] * (np.sqrt(2*D[sub_index]*H[sub_index]) * a)
-                accumulate_value_y += Y_NORMAL_VALUES[sub_index] * (np.sqrt(2*D[sub_index]*H[sub_index]) * a)
+        for t_index in range(1,n+1):
+            one_multiplier = (S < T[t_index]).astype(int)
+            accumulate_value_x = np.sum((X_NORMAL_VALUES * SQRT_RESULT * ((T[t_index] - S) ** (one_multiplier * POWER_RESULT))) * one_multiplier)
+            accumulate_value_y = np.sum((Y_NORMAL_VALUES * SQRT_RESULT * ((T[t_index] - S) ** (one_multiplier * POWER_RESULT))) * one_multiplier)
 
             x.append(accumulate_value_x)
             y.append(accumulate_value_y)
 
-        x = np.array(x)
-        y = np.array(y)
+        x = np.array(x[:trajectory_length])
+        y = np.array(y[:trajectory_length])
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
         #t = simulate_track_time(trajectory_length, trajectory_time)
@@ -121,7 +124,7 @@ class TwoStateImmobilizedDiffusion(Model):
         return {
             'x': x,
             'y': y,
-            't': t,
+            't': np.arange(0, trajectory_time, delta_t),
             'x_noisy': x_noisy,
             'y_noisy': y_noisy,
             'exponent_type': None,
