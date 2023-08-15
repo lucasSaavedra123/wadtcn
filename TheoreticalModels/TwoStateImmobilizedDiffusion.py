@@ -13,7 +13,7 @@ class TwoStateImmobilizedDiffusion(Model):
     State-0: Free Diffusion
     State-1: Immobilized Diffusion
     """
-    STRING_LABEL = 'tfbm'
+    STRING_LABEL = 'id'
     D_RANGE = [0.05, 0.8]
     K0_RANGE = [0.01, 0.08]
     K1_RANGE = [0.007, 0.2]
