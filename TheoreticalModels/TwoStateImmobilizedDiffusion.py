@@ -72,9 +72,6 @@ class TwoStateImmobilizedDiffusion(Model):
         S = np.linspace(M1, M2, I)
         T = np.arange(0,T+delta_t,delta_t)
         LAMBDA = (M2-M1)/I
-
-        #X_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
-        #Y_NORMAL_VALUES = np.random.normal(0,LAMBDA,size=I)
         
         X_NORMAL_VALUES = np.random.normal(loc=0, scale=1, size=I) * np.sqrt(2 * LAMBDA)
         Y_NORMAL_VALUES = np.random.normal(loc=0, scale=1, size=I) * np.sqrt(2 * LAMBDA)
