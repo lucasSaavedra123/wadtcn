@@ -5,7 +5,7 @@ import multiprocessing
 from queue import Queue
 
 from mongoengine import Document, IntField, FileField, DictField, FloatField, BooleanField, StringField
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, Callback
 from tensorflow import device, config
 import matplotlib.pyplot as plt
 import keras.backend as K
@@ -20,6 +20,15 @@ from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from .model_utils import TrackGenerator, ThreadedTrackGenerator
+
+class CustomCallback(Callback):
+    def __init__(self, thread_queue):
+        super().__init__()
+        self.queue = thread_queue
+
+    def on_epoch_end(self, epoch, logs=None):
+        print(f"Thread Queue Length: {self.queue.qsize()}")
+
 
 def tool_equal_dicts(d1, d2, ignore_keys):
     d1_filtered = {k:v for k,v in d1.items() if k not in ignore_keys}
@@ -380,26 +389,29 @@ class PredictiveModel(Document):
 
         self.architecture.summary()
 
+        trajectories_queue = Queue()
+        flag_queue = Queue()
+
         if self.early_stopping:
             callbacks = [EarlyStopping(
                 monitor="val_loss",
                 min_delta=1e-3,
                 patience=5,
                 verbose=1,
-                mode="min")]
+                mode="min"),CustomCallback(trajectories_queue)]
         else:
             callbacks = []
 
-        trajectories_queue = Queue()
-
-        def create_work(queue):
+        def create_work(queue, flag_queue):
             while True:
-                if queue.qsize() < 3 * TRAINING_SET_SIZE_PER_EPOCH:
-                    trajectory = self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0]
-                    queue.put(trajectory)
+                if flag_queue.qsize() == 0:
+                    if queue.qsize() < TRAINING_SET_SIZE_PER_EPOCH:
+                        queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
+                else:
+                    break
 
-        producers = [Thread(target=create_work, args=[trajectories_queue], daemon=True) for _ in range(multiprocessing.cpu_count())]
-        
+        producers = [Thread(target=create_work, args=[trajectories_queue, flag_queue], daemon=True) for _ in range(multiprocessing.cpu_count())]
+
         for p in producers:
             p.start()
 
@@ -410,9 +422,14 @@ class PredictiveModel(Document):
                 ThreadedTrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                validation_data=ThreadedTrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
                 shuffle=True
             ).history
+
+        flag_queue.put(None)
+
+        for p in producers:
+            p.join()
 
         if self.trained:
             for dict_key in history_training_info:
