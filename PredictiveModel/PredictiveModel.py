@@ -459,20 +459,24 @@ class PredictiveModel(Document):
         plt.grid()
         plt.show()
 
-    def model_micro_f1_score(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+    def model_micro_f1_score(self, trajectories=None):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
         Y_predicted = self.predict(trajectories)
         return f1_score(ground_truth, Y_predicted, average="micro")
 
-    def plot_confusion_matrix(self, normalized=True):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+    def plot_confusion_matrix(self, trajectories=None, normalized=True):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
         Y_predicted = self.predict(trajectories)
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
 
-        confusion_mat = confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis] if normalized else confusion_mat
+        confusion_mat = np.round(confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis], 2) if normalized else confusion_mat
 
         labels = [model.STRING_LABEL for model in self.models_involved_in_predictive_model]
 

@@ -18,12 +18,12 @@ for length in tqdm.tqdm(lengths):
         if network_class == WavenetTCNWithLSTMHurstExponentPredicter:
 
             for class_model in ALL_SUB_MODELS:
-                already_trained_networks = network_class.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, model=class_model.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters())
+                already_trained_networks = network_class.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters(class_model.STRING_LABEL))
 
-                networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
+                networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length and network.extra_parameters['model'] == class_model.STRING_LABEL]
 
                 if len(networks_of_length) == 0:
-                    classifier = network_class(length, length, model=class_model.STRING_LABEL, simulator=AndiDataSimulation)
+                    classifier = network_class(length, length, simulator=AndiDataSimulation, model=class_model.STRING_LABEL)
                     classifier.enable_early_stopping()
                     classifier.enable_database_persistance()
                     classifier.fit()

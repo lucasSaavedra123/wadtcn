@@ -13,6 +13,10 @@ ANDI_MODELS = [
     ScaledBrownianMotion,
 ]
 
+SUB_DIFFUSIVE_MODELS = [AnnealedTransientTimeMotion, ContinuousTimeRandomWalk, FractionalBrownianMotion, ScaledBrownianMotion]
+SUP_DIFFUSIVE_MODELS = [LevyWalk, FractionalBrownianMotion, ScaledBrownianMotion]
+BROWNIAN_MODELS = [FractionalBrownianMotion, ScaledBrownianMotion]
+
 ALL_MODELS = ANDI_MODELS + [TwoStateObstructedDiffusion]
 SBM_MODELS = [ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive]
 FBM_MODELS = [FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive]
