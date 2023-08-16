@@ -13,21 +13,8 @@ from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
+from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector, TrackGenerator
 from CONSTANTS import *
-
-class TrackGenerator(Sequence):
-    def __init__(self, batches, batch_size, dataset_function):
-        self.batches = batches
-        self.batch_size = batch_size
-        self.dataset_function = dataset_function
-
-    def __getitem__(self, item):
-        tracks, classes = self.dataset_function(self.batch_size)
-        return tracks, classes
-
-    def __len__(self):
-        return self.batches
 
 class OriginalFBMModelClassifier(PredictiveModel):
     @property

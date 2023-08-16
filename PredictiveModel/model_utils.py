@@ -1,7 +1,8 @@
 import numpy as np
-from tensorflow.keras.utils import to_categorical
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer
+from tensorflow.keras.utils import to_categorical, Sequence
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D
 from keras.models import Model
+
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -34,6 +35,17 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories)
             X[index, :, 1] = X[index, :, 1]/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
     return X
+
+def transform_trajectories_into_states(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+
+    for index, trajectory in enumerate(trajectories):
+        if 'state' in trajectory.info:
+            Y[index, :] = trajectory.info['state']
+        else:
+            Y[index, :] = np.zeros((predictive_model.trajectory_length))
+
+    return Y
 
 def transform_trajectories_to_categorical_vector(predictive_model, trajectories):
     Y_as_vectors = np.empty((len(trajectories), predictive_model.number_of_models_involved))
@@ -155,6 +167,77 @@ def build_wavenet_tcn_classifier_for(predictive_model, filters=64):
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
+def build_segmentator_for(predictive_model):
+    # Networks filters and kernels
+    initializer = 'he_normal'
+    filters_size = 32
+    x1_kernel_size = 4
+    x2_kernel_size = 2
+    x3_kernel_size = 3
+    x4_kernel_size = 10
+    x5_kernel_size = 20
+    inputs = Input(shape=(predictive_model.trajectory_length, 2))
+
+    x = inputs
+    x1 = Conv1D(filters=filters_size, kernel_size=x1_kernel_size, padding='causal', activation='relu',
+                kernel_initializer=initializer)(x)
+    x1 = BatchNormalization()(x1)
+    x1 = Conv1D(filters=filters_size, kernel_size=x1_kernel_size, dilation_rate=2, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x1)
+    x1 = BatchNormalization()(x1)
+    x1 = Conv1D(filters=filters_size, kernel_size=x1_kernel_size, dilation_rate=4, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x1)
+    x1 = BatchNormalization()(x1)
+    x1 = GlobalAveragePooling1D()(x1)
+    x2 = Conv1D(filters=filters_size, kernel_size=x2_kernel_size, padding='causal', activation='relu',
+                kernel_initializer=initializer)(x)
+    x2 = BatchNormalization()(x2)
+    x2 = Conv1D(filters=filters_size, kernel_size=x2_kernel_size, dilation_rate=2, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x2)
+    x2 = BatchNormalization()(x2)
+    x2 = Conv1D(filters=filters_size, kernel_size=x2_kernel_size, dilation_rate=4, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x2)
+    x2 = BatchNormalization()(x2)
+    x2 = GlobalAveragePooling1D()(x2)
+    x3 = Conv1D(filters=filters_size, kernel_size=x3_kernel_size, padding='causal', activation='relu',
+                kernel_initializer=initializer)(x)
+    x3 = BatchNormalization()(x3)
+    x3 = Conv1D(filters=filters_size, kernel_size=x3_kernel_size, dilation_rate=2, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x3)
+    x3 = BatchNormalization()(x3)
+    x3 = Conv1D(filters=filters_size, kernel_size=x3_kernel_size, dilation_rate=4, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x3)
+    x3 = BatchNormalization()(x3)
+    x3 = GlobalAveragePooling1D()(x3)
+    x4 = Conv1D(filters=filters_size, kernel_size=x4_kernel_size, padding='causal', activation='relu',
+                kernel_initializer=initializer)(x)
+    x4 = BatchNormalization()(x4)
+    x4 = Conv1D(filters=filters_size, kernel_size=x4_kernel_size, dilation_rate=4, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x4)
+    x4 = BatchNormalization()(x4)
+    x4 = Conv1D(filters=filters_size, kernel_size=x4_kernel_size, dilation_rate=8, padding='causal',
+                activation='relu',
+                kernel_initializer=initializer)(x4)
+    x4 = BatchNormalization()(x4)
+    x4 = GlobalAveragePooling1D()(x4)
+    x5 = Conv1D(filters=filters_size, kernel_size=x5_kernel_size, padding='same', activation='relu',
+                kernel_initializer=initializer)(x)
+    x5 = BatchNormalization()(x5)
+    x5 = GlobalAveragePooling1D()(x5)
+    x_concat = concatenate(inputs=[x1, x2, x3, x4, x5])
+    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
+    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+
+    predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
 def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
     initializer = 'he_normal'
     x1_kernel = 4
@@ -188,3 +271,31 @@ def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
     output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
+class ThreadedTrackGenerator(Sequence):
+    def __init__(self, batches, batch_size, input_transformer, output_transformer, thread_queue):
+        self.batches = batches
+        self.batch_size = batch_size
+        self.input_transformer = input_transformer
+        self.output_transformer = output_transformer
+        self.queue = thread_queue
+
+    def __getitem__(self, item):
+        trajectories = [self.queue.get() for _ in range(self.batch_size)]
+        return self.input_transformer(trajectories), self.output_transformer(trajectories)
+
+    def __len__(self):
+        return self.batches
+
+class TrackGenerator(Sequence):
+    def __init__(self, batches, batch_size, dataset_function):
+        self.batches = batches
+        self.batch_size = batch_size
+        self.dataset_function = dataset_function
+
+    def __getitem__(self, item):
+        tracks, classes = self.dataset_function(self.batch_size)
+        return tracks, classes
+
+    def __len__(self):
+        return self.batches
