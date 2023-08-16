@@ -1,7 +1,8 @@
 import numpy as np
-from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D
 from keras.models import Model
+
 
 def transform_trajectories_into_displacements(predictive_model, trajectories):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -270,3 +271,31 @@ def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
     output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
+class ThreadedTrackGenerator(Sequence):
+    def __init__(self, batches, batch_size, input_transformer, output_transformer, thread_queue):
+        self.batches = batches
+        self.batch_size = batch_size
+        self.input_transformer = input_transformer
+        self.output_transformer = output_transformer
+        self.queue = thread_queue
+
+    def __getitem__(self, item):
+        trajectories = [self.queue.get() for _ in range(self.batch_size)]
+        return self.input_transformer(trajectories), self.output_transformer(trajectories)
+
+    def __len__(self):
+        return self.batches
+
+class TrackGenerator(Sequence):
+    def __init__(self, batches, batch_size, dataset_function):
+        self.batches = batches
+        self.batch_size = batch_size
+        self.dataset_function = dataset_function
+
+    def __getitem__(self, item):
+        tracks, classes = self.dataset_function(self.batch_size)
+        return tracks, classes
+
+    def __len__(self):
+        return self.batches
