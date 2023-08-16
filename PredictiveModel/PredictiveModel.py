@@ -27,7 +27,7 @@ class CustomCallback(Callback):
         self.queue = thread_queue
 
     def on_epoch_end(self, epoch, logs=None):
-        print(f"Thread Queue Length: {self.queue.qsize()}")
+        print(f" INFO: Thread Queue Length: {self.queue.qsize()}")
 
 
 def tool_equal_dicts(d1, d2, ignore_keys):
