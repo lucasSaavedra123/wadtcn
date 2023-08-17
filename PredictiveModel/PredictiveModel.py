@@ -1,6 +1,6 @@
 import pickle
 import os
-from threading import Thread
+from threading import Thread, Event
 import multiprocessing
 from queue import Queue
 
@@ -390,7 +390,7 @@ class PredictiveModel(Document):
         self.architecture.summary()
 
         trajectories_queue = Queue()
-        flag_queue = Queue()
+        finished_training_event = Event()
 
         if self.early_stopping:
             callbacks = [EarlyStopping(
@@ -402,18 +402,12 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
-        def create_work(queue, flag_queue):
-            while True:
-                try:
-                    if flag_queue.qsize() == 0:
-                        if queue.qsize() < TRAINING_SET_SIZE_PER_EPOCH:
-                            queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
-                    else:
-                        break
-                except:
-                    pass
+        def create_work(queue, stop_event):
+            while not stop_event.is_set():
+                if queue.qsize() < TRAINING_SET_SIZE_PER_EPOCH:
+                    queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
 
-        producers = [Thread(target=create_work, args=[trajectories_queue, flag_queue], daemon=True) for _ in range(multiprocessing.cpu_count())]
+        producers = [Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True) for _ in range(multiprocessing.cpu_count())]
 
         for p in producers:
             p.start()
@@ -429,7 +423,7 @@ class PredictiveModel(Document):
                 shuffle=True
             ).history
 
-        flag_queue.put(True)
+        finished_training_event.set()
 
         for p in producers:
             p.join()
