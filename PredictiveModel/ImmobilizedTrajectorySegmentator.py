@@ -26,15 +26,11 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 1000,
-            'validation_set_size': 100,
             'lr': 0.001,
             'epochs': 5,
             'batch_size': 16,
             'amsgrad': False,
             'epsilon': 1e-6,
-            'with_early_stopping': False,
-            'dropout_rate': 0
         }
 
     @classmethod
@@ -42,8 +38,8 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            'batch_size': [8, 32, 128, 512, 1024],
-            'epsilon': [1e-6, 1e-7, 1e-8],
+            'batch_size': [8, 16, 32, 64],
+            'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
     def build_network(self):

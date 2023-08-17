@@ -27,15 +27,11 @@ class ObstructedTrajectorySegmentator(PredictiveModel):
     #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
-            'training_set_size': 1000,
-            'validation_set_size': 100,
             'lr': 0.001,
             'epochs': 5,
             'batch_size': 16,
             'amsgrad': False,
             'epsilon': 1e-6,
-            'with_early_stopping': False,
-            'dropout_rate': 0
         }
 
     @classmethod
