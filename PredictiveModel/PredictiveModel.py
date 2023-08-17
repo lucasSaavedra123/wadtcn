@@ -398,9 +398,11 @@ class PredictiveModel(Document):
                 min_delta=1e-3,
                 patience=5,
                 verbose=1,
-                mode="min"),CustomCallback(trajectories_queue)]
+                mode="min")]
         else:
             callbacks = []
+
+        callbacks += [CustomCallback(trajectories_queue)]
 
         def create_work(queue, stop_event):
             while not stop_event.is_set():
