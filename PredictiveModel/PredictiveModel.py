@@ -404,11 +404,14 @@ class PredictiveModel(Document):
 
         def create_work(queue, flag_queue):
             while True:
-                if flag_queue.qsize() == 0:
-                    if queue.qsize() < TRAINING_SET_SIZE_PER_EPOCH:
-                        queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
-                else:
-                    break
+                try:
+                    if flag_queue.qsize() == 0:
+                        if queue.qsize() < TRAINING_SET_SIZE_PER_EPOCH:
+                            queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
+                    else:
+                        break
+                except:
+                    pass
 
         producers = [Thread(target=create_work, args=[trajectories_queue, flag_queue], daemon=True) for _ in range(multiprocessing.cpu_count())]
 
@@ -426,7 +429,7 @@ class PredictiveModel(Document):
                 shuffle=True
             ).history
 
-        flag_queue.put(None)
+        flag_queue.put(True)
 
         for p in producers:
             p.join()
