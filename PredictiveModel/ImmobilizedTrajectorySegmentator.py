@@ -51,8 +51,6 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
-        self.architecture.summary()
-
     def predict(self, trajectories):
         X = self.transform_trajectories_to_input(trajectories)
         Y_predicted = self.architecture.predict(X)
