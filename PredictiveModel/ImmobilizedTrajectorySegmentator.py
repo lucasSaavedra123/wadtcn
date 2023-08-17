@@ -27,7 +27,7 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
     def default_hyperparameters(self):
         return {
             'lr': 0.001,
-            'epochs': 5,
+            'epochs': 100,
             'batch_size': 16,
             'amsgrad': False,
             'epsilon': 1e-6,
