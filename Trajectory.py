@@ -68,7 +68,7 @@ class Trajectory(Document):
 
         return trajectories
 
-    def __init__(self, x, y=None, z=None, model_category=None, noise_x=None, noise_y=None, noise_z=None, noisy=False, t=None, exponent=None, exponent_type='anomalous', info={}):
+    def __init__(self, x, y=None, z=None, model_category=None, noise_x=None, noise_y=None, noise_z=None, noisy=False, t=None, exponent=None, exponent_type='anomalous', info={}, **kwargs):
 
         if exponent_type == "anomalous":
             self.anomalous_exponent = exponent
@@ -91,7 +91,8 @@ class Trajectory(Document):
             noise_y=noise_y,
             noise_z=noise_z,
             noisy=noisy,
-            info=info
+            info=info,
+            **kwargs
         )
 
     def get_anomalous_exponent(self):
