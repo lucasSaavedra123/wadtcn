@@ -1,55 +1,22 @@
 import tqdm
 import pandas as pd
-import numpy as np
-from scipy.io import loadmat
-
 
 from Trajectory import Trajectory
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import CustomDataSimulation
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
-from TheoreticalModels import ALL_MODELS
-from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME
+
+from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
+
+DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+lengths = set(sorted([trajectory.length for trajectory in Trajectory.objects() if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]))
+DatabaseHandler.disconnect()
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
-
-from scipy.io import loadmat
-from Trajectory import Trajectory
-mat_data = loadmat('all_tracks_thunder_localizer.mat')
-# Orden en la struct [BTX|mAb] [CDx|Control|CDx-Chol]
-dataset = []
-# Add each label and condition to the dataset
-dataset.append({'label': 'BTX',
-                'exp_cond': 'CDx',
-                'tracks': mat_data['tracks'][0][0]})
-dataset.append({'label': 'BTX',
-                'exp_cond': 'Control',
-                'tracks': mat_data['tracks'][0][1]})
-dataset.append({'label': 'BTX',
-                'exp_cond': 'CDx-Chol',
-                'tracks': mat_data['tracks'][0][2]})
-dataset.append({'label': 'mAb',
-                'exp_cond': 'CDx',
-                'tracks': mat_data['tracks'][1][0]})
-dataset.append({'label': 'mAb',
-                'exp_cond': 'Control',
-                'tracks': mat_data['tracks'][1][1]})
-dataset.append({'label': 'mAb',
-                'exp_cond': 'CDx-Chol',
-                'tracks': mat_data['tracks'][1][2]})
-
-lengths = []
-
-for data in dataset:
-    trajectories = Trajectory.from_mat_dataset(data['tracks'], data['label'], data['exp_cond'])
-    for trajectory in trajectories:
-        if not trajectory.is_immobile(1.8) and trajectory.length >= 25:
-            lengths.append(trajectory.length)
-
-lengths = np.unique(np.sort(np.array(lengths)))
-
 already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
+
+print("Number of Lengths:", len(lengths))
 
 length_and_f1_score = {
     'length': [],
