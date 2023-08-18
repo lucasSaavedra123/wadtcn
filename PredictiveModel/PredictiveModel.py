@@ -2,7 +2,7 @@ import pickle
 import os
 from threading import Thread, Event
 import multiprocessing
-from queue import Queue
+from queue import Queue, Full
 
 from mongoengine import Document, IntField, FileField, DictField, FloatField, BooleanField, StringField
 from keras.callbacks import EarlyStopping, Callback
@@ -406,7 +406,10 @@ class PredictiveModel(Document):
 
         def create_work(queue, stop_event):
             while not stop_event.is_set():
-                queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0])
+                try:
+                    queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0], block=False)
+                except Full:
+                    pass
 
         producers = [Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True) for _ in range(multiprocessing.cpu_count())]
 
@@ -420,7 +423,7 @@ class PredictiveModel(Document):
                 ThreadedTrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                validation_data=ThreadedTrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
                 shuffle=True
             ).history
 
