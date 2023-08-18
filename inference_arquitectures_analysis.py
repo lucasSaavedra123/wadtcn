@@ -136,3 +136,5 @@ for length in tqdm.tqdm(lengths):
         length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
 
     pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
+
+DatabaseHandler.disconnect()
