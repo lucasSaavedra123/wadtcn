@@ -408,13 +408,14 @@ class PredictiveModel(Document):
             while not stop_event.is_set():
                 try:
                     queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0], block=False)
+                    print("Repongo...")
                 except Full:
                     pass
+            print("STOPPING")
 
-        producers = [Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True) for _ in range(multiprocessing.cpu_count())]
-
-        for p in producers:
-            p.start()
+        producer = Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True)
+        
+        producer.start()
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
@@ -429,8 +430,7 @@ class PredictiveModel(Document):
 
         finished_training_event.set()
 
-        for p in producers:
-            p.join()
+        producer.join()
 
         if self.trained:
             for dict_key in history_training_info:
