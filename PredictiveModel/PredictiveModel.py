@@ -408,7 +408,6 @@ class PredictiveModel(Document):
             while not stop_event.is_set():
                 try:
                     queue.put(self.simulator().simulate_trajectories_by_model(1, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)[0], block=False)
-                    print("Repongo...")
                 except Full:
                     pass
             print("STOPPING")
