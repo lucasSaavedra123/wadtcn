@@ -88,7 +88,7 @@ for length in tqdm.tqdm(lengths):
             raise msg
 
 for length in tqdm.tqdm(lengths):
-    trajectories = AndiDataSimulation().simulate_trajectories_by_model(1000, length, length, ANDI_MODELS)
+    trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
 
     length_and_f1_score['length'].append(length)
 
