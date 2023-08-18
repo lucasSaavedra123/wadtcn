@@ -5,8 +5,7 @@ from TheoreticalModels.TwoStateObstructedDiffusion import TwoStateObstructedDiff
 
 
 from tensorflow.keras.optimizers.legacy import Adam
-
-from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -103,3 +102,11 @@ class ObstructedTrajectorySegmentator(PredictiveModel):
 
     def __str__(self):
         return f"obstructed_trajectory_segmentator_length_{self.trajectory_length}"
+
+    def model_micro_f1_score(self, trajectories=None):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
+        Y_predicted = self.predict(trajectories).flatten()
+        return f1_score(ground_truth, Y_predicted, average="micro")
