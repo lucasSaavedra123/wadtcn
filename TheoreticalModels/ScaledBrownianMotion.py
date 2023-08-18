@@ -50,8 +50,8 @@ class ScaledBrownianMotion(Model):
         posX = np.cumsum(dx)-dx[0]
         posY = np.cumsum(dy)-dy[0]
 
-        x = posX[:trajectory_length] * (EXPERIMENT_PIXEL_SIZE / 10)#* 1000 #to nm
-        y = posY[:trajectory_length] * (EXPERIMENT_PIXEL_SIZE / 10)#* 1000 #to nm
+        x = posX[:trajectory_length] * (EXPERIMENT_PIXEL_SIZE)#* 1000 #to nm
+        y = posY[:trajectory_length] * (EXPERIMENT_PIXEL_SIZE)#* 1000 #to nm
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
         t = t[:trajectory_length]
