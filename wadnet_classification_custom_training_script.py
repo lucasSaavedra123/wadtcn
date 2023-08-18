@@ -1,5 +1,6 @@
 import tqdm
 import pandas as pd
+import numpy as np
 
 from Trajectory import Trajectory
 from DatabaseHandler import DatabaseHandler
@@ -9,7 +10,7 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
-lengths = set(sorted([trajectory.length for trajectory in Trajectory.objects() if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]))
+lengths = np.sort(np.unique([int(trajectory.length) for trajectory in Trajectory.objects() if (not trajectory.is_immobile(IMMOBILE_THRESHOLD)) and trajectory.length >= 25]))
 DatabaseHandler.disconnect()
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
@@ -45,6 +46,6 @@ for length in tqdm.tqdm(lengths):
     if length == 25:
         classifier.plot_confusion_matrix()
 
-    pd.DataFrame(length_and_f1_score).to_csv('result.csv', index=False)
+    pd.DataFrame(length_and_f1_score).to_csv('custom_model_classification_result.csv', index=False)
 
 DatabaseHandler.disconnect()
