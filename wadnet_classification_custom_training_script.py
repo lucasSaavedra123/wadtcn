@@ -1,3 +1,5 @@
+import os
+
 import tqdm
 import pandas as pd
 import numpy as np
@@ -9,9 +11,16 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
-lengths = np.sort(np.unique([int(trajectory.length) for trajectory in Trajectory.objects() if (not trajectory.is_immobile(IMMOBILE_THRESHOLD)) and trajectory.length >= 25]))
-DatabaseHandler.disconnect()
+if not os.path.exists('lengths_cache.txt'):
+    DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+    lengths = np.sort(np.unique([int(trajectory.length) for trajectory in Trajectory.objects() if (not trajectory.is_immobile(IMMOBILE_THRESHOLD)) and trajectory.length >= 25]))
+    DatabaseHandler.disconnect()
+
+    with open('lengths_cache.txt', 'w') as file:
+        file.write('\n'.join(str(length) for length in lengths))
+else:
+    with open('lengths_cache.txt', 'r') as file:
+        lengths = [int(line.strip()) for line in file.readlines()]
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
