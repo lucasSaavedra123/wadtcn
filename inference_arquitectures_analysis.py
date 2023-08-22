@@ -89,52 +89,56 @@ for length in tqdm.tqdm(lengths):
             raise msg
 
 for length in tqdm.tqdm(lengths):
-    trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
+    
+    try:
+        trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
 
-    length_and_f1_score['length'].append(length)
+        length_and_f1_score['length'].append(length)
 
-    for info in zip(
-        ('mae_wadtcn', 'mae_lstm'),
-        ('custom', LSTMAnomalousExponentPredicter)
-    ):
-        
-        if info[1] == LSTMAnomalousExponentPredicter:            
-            predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers)
-            ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)
-        else:
-            predictions = []
-            ground_truth = []
+        for info in zip(
+            ('mae_wadtcn', 'mae_lstm'),
+            ('custom', LSTMAnomalousExponentPredicter)
+        ):
+            
+            if info[1] == LSTMAnomalousExponentPredicter:            
+                predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers)
+                ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)
+            else:
+                predictions = []
+                ground_truth = []
 
-            initial_classifications = length_to_networks[length]['classification_general'].predict(trajectories).tolist()
-            initial_classifications = [length_to_networks[length]['classification_general'].models_involved_in_predictive_model[index].STRING_LABEL for index in initial_classifications]
+                initial_classifications = length_to_networks[length]['classification_general'].predict(trajectories).tolist()
+                initial_classifications = [length_to_networks[length]['classification_general'].models_involved_in_predictive_model[index].STRING_LABEL for index in initial_classifications]
 
-            def model_to_number(x):
-                return [model_class.STRING_LABEL for model_class in length_to_networks[length]['classification_general'].models_involved_in_predictive_model].index(x[0])
+                def model_to_number(x):
+                    return [model_class.STRING_LABEL for model_class in length_to_networks[length]['classification_general'].models_involved_in_predictive_model].index(x[0])
 
-            grouped_trajectories = {key: [objeto for _, objeto in group] for key, group in groupby(sorted(zip(initial_classifications, trajectories), key=model_to_number), key=lambda x: x[0])}
+                grouped_trajectories = {key: [objeto for _, objeto in group] for key, group in groupby(sorted(zip(initial_classifications, trajectories), key=model_to_number), key=lambda x: x[0])}
 
-            for model_classified_string in grouped_trajectories:
-                model_classified_trayectories = grouped_trajectories[model_classified_string]
+                for model_classified_string in grouped_trajectories:
+                    model_classified_trayectories = grouped_trajectories[model_classified_string]
 
-                if model_classified_string == 'fbm' or model_classified_string == 'sbm':
-                    sub_classifications = length_to_networks[length][f'classification_{model_classified_string}'].predict(model_classified_trayectories).tolist()
-                    sub_classifications = [length_to_networks[length][f'classification_{model_classified_string}'].models_involved_in_predictive_model[index].STRING_LABEL for index in sub_classifications]
+                    if model_classified_string == 'fbm' or model_classified_string == 'sbm':
+                        sub_classifications = length_to_networks[length][f'classification_{model_classified_string}'].predict(model_classified_trayectories).tolist()
+                        sub_classifications = [length_to_networks[length][f'classification_{model_classified_string}'].models_involved_in_predictive_model[index].STRING_LABEL for index in sub_classifications]
 
-                    def sub_model_to_number(x):
-                        return [model_class.STRING_LABEL for model_class in length_to_networks[length][f'classification_{model_classified_string}'].models_involved_in_predictive_model].index(x[0])
+                        def sub_model_to_number(x):
+                            return [model_class.STRING_LABEL for model_class in length_to_networks[length][f'classification_{model_classified_string}'].models_involved_in_predictive_model].index(x[0])
 
-                    sub_grouped_trajectories = {key: [objeto for _, objeto in group] for key, group in groupby(sorted(zip(sub_classifications, model_classified_trayectories), key=sub_model_to_number), key=lambda x: x[0])}
+                        sub_grouped_trajectories = {key: [objeto for _, objeto in group] for key, group in groupby(sorted(zip(sub_classifications, model_classified_trayectories), key=sub_model_to_number), key=lambda x: x[0])}
 
-                    for sub_model_classified_string in sub_grouped_trajectories:
-                        ground_truth += [trajectory.anomalous_exponent for trajectory in sub_grouped_trajectories[sub_model_classified_string]]
-                        predictions += (length_to_networks[length][f'inference_{sub_model_classified_string}'].predict(sub_grouped_trajectories[sub_model_classified_string])[:,0] * 2).tolist()
+                        for sub_model_classified_string in sub_grouped_trajectories:
+                            ground_truth += [trajectory.anomalous_exponent for trajectory in sub_grouped_trajectories[sub_model_classified_string]]
+                            predictions += (length_to_networks[length][f'inference_{sub_model_classified_string}'].predict(sub_grouped_trajectories[sub_model_classified_string])[:,0] * 2).tolist()
 
-                else:
-                    ground_truth += [trajectory.anomalous_exponent for trajectory in model_classified_trayectories]
-                    predictions += (length_to_networks[length][f'inference_{model_classified_string}'].predict(model_classified_trayectories)[:,0] * 2).tolist()
+                    else:
+                        ground_truth += [trajectory.anomalous_exponent for trajectory in model_classified_trayectories]
+                        predictions += (length_to_networks[length][f'inference_{model_classified_string}'].predict(model_classified_trayectories)[:,0] * 2).tolist()
 
-        length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
+            length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
 
-    pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
+        pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
+    except KeyError:
+        break
 
 DatabaseHandler.disconnect()
