@@ -1,5 +1,6 @@
 import tqdm
 import pandas as pd
+from tensorflow.keras.backend import clear_session
 
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import AndiDataSimulation
@@ -13,6 +14,7 @@ DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffu
 lengths = list(range(25,1000,25))
 
 for length in tqdm.tqdm(lengths):
+    clear_session()
     for network_class in [WaveNetTCNFBMModelClassifier, WaveNetTCNSBMModelClassifier, WavenetTCNWithLSTMHurstExponentPredicter]:
 
         if network_class == WavenetTCNWithLSTMHurstExponentPredicter:
