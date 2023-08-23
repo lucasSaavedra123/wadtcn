@@ -3,6 +3,7 @@ import os
 import tqdm
 import pandas as pd
 import numpy as np
+from tensorflow.keras.backend import clear_session
 
 from Trajectory import Trajectory
 from DatabaseHandler import DatabaseHandler
@@ -35,6 +36,7 @@ length_and_f1_score = {
 
 for length in tqdm.tqdm(lengths):
     print(length)
+    clear_session()
     networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
 
     if len(networks_of_length) == 0:
@@ -52,7 +54,7 @@ for length in tqdm.tqdm(lengths):
     length_and_f1_score['length'].append(length)
     length_and_f1_score['f1'].append(classifier.model_micro_f1_score())
 
-    if length == 25:
+    if length == 25 or length == 50:
         classifier.plot_confusion_matrix()
 
     pd.DataFrame(length_and_f1_score).to_csv('custom_model_classification_result.csv', index=False)
