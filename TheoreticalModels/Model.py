@@ -79,7 +79,7 @@ class Model():
         else:
             step_by_step = trajectory_time / trajectory_length
 
-            new_length = int(trajectory_length * np.random.uniform(1,1.5))
+            new_length = int(trajectory_length * np.random.uniform(1,2))
 
             simulation_result = self.custom_simulate_rawly(new_length, new_length * step_by_step)
 
