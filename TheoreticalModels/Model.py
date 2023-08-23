@@ -77,7 +77,24 @@ class Model():
                 noisy=True
             )
         else:
-            simulation_result = self.custom_simulate_rawly(trajectory_length, trajectory_time)
+            step_by_step = trajectory_time / trajectory_length
+
+            new_length = int(trajectory_length * np.random.uniform(1,1.5))
+
+            simulation_result = self.custom_simulate_rawly(new_length, new_length * step_by_step)
+
+            current_length = new_length
+
+            while current_length > trajectory_length:
+                index_to_delete = np.random.choice(list(range(0, current_length)))
+
+                simulation_result['x'] = np.delete(simulation_result['x'], index_to_delete)
+                simulation_result['y'] = np.delete(simulation_result['y'], index_to_delete)
+                simulation_result['t'] = np.delete(simulation_result['t'], index_to_delete)
+                simulation_result['x_noisy'] = np.delete(simulation_result['x_noisy'], index_to_delete)
+                simulation_result['y_noisy'] = np.delete(simulation_result['y_noisy'], index_to_delete)
+
+                current_length-=1
 
             trajectory = Trajectory(
                 simulation_result['x'],
@@ -90,6 +107,8 @@ class Model():
                 model_category=self,
                 info=simulation_result['info']
             )
+
+            assert trajectory.length == trajectory_length
 
             check_one = False #(min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
             check_two = False #(min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)

@@ -129,6 +129,10 @@ class Trajectory(Document):
         return np.copy(np.reshape(self.z, (len(self.z))))
     """
 
+    @property
+    def duration(self):
+        return self.get_time()[-1] - self.get_time()[0]
+
     def get_time(self):
         if self.t is None:
             raise Exception("Time was not given")
