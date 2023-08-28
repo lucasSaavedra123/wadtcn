@@ -94,6 +94,9 @@ class Model():
                 simulation_result['x_noisy'] = np.delete(simulation_result['x_noisy'], index_to_delete)
                 simulation_result['y_noisy'] = np.delete(simulation_result['y_noisy'], index_to_delete)
 
+                if 'state' in simulation_result['info']:
+                    simulation_result['info']['state'] = np.delete(simulation_result['info']['state'], index_to_delete)
+
                 current_length-=1
 
             trajectory = Trajectory(
