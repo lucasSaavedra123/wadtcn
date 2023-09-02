@@ -23,7 +23,7 @@ from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPool
 from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 
-from model_utils import *
+from .model_utils import *
 from CONSTANTS import *
 
 class OriginalHurstExponentPredicter(PredictiveModel):
@@ -102,17 +102,19 @@ class OriginalHurstExponentPredicter(PredictiveModel):
         return transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
 
     def build_network(self):
-        inputs = Input(shape=(self.track_length, 2))
-        x = LSTM(units=64, return_sequences=True, input_shape=(2, self.track_length))(inputs)
+        inputs = Input(shape=(self.trajectory_length, 2))
+        x = LSTM(units=64, return_sequences=True, input_shape=(self.trajectory_length, 2))(inputs)
         x = LSTM(units=16)(x)
         x = Dense(units=128, activation='selu')(x)
         output_network = Dense(units=1, activation='sigmoid')(x)
 
-        self.arquitecture = Model(inputs=inputs, outputs=output_network)
+        self.architecture = Model(inputs=inputs, outputs=output_network)
 
-        optimizer = Adam(lr=self.net_params[self.fbm_type]['lr'], epsilon=self.net_params[self.fbm_type]['epsilon'],
-                         amsgrad=self.net_params[self.fbm_type]['amsgrad'])
-
+        optimizer = Adam(
+            lr=self.hyperparameters['lr'],
+            epsilon=self.hyperparameters['epsilon'],
+            amsgrad=self.hyperparameters['amsgrad']
+        )
 
         self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
