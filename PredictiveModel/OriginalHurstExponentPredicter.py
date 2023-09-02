@@ -11,6 +11,21 @@ from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian,
 from .PredictiveModel import PredictiveModel
 from .model_utils import transform_trajectories_into_raw_trajectories, transform_trajectories_to_hurst_exponent
 
+from .PredictiveModel import PredictiveModel
+from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionBrownian, ScaledBrownianMotionSuperDiffusive
+from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate
+from keras.models import Model
+from tensorflow.keras.utils import Sequence
+
+import numpy as np
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate
+from keras.callbacks import EarlyStopping
+from tensorflow import device, config
+
+from model_utils import *
+from CONSTANTS import *
+
 class OriginalHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
@@ -103,4 +118,37 @@ class OriginalHurstExponentPredicter(PredictiveModel):
 
     @property
     def type_name(self):
-        return 'wavenet_hurst_exponent'
+        return 'original_hurst_exponent'
+
+    def fit(self):
+        self.build_network()
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [
+                EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")
+            ]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+
+        with device(device_name):
+            history_training_info = self.architecture.fit(
+                X_train,
+                Y_train,
+                epochs=self.hyperparameters['epochs'],
+                callbacks=callbacks,
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset), shuffle=True
+            ).history
+
+        self.history_training_info = history_training_info
+        self.trained = True
