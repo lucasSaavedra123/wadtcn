@@ -37,7 +37,7 @@ length_to_original_networks = {}
 
 for length in tqdm.tqdm(lengths):
     try:
-        length_to_custom_networks[length] = get_arquitectures_for_inference(length, AndiDataSimulation, 'wadnet')
+        length_to_custom_networks[length] = get_arquitectures_for_inference(length, AndiDataSimulation, 'wadtcn')
         length_to_original_networks[length] = get_arquitectures_for_inference(length, AndiDataSimulation, 'original')
     except AssertionError as msg:
         if str(msg) == 'Not trained yet':
@@ -54,14 +54,14 @@ for length in tqdm.tqdm(lengths):
 
         for info in zip(
             ('mae_wadtcn', 'mae_lstm', 'mae_original'),
-            ('custom', LSTMAnomalousExponentPredicter, 'original')
+            ('wadtcn', LSTMAnomalousExponentPredicter, 'original')
         ):
             
             if info[1] == LSTMAnomalousExponentPredicter:            
                 predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers)
                 ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)
             else:
-                dictionary_to_use = length_to_custom_networks[length] if info[1] == 'custom' else length_to_original_networks[length]
+                dictionary_to_use = length_to_custom_networks[length] if info[1] == 'wadtcn' else length_to_original_networks[length]
                 ground_truth, predictions = infer_with_concatenated_networks(dictionary_to_use, trajectories, return_ground_truth=True)
 
             length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))

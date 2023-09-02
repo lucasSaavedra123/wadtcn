@@ -13,7 +13,7 @@ from TheoreticalModels import ALL_SUB_MODELS
 def get_arquitectures_for_inference(length, simulator, architecture_label):
     networks = {}
 
-    if architecture_label == 'wadnet':
+    if architecture_label == 'wadtcn':
         class_to_string = {
             WaveNetTCNFBMModelClassifier: 'fbm',
             WaveNetTCNSBMModelClassifier: 'sbm',
