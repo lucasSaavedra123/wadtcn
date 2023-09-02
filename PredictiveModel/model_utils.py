@@ -4,7 +4,7 @@ from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPool
 from keras.models import Model
 
 
-def transform_trajectories_into_displacements(predictive_model, trajectories):
+def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
 
     def axis_adaptation_to_net(axis_data, track_length):
@@ -17,20 +17,20 @@ def transform_trajectories_into_displacements(predictive_model, trajectories):
         X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), predictive_model.trajectory_length)
         X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), predictive_model.trajectory_length)
 
-        if predictive_model.simulator.STRING_LABEL == 'andi':
+        if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = (X[index, :, 0] - np.mean(X[index, :, 0]))/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
             X[index, :, 1] = (X[index, :, 1] - np.mean(X[index, :, 1]))/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
     return X
 
-def transform_trajectories_into_raw_trajectories(predictive_model, trajectories):
+def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
 
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
 
-        if predictive_model.simulator.STRING_LABEL == 'andi':
+        if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
             X[index, :, 1] = X[index, :, 1]/(np.std(X[index, :, 1]) if np.std(X[index, :, 1])!= 0 else 1)
 
