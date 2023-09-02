@@ -10,7 +10,7 @@ from PredictiveModel.OriginalHurstExponentPredicter import OriginalHurstExponent
 from PredictiveModel.OriginalTheoreticalModelClassifier import OriginalTheoreticalModelClassifier
 from TheoreticalModels import ALL_SUB_MODELS
 
-def get_arquitectures_for_inference(length, simulator, architecture_label):
+def get_architectures_for_inference(length, simulator, architecture_label):
     networks = {}
 
     if architecture_label == 'wadtcn':

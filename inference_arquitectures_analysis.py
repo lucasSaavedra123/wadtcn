@@ -8,7 +8,7 @@ from PredictiveModel.model_utils import transform_trajectories_to_anomalous_expo
 from sklearn.metrics import f1_score, mean_absolute_error
 
 from PredictiveModel.LSTMAnomalousExponentPredicter import LSTMAnomalousExponentPredicter
-from PredictiveModel.inference_utils import get_arquitectures_for_inference,  infer_with_concatenated_networks
+from PredictiveModel.inference_utils import get_architectures_for_inference,  infer_with_concatenated_networks
 
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import AndiDataSimulation
@@ -37,8 +37,8 @@ length_to_original_networks = {}
 
 for length in tqdm.tqdm(lengths):
     try:
-        length_to_custom_networks[length] = get_arquitectures_for_inference(length, AndiDataSimulation, 'wadtcn')
-        length_to_original_networks[length] = get_arquitectures_for_inference(length, AndiDataSimulation, 'original')
+        length_to_custom_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'wadtcn')
+        length_to_original_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'original')
     except AssertionError as msg:
         if str(msg) == 'Not trained yet':
             break

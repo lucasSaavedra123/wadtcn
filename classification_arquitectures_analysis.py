@@ -94,9 +94,9 @@ for length in tqdm.tqdm(lengths):
         (WaveNetTCNTheoreticalModelClassifier, OriginalTheoreticalModelClassifier, LSTMTheoreticalModelClassifier)
     ):
         if info[1] != LSTMTheoreticalModelClassifier:
-            arquitecture = info[1]        
+            architecture = info[1]        
 
-            already_trained_networks = arquitecture.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=arquitecture.selected_hyperparameters())
+            already_trained_networks = architecture.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=architecture.selected_hyperparameters())
             picked_network = [network for network in already_trained_networks if network.trajectory_length == length][0]
 
             picked_network.enable_database_persistance()
