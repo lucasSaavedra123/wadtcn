@@ -23,6 +23,7 @@ length_and_f1_score = {
     'mae_wadtcn': []
 }
 
+print("Loading RANDI networks...")
 for length in tqdm.tqdm(randi_lengths):
     classifier = LSTMAnomalousExponentPredicter(length, length, simulator=AndiDataSimulation)
     classifier.load_as_file()
@@ -30,11 +31,12 @@ for length in tqdm.tqdm(randi_lengths):
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
-lengths = [25,50]#list(range(25,1000,25))
+lengths = list(range(25,1000,25))
 
 length_to_custom_networks = {}
 length_to_original_networks = {}
 
+print("Loading networks from MongoDB...")
 for length in tqdm.tqdm(lengths):
     try:
         length_to_custom_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'wadtcn')
@@ -46,28 +48,29 @@ for length in tqdm.tqdm(lengths):
             raise msg
 
 for length in tqdm.tqdm(lengths):
-    
-    try:
-        trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
+    trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
 
-        length_and_f1_score['length'].append(length)
+    length_and_f1_score['length'].append(length)
 
-        for info in zip(
-            ('mae_wadtcn', 'mae_lstm', 'mae_original'),
-            ('wadtcn', LSTMAnomalousExponentPredicter, 'original')
-        ):
-            
-            if info[1] == LSTMAnomalousExponentPredicter:            
-                predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers)
-                ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)
-            else:
+    for info in zip(
+        ('mae_wadtcn', 'mae_lstm', 'mae_original'),
+        ('wadtcn', LSTMAnomalousExponentPredicter, 'original')
+    ):
+        
+        if info[1] == LSTMAnomalousExponentPredicter:            
+            predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers)
+            ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)
+        else:
+            try:
                 dictionary_to_use = length_to_custom_networks[length] if info[1] == 'wadtcn' else length_to_original_networks[length]
                 ground_truth, predictions = infer_with_concatenated_networks(dictionary_to_use, trajectories, return_ground_truth=True)
+            except KeyError:
+                ground_truth = [0]
+                predictions = [0]
 
-            length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
+        length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
 
-        pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
-    except KeyError:
-        break
+    pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
+
 
 DatabaseHandler.disconnect()
