@@ -40,12 +40,20 @@ print("Loading networks from MongoDB...")
 for length in tqdm.tqdm(lengths):
     try:
         length_to_custom_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'wadtcn')
+    except AssertionError as msg:
+        if str(msg) == 'Not trained yet':
+            pass
+        else:
+            raise msg
+
+    try:
         length_to_original_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'original')
     except AssertionError as msg:
         if str(msg) == 'Not trained yet':
-            break
+            pass
         else:
             raise msg
+
 
 for length in tqdm.tqdm(lengths):
     trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
