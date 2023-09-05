@@ -18,9 +18,9 @@ randi_classifiers = []
 
 length_and_f1_score = {
     'length': [],
-    'mae_lstm': [],
+    'mae_wadtcn': [],
     'mae_original': [],
-    'mae_wadtcn': []
+    'mae_lstm': [],
 }
 
 print("Loading RANDI networks...")
