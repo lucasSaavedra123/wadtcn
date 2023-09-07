@@ -11,7 +11,7 @@ class FractionalBrownianMotion(Model):
     SUB_DIFFUSIVE_HURST_EXPONENT_RANGE = [0.05/2, 0.95/2]
     SUP_DIFFUSIVE_HURST_EXPONENT_RANGE = [1.05/2, 1.95/2]
     NOT_EXACT_BROWNIAN_HURST_EXPONENT_RANGE = [SUB_DIFFUSIVE_HURST_EXPONENT_RANGE[1], SUP_DIFFUSIVE_HURST_EXPONENT_RANGE[0]]
-    D_RANGE = [0.01, 0.5] #micrometer^2/s
+    D_RANGE = [0.001, 1] #micrometer^2/s
 
     @classmethod
     def create_random_instance(cls):

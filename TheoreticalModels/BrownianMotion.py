@@ -1,16 +1,14 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 
 from Trajectory import Trajectory
 
 
 class BrownianMotion(Model):
     STRING_LABEL="bm"
-    # d_high = 0.6
-    # d_low = 0.003
 
-    D_RANGE = [0.003, 0.6]
+    D_RANGE = [0.001, 1]
 
     def __init__(self, diffusion_coefficient):
         self.diffusion_coefficient = diffusion_coefficient
@@ -33,7 +31,7 @@ class BrownianMotion(Model):
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
 
-        t = np.linspace(0, trajectory_time, trajectory_length)
+        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,
@@ -43,7 +41,9 @@ class BrownianMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': 'anomalous',
             'exponent': 1,
-            'info': {}
+            'info': {
+                'diffusion_coefficient': self.diffusion_coefficient
+            }
         }
 
     def normalize_d_coefficient_to_net(self):

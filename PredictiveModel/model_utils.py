@@ -86,6 +86,14 @@ def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
 
     return Y
 
+def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), 1))
+
+    for index, trajectory in enumerate(trajectories):
+        Y[index, 0] = trajectory.info['diffusion_coefficient']
+
+    return Y
+
 def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
     x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
     x = BatchNormalization()(x)
