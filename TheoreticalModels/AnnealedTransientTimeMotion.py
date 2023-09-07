@@ -1,13 +1,13 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset, generate_diffusion_coefficient_and_transit_time_pair
+from TheoreticalModels.simulation_utils import add_noise_and_offset, generate_diffusion_coefficient_and_transit_time_pair, simulate_track_time
 
 
 class AnnealedTransientTimeMotion(Model):
     STRING_LABEL = 'attm'
     ANOMALOUS_EXPONENT_RANGE = [0.05, 0.95]
-    REGIMES = [1]
-    DIFFUSION_COEFFICIENT_RANGE = [0.02, 0.2]
+    REGIMES = [0,1,2]
+    DIFFUSION_COEFFICIENT_RANGE = [0.01, 0.5]
 
     @classmethod
     def create_random_instance(cls):
@@ -97,7 +97,7 @@ class AnnealedTransientTimeMotion(Model):
         posX, posY = np.cumsum(posX)[cut_index:trajectory_length+cut_index] * 1000, np.cumsum(posY)[cut_index:trajectory_length+cut_index] * 1000 #*1000 to nm
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, posX, posY)
-        t = np.arange(0, trajectory_length, 1) * time_per_step
+        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,

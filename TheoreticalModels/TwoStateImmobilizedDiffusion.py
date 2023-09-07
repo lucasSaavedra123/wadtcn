@@ -1,12 +1,8 @@
 import numpy as np
 
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 
-
-def simulate_track_time(track_length, track_time):
-    t = np.linspace(0, track_time, track_length)
-    return t
 
 class TwoStateImmobilizedDiffusion(Model):
     """
@@ -116,12 +112,12 @@ class TwoStateImmobilizedDiffusion(Model):
         y = np.array(y[:trajectory_length])
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
-        #t = simulate_track_time(trajectory_length, trajectory_time)
+        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,
             'y': y,
-            't': np.arange(0, trajectory_time, delta_t),
+            't': t,
             'x_noisy': x_noisy,
             'y_noisy': y_noisy,
             'exponent_type': None,

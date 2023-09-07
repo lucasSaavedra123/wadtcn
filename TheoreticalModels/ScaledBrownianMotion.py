@@ -1,6 +1,6 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 from scipy.special import erfcinv
 from CONSTANTS import EXPERIMENT_PIXEL_SIZE
 
@@ -41,8 +41,7 @@ class ScaledBrownianMotion(Model):
     """
     def custom_simulate_rawly(self, trajectory_length, trajectory_time, sigma=1):
         '''Creates a scaled brownian motion trajectory'''
-        time_per_step = trajectory_time/trajectory_length
-        t = np.arange(0, trajectory_length+1, 1) * time_per_step
+        t = simulate_track_time(trajectory_length+1, trajectory_time)
         msd = (sigma**2)*np.arange(trajectory_length+1)**self.anomalous_exponent
         deltas = np.sqrt(msd[1:]-msd[:-1])
         dx = np.sqrt(2)*deltas*erfcinv(2-2*np.random.rand(len(deltas)))            

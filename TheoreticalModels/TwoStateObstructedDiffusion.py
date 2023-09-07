@@ -1,11 +1,8 @@
 import numpy as np
 
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 
-def simulate_track_time(track_length, track_time):
-    t = np.linspace(0, track_time, track_length)
-    return t
 
 class TwoStateObstructedDiffusion(Model):
     """

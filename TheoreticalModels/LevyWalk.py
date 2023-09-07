@@ -1,6 +1,6 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 
 
 class LevyWalk(Model):
@@ -63,7 +63,7 @@ class LevyWalk(Model):
 
         x = (np.cumsum(posX)-posX[0]) * 1000 #to nm
         y = (np.cumsum(posY)-posY[0]) * 1000 #to nm
-        t = np.arange(0,trajectory_length,1)*trajectory_time/trajectory_length
+        t = simulate_track_time(trajectory_length, trajectory_time)
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
         t = np.arange(0, trajectory_length, 1) * time_per_step

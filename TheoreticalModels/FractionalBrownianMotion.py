@@ -1,10 +1,9 @@
 import numpy as np
-from scipy import fftpack
 
-from TheoreticalModels.simulation_utils import add_noise_and_offset
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 from CONSTANTS import EXPERIMENT_PIXEL_SIZE
 from TheoreticalModels.Model import Model
-
+from andi_datasets.models_phenom import models_phenom
 
 class FractionalBrownianMotion(Model):
     STRING_LABEL = 'fbm'
@@ -12,6 +11,7 @@ class FractionalBrownianMotion(Model):
     SUB_DIFFUSIVE_HURST_EXPONENT_RANGE = [0.05/2, 0.95/2]
     SUP_DIFFUSIVE_HURST_EXPONENT_RANGE = [1.05/2, 1.95/2]
     NOT_EXACT_BROWNIAN_HURST_EXPONENT_RANGE = [SUB_DIFFUSIVE_HURST_EXPONENT_RANGE[1], SUP_DIFFUSIVE_HURST_EXPONENT_RANGE[0]]
+    D_RANGE = [0.01, 0.5] #micrometer^2/s
 
     @classmethod
     def create_random_instance(cls):
@@ -24,24 +24,25 @@ class FractionalBrownianMotion(Model):
         elif selected_diffusion == 'brownian':
             selected_range = cls.NOT_EXACT_BROWNIAN_HURST_EXPONENT_RANGE
 
-        selected_hurst_exponent = np.random.uniform(
-            selected_range[0], selected_range[1])
+        selected_hurst_exponent = np.random.uniform(selected_range[0], selected_range[1])
+        selected_diffusion_coefficient = np.random.uniform(cls.D_RANGE[0], cls.D_RANGE[1])
 
-        return cls(hurst_exponent=selected_hurst_exponent)
+        return cls(hurst_exponent=selected_hurst_exponent, diffusion_coefficient=selected_diffusion_coefficient)
 
     @classmethod
     def string_label(cls):
         return cls.STRING_LABEL
 
-    def __init__(self, hurst_exponent=None):
+    def __init__(self, hurst_exponent=None, diffusion_coefficient=None):
         self.hurst_exponent = hurst_exponent
+        self.diffusion_coefficient = diffusion_coefficient
 
     @property
     def anomalous_exponent(self):
         return self.hurst_exponent * 2
 
     """
-    This simulation comes from paper:
+    Previous Works from ourt laboratory worked with the simulation presented on this paper:
 
     Granik N, Weiss LE, Nehme E, Levin M, Chein M, Perlson E, Roichman Y, Shechtman Y. 
     Single-Particle Diffusion Characterization by Deep Learning. 
@@ -49,41 +50,27 @@ class FractionalBrownianMotion(Model):
     PMID: 31280841; PMCID: PMC6701009.
     
     Original code: https://github.com/AnomDiffDB/DB/blob/master/utils.py
+
+    During the development of the new Andi-Challenge competition, a single-state fBM simulation
+    was developed that enables two parameters as input: anomalous exponent and diffusion
+    coefficient. This time We use that simulation.
     """
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
-        # first row of circulant matrix
-        r = np.zeros(trajectory_length+1)
-        r[0] = 1
-        idx = np.arange(1, trajectory_length+1, 1)
-        r[idx] = 0.5 * ((idx + 1) ** (2 * self.hurst_exponent) - 2 * idx ** (2 * self.hurst_exponent) + (idx - 1) ** (
-            2 * self.hurst_exponent))
-        r = np.concatenate((r, r[np.arange(len(r)-2, 0, -1)]))
+        micrometer_per_pixel = EXPERIMENT_PIXEL_SIZE / 1000
+        delta_t = trajectory_time / trajectory_length
 
-        # get eigenvalues through fourier transform
-        lamda = np.real(fftpack.fft(r))/(2*trajectory_length)
+        unidimensional_diffusion_coefficient = self.diffusion_coefficient * ((delta_t)/(micrometer_per_pixel**2)) #micrometer^2/s -> pixel^2/frame
 
-        # get trajectory using fft: dimensions assumed uncoupled
-        x = fftpack.fft(np.sqrt(lamda)*(np.random.normal(size=(2*trajectory_length)
-                                                         ) + 1j*np.random.normal(size=(2*trajectory_length))))
-        x = trajectory_length**(-self.hurst_exponent) * \
-            np.cumsum(np.real(x[:trajectory_length]))  # rescale
-        x = ((trajectory_time**self.hurst_exponent)*x)  # resulting traj. in x
-        y = fftpack.fft(np.sqrt(lamda)*(np.random.normal(size=(2*trajectory_length)
-                                                         ) + 1j*np.random.normal(size=(2*trajectory_length))))
-        y = trajectory_length**(-self.hurst_exponent) * \
-            np.cumsum(np.real(y[:trajectory_length]))  # rescale
-        y = ((trajectory_time**self.hurst_exponent)*y)  # resulting traj. in y
+        raw_trajectories, _ = models_phenom().single_state(
+            N = 1,
+            L=10/(EXPERIMENT_PIXEL_SIZE/1000),
+            T = trajectory_length,
+            Ds = unidimensional_diffusion_coefficient,
+            alphas = self.anomalous_exponent
+            )
 
-        t = np.arange(0,trajectory_length,1)/trajectory_length
-        t = t*trajectory_time  # scale for final time T
-
-        if np.min(x) < 0:
-            x = x + np.absolute(np.min(x))  # Add offset to x
-        if np.min(y) < 0:
-            y = y + np.absolute(np.min(y))  # Add offset to y
-
-        x = x * EXPERIMENT_PIXEL_SIZE
-        y = y * EXPERIMENT_PIXEL_SIZE
+        x,y = raw_trajectories[:,0,0] * EXPERIMENT_PIXEL_SIZE, raw_trajectories[:,0,1] * EXPERIMENT_PIXEL_SIZE
+        t = simulate_track_time(trajectory_length, trajectory_time)
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
 
@@ -95,7 +82,7 @@ class FractionalBrownianMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': 'hurst',
             'exponent': self.hurst_exponent,
-            'info': {}
+            'info': {'d': self.diffusion_coefficient}
         }
 
 class FractionalBrownianMotionSuperDiffusive(FractionalBrownianMotion):

@@ -101,6 +101,10 @@ def add_noise_and_offset(track_length, x, y):
     y_noisy = y_noisy + offset_y
     return x, x_noisy, y, y_noisy
 
+def simulate_track_time(track_length, track_time):
+    t = np.linspace(0, track_time, track_length)
+    return t
+
 # Disable
 def blockPrint():
     sys.stdout = open(os.devnull, 'w')

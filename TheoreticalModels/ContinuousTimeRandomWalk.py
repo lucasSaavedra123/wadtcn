@@ -1,6 +1,6 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset, symmetric_alpha_levy, mittag_leffler_rand
+from TheoreticalModels.simulation_utils import add_noise_and_offset, symmetric_alpha_levy, mittag_leffler_rand, simulate_track_time
 from CONSTANTS import EXPERIMENT_PIXEL_SIZE
 
 
@@ -56,7 +56,7 @@ class ContinuousTimeRandomWalk(Model):
         y = np.cumsum(y)
         y = np.reshape(y, [len(y), 1])
 
-        tOut = np.arange(0, trajectory_length, 1) * trajectory_time/trajectory_length
+        tOut = simulate_track_time(trajectory_length, trajectory_time)
         xOut = np.zeros([trajectory_length, 1])
         yOut = np.zeros([trajectory_length, 1])
         for i in range(trajectory_length):
