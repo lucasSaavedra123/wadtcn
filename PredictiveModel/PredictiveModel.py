@@ -1,7 +1,5 @@
 import pickle
-import os
 from threading import Thread, Event
-import multiprocessing
 from queue import Queue, Full
 
 from mongoengine import Document, IntField, FileField, DictField, FloatField, BooleanField, StringField
@@ -17,9 +15,9 @@ from sklearn.metrics import confusion_matrix, f1_score
 import matplotlib.patches as mpatches
 
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
-from DataSimulation import CustomDataSimulation, AndiDataSimulation
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
-from .model_utils import TrackGenerator, ThreadedTrackGenerator
+from DataSimulation import CustomDataSimulation, AndiDataSimulation
+from .model_utils import ThreadedTrackGenerator
 
 class CustomCallback(Callback):
     def __init__(self, thread_queue):

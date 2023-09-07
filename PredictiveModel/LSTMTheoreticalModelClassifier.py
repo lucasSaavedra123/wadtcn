@@ -87,7 +87,7 @@ class LSTMTheoreticalModelClassifier(PredictiveModel):
 
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}"
-    
+
     def save_as_file(self):
         raise Exception("RANDI is not persisted in MongoDB")
 

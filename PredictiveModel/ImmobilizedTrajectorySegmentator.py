@@ -91,8 +91,9 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         plt.savefig(str(self)+'.jpg')
         plt.clf()
 
-    def __str__(self):
-        return f"immobilized_trajectory_segmentator_length_{self.trajectory_length}"
+    @property
+    def type_name(self):
+        return "immobilized_trajectory_segmentator"
 
     def model_micro_f1_score(self, trajectories=None):
         if trajectories is None:

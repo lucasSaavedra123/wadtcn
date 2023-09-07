@@ -120,7 +120,7 @@ class OriginalHurstExponentPredicter(PredictiveModel):
 
     @property
     def type_name(self):
-        return 'original_hurst_exponent'
+        return f'original_hurst_exponent_{self.model}'
 
     def fit(self):
         self.build_network()
