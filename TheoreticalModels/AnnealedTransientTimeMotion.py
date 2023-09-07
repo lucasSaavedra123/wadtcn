@@ -6,7 +6,7 @@ from TheoreticalModels.simulation_utils import add_noise_and_offset, generate_di
 class AnnealedTransientTimeMotion(Model):
     STRING_LABEL = 'attm'
     ANOMALOUS_EXPONENT_RANGE = [0.05, 0.95]
-    REGIMES = [0,1,2]
+    REGIMES = [1]
     DIFFUSION_COEFFICIENT_RANGE = [0.01, 0.5]
 
     @classmethod
@@ -73,14 +73,6 @@ class AnnealedTransientTimeMotion(Model):
         extensions = 3
 
         while len(posX) < extensions * trajectory_length:
-            """
-            retry = True
-
-            while retry:
-                d, t = generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, 0.12, 0.10)
-                retry = not (self.__class__.DIFFUSION_COEFFICIENT_RANGE[0] < d < self.__class__.DIFFUSION_COEFFICIENT_RANGE[1])
-            """
-
             d, t = generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, 0.12, 0.10)
 
             number_of_steps =int(t/time_per_step)

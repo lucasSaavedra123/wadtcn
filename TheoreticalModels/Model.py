@@ -116,8 +116,7 @@ class Model():
             check_one = False #(min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
             check_two = False #(min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)
             check_three = ('switching' in simulation_result['info'] and not simulation_result['info']['switching'])
-            check_four = False #trajectory.is_immobile(IMMOBILE_THRESHOLD)
-            resimulate = any([check_one, check_two, check_three, check_four])
+            resimulate = any([check_one, check_two, check_three])
 
             if resimulate:
                 trajectory = self.__class__.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=False)
