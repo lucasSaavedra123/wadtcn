@@ -82,7 +82,7 @@ class FractionalBrownianMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': 'hurst',
             'exponent': self.hurst_exponent,
-            'info': {'d': self.diffusion_coefficient}
+            'info': {'diffusion_coefficient': self.diffusion_coefficient}
         }
 
 class FractionalBrownianMotionSuperDiffusive(FractionalBrownianMotion):
@@ -92,7 +92,8 @@ class FractionalBrownianMotionSuperDiffusive(FractionalBrownianMotion):
     def create_random_instance(cls):
         selected_range = cls.SUP_DIFFUSIVE_HURST_EXPONENT_RANGE
         selected_hurst_exponent = np.random.uniform(selected_range[0], selected_range[1])
-        return cls(hurst_exponent=selected_hurst_exponent)
+        selected_diffusion_coefficient = np.random.uniform(cls.D_RANGE[0], cls.D_RANGE[1])
+        return cls(hurst_exponent=selected_hurst_exponent, diffusion_coefficient=selected_diffusion_coefficient)
 
 class FractionalBrownianMotionSubDiffusive(FractionalBrownianMotion):
     STRING_LABEL = 'fbm_sub'
@@ -101,7 +102,8 @@ class FractionalBrownianMotionSubDiffusive(FractionalBrownianMotion):
     def create_random_instance(cls):
         selected_range = cls.SUB_DIFFUSIVE_HURST_EXPONENT_RANGE
         selected_hurst_exponent = np.random.uniform(selected_range[0], selected_range[1])
-        return cls(hurst_exponent=selected_hurst_exponent)
+        selected_diffusion_coefficient = np.random.uniform(cls.D_RANGE[0], cls.D_RANGE[1])
+        return cls(hurst_exponent=selected_hurst_exponent, diffusion_coefficient=selected_diffusion_coefficient)
 
 class FractionalBrownianMotionBrownian(FractionalBrownianMotion):
     STRING_LABEL = 'fbm_brownian'
@@ -110,4 +112,5 @@ class FractionalBrownianMotionBrownian(FractionalBrownianMotion):
     def create_random_instance(cls):
         selected_range = cls.NOT_EXACT_BROWNIAN_HURST_EXPONENT_RANGE
         selected_hurst_exponent = np.random.uniform(selected_range[0], selected_range[1])
-        return cls(hurst_exponent=selected_hurst_exponent)
+        selected_diffusion_coefficient = np.random.uniform(cls.D_RANGE[0], cls.D_RANGE[1])
+        return cls(hurst_exponent=selected_hurst_exponent, diffusion_coefficient=selected_diffusion_coefficient)
