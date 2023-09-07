@@ -41,7 +41,7 @@ class ScaledBrownianMotion(Model):
     """
     def custom_simulate_rawly(self, trajectory_length, trajectory_time, sigma=1):
         '''Creates a scaled brownian motion trajectory'''
-        t = simulate_track_time(trajectory_length+1, trajectory_time)
+        t = simulate_track_time(trajectory_length+1, trajectory_time+(trajectory_time/trajectory_length))
         msd = (sigma**2)*np.arange(trajectory_length+1)**self.anomalous_exponent
         deltas = np.sqrt(msd[1:]-msd[:-1])
         dx = np.sqrt(2)*deltas*erfcinv(2-2*np.random.rand(len(deltas)))            

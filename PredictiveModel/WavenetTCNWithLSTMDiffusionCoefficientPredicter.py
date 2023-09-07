@@ -1,11 +1,10 @@
-import numpy as np
-from keras.layers import Dense, Input, LSTM, Bidirectional
+from keras.layers import Dense, Input, GlobalAveragePooling1D
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_to_diffusion_coefficient
+from .model_utils import convolutional_block, WaveNetEncoder, transform_trajectories_to_diffusion_coefficient, transform_trajectories_into_squared_differences
 
 class WavenetTCNWithLSTMDiffusionCoefficientPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -62,22 +61,20 @@ class WavenetTCNWithLSTMDiffusionCoefficientPredicter(PredictiveModel):
         return transform_trajectories_to_diffusion_coefficient(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+        return transform_trajectories_into_squared_differences(self, trajectories, normalize=True)
 
     def build_network(self):
-        inputs = Input(shape=(self.trajectory_length-1, 2))
-        filters = 64
+        inputs = Input(shape=(self.trajectory_length-1, 1))
+        filters = 32
         dilation_depth = 8
         initializer = 'he_normal'
 
         x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
-
         x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
+        x = GlobalAveragePooling1D()(x)
 
-        x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
-        x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
-
-        x = Dense(units=128, activation='selu')(x)
+        x = Dense(units=256, activation='relu')(x)
+        x = Dense(units=128, activation='relu')(x)
         output_network = Dense(units=1, activation='sigmoid')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)

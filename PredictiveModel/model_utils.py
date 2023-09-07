@@ -23,6 +23,21 @@ def transform_trajectories_into_displacements(predictive_model, trajectories, no
 
     return X
 
+def transform_trajectories_into_squared_differences(predictive_model, trajectories, normalize=False):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 1))
+
+    for index, trajectory in enumerate(trajectories):
+        r = np.sqrt((trajectory.get_noisy_x()**2) + (trajectory.get_noisy_y()**2))
+        diff = np.diff(r)
+        diff_sq = diff**2
+
+        if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
+            diff_sq = diff_sq - np.mean(diff_sq)
+
+        X[index, :, 0] = diff_sq
+
+    return X
+
 def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
 
