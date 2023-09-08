@@ -56,7 +56,7 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
         initializer = 'he_normal'
 
         x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
-        x = convolutional_block(self, inputs, filters, 3, [1,2,4], initializer)
+        x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
         x = GlobalAveragePooling1D()(x)
 
         x = Dense(units=256, activation='relu')(x)
