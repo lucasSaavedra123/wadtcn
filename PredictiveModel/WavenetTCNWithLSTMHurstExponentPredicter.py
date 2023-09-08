@@ -9,7 +9,9 @@ from TheoreticalModels.LevyWalk import LevyWalk
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
 from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
-from .model_utils import transform_trajectories_into_displacements, convolutional_block, WaveNetEncoder, transform_trajectories_to_hurst_exponent
+from .model_utils import *
+from CONSTANTS import *
+
 
 class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -115,3 +117,27 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
     @property
     def type_name(self):
         return 'wavenet_hurst_exponent'
+
+    def plot_bias(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
+        predicted = self.predict(trajectories).flatten() * 2
+
+        plot_bias(ground_truth, predicted, symbol='alpha')
+
+    def plot_predicted_and_ground_truth_distribution(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
+        predicted = self.predict(trajectories).flatten() * 2
+
+        plot_predicted_and_ground_truth_distribution(ground_truth, predicted)
+
+    def plot_predicted_and_ground_truth_histogram(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
+        predicted = self.predict(trajectories).flatten() * 2
+
+        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=[[0,2],[0,2]])

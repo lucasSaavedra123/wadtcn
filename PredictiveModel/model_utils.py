@@ -3,6 +3,10 @@ from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D
 from keras.models import Model
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
 
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -322,3 +326,35 @@ class TrackGenerator(Sequence):
 
     def __len__(self):
         return self.batches
+
+#Ploters
+def plot_bias(ground_truth, predicted, symbol=None):
+    assert symbol in ['alpha', 'd']
+
+    difference = predicted - ground_truth
+    x_label = r'$\alpha _{P} - \alpha _{GT}$' if symbol=='alpha' else r'$D _{P} - D _{GT}$'
+
+    sns.kdeplot(difference, color='blue', fill=True)
+    plt.rcParams.update({'font.size': 15})
+    plt.ylabel('Frequency', fontsize=15)
+    plt.xlabel(x_label, fontsize=15)
+
+    plt.grid()
+    plt.show()
+
+def plot_predicted_and_ground_truth_distribution(ground_truth, predicted):
+    sns.kdeplot(ground_truth, color='green', fill=True)
+    sns.kdeplot(predicted, color='red', fill=True)
+    plt.rcParams.update({'font.size': 15})
+    plt.ylabel('Frequency', fontsize=15)
+    plt.xlabel('Values', fontsize=15)
+    plt.grid()
+    plt.show()
+
+def plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=None):
+    plt.hist2d(ground_truth, predicted, bins=50, range=range, cmap=plt.cm.Reds)
+    plt.rcParams.update({'font.size': 15})
+    plt.xlabel('Ground Truth', fontsize=15)
+    plt.ylabel('Predicted', fontsize=15)
+    plt.grid()
+    plt.show()

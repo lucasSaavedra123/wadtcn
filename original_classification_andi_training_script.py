@@ -31,6 +31,6 @@ for length in tqdm.tqdm(lengths):
         classifier.load_as_file()
     
     length_and_f1_score['length'].append(length)
-    length_and_f1_score['f1'].append(classifier.model_micro_f1_score())
+    length_and_f1_score['f1'].append(classifier.micro_f1_score())
 
 DatabaseHandler.disconnect()

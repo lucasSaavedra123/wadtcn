@@ -67,35 +67,31 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        Y_predicted = self.predict(trajectories).flatten()
+        predicted = self.predict(trajectories).flatten()
 
-        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
+        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
 
         if normalized:
             confusion_mat = confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis]
 
         labels = ["Free Diffusion", "Immovilized Diffusion"]
-        
 
         confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
         sns.set(font_scale=1.5)
         color_map = sns.color_palette(palette="Blues", n_colors=7)
         sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
 
-        # Plot matrix
         plt.title(f'Confusion Matrix')
         plt.rcParams.update({'font.size': 15})
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
-        #plt.show()
-        plt.savefig(str(self)+'.jpg')
-        plt.clf()
+        plt.show()
 
     @property
     def type_name(self):
         return "immobilized_trajectory_segmentator"
 
-    def model_micro_f1_score(self, trajectories=None):
+    def micro_f1_score(self, trajectories=None):
         if trajectories is None:
             trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         

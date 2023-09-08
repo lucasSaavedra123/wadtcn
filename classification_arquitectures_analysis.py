@@ -102,7 +102,7 @@ for length in tqdm.tqdm(lengths):
             picked_network.enable_database_persistance()
             picked_network.load_as_file()
 
-            length_and_f1_score[info[0]].append(picked_network.model_micro_f1_score(trajectories=trajectories))
+            length_and_f1_score[info[0]].append(picked_network.micro_f1_score(trajectories=trajectories))
             
             for alpha in trajectories_with_certain_alpha:
                 predictions_and_ground_truth_with_certain_alpha[alpha]['prediction_'+info[0]] += picked_network.predict(trajectories_with_certain_alpha[alpha]).tolist()

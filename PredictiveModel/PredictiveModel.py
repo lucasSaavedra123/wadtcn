@@ -437,48 +437,15 @@ class PredictiveModel(Document):
             self.trained = True
 
     def plot_bias(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        Y_predicted = self.predict(trajectories).flatten() * 2
-
-        difference = Y_predicted - ground_truth
-
-        sns.kdeplot(difference.flatten(), color='blue', fill=True)
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Frequency', fontsize=15)
-        plt.xlabel(r'$\alpha _{P} - \alpha _{GT}$', fontsize=15)
-        plt.grid()
-        plt.show()
+        raise NotImplementedError
 
     def plot_predicted_and_ground_truth_distribution(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        Y_predicted = self.predict(trajectories).flatten() * 2
-
-        sns.kdeplot(ground_truth, color='green', fill=True)
-        sns.kdeplot(Y_predicted, color='red', fill=True)
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Frequency', fontsize=15)
-        plt.xlabel('Values', fontsize=15)
-        plt.grid()
-        plt.show()
+        raise NotImplementedError
 
     def plot_predicted_and_ground_truth_histogram(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+        raise NotImplementedError
 
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        Y_predicted = self.predict(trajectories).flatten() * 2
-
-        plt.hist2d(ground_truth, Y_predicted, bins=50, range=[[0, 2], [0, 2]], cmap=plt.cm.Reds)
-        plt.rcParams.update({'font.size': 15})
-        plt.ylabel('Predicted', fontsize=15)
-        plt.xlabel('Ground Truth', fontsize=15)
-        plt.grid()
-        plt.show()
-
-    def model_micro_f1_score(self, trajectories=None):
+    def micro_f1_score(self, trajectories=None):
         if trajectories is None:
             trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         
@@ -491,27 +458,24 @@ class PredictiveModel(Document):
             trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
         
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
-        Y_predicted = self.predict(trajectories)
+        predicted = self.predict(trajectories)
 
-        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=Y_predicted)
+        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
 
         confusion_mat = np.round(confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis], 2) if normalized else confusion_mat
 
-        labels = [model.STRING_LABEL for model in self.models_involved_in_predictive_model]
+        labels = [model.STRING_LABEL.upper() for model in self.models_involved_in_predictive_model]
 
         confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
         sns.set(font_scale=1.5)
         color_map = sns.color_palette(palette="Blues", n_colors=7)
         sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
 
-        # Plot matrix
-        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, Y_predicted, average="micro"),2)})')
+        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, predicted, average="micro"),2)})')
         plt.rcParams.update({'font.size': 15})
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
-        #plt.show()
-        plt.savefig(str(self)+'.jpg')
-        plt.clf()
+        plt.show()
 
     @property
     def models_involved_in_predictive_model(self):

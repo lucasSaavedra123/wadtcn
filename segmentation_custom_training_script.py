@@ -42,7 +42,7 @@ for length in tqdm.tqdm(lengths):
             classifier.enable_database_persistance()
             classifier.load_as_file()
 
-        length_and_f1_score[f'f1_{segmentator.STRING_LABEL}'].append(classifier.model_micro_f1_score())
+        length_and_f1_score[f'f1_{segmentator.STRING_LABEL}'].append(classifier.micro_f1_score())
 
     pd.DataFrame(length_and_f1_score).to_csv('segmentation_classification_result.csv', index=False)
 
