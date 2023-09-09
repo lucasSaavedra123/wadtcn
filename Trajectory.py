@@ -3,6 +3,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from sklearn.metrics import r2_score
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 
 #Example about how to read trajectories from .mat
@@ -93,6 +94,35 @@ class Trajectory(Document):
             noisy=noisy,
             info=info,
             **kwargs
+        )
+
+    """
+    Below method only works for bidimension trajectories
+    """
+    def reconstructed_trajectory(self, delta_t):
+        x = self.get_noisy_x()
+        y = self.get_noisy_y()
+        t = self.get_time()
+
+        new_x = []
+        new_y = []
+        new_t = []
+
+        for i in range(len(x)):
+            t_right = t >= t[i]
+            t_left = t <= t[i]+delta_t
+            result = np.logical_and(t_right, t_left)
+
+            if np.sum(result) >= 0:
+                new_x.append(np.mean(x[result]))
+                new_y.append(np.mean(y[result]))
+                new_t.append(delta_t*i)
+
+        return Trajectory(
+            x = new_x,
+            y = new_y,
+            t = new_t,
+            noisy=True
         )
 
     def get_anomalous_exponent(self):
@@ -219,11 +249,11 @@ class Trajectory(Document):
         x = self.get_noisy_x().tolist()
         y = self.get_noisy_y().tolist()
 
-        state_to_color = {1:'red', 0:'black'}
+        state_to_color = {1:'green', 0:'black'}
         states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size))
 
         for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
-            plt.plot([x1, x2], [y1, y2], states_as_color[i], marker='X')  
+            plt.plot([x1, x2], [y1, y2], states_as_color[i])
 
         if show:
             plt.show()
@@ -232,7 +262,8 @@ class Trajectory(Document):
         anomalous_exponent_string = "%.2f" % self.anomalous_exponent if self.anomalous_exponent is not None else None
         return f"Model: {self.model_category}, Anomalous Exponent: {anomalous_exponent_string}, Trajectory Length: {self.length}"
 
-    def is_immobile(self, threshold):
+    @property
+    def normalized_ratio(self):
         r = 0
         delta_r = []
 
@@ -250,10 +281,52 @@ class Trajectory(Document):
         rad_gir = np.sqrt((1 / self.length) * r)
         mean_delta_r = np.mean(delta_r)
         criteria = (rad_gir / mean_delta_r) * np.sqrt(np.pi/2)
-        
-        return criteria <= threshold
+        return criteria
 
-    def confinement_states(self,v_th=11,window_size=3):
+    def is_immobile(self, threshold):
+        return self.normalized_ratio <= threshold
+
+    def sub_trajectories_trajectories_from_confinement_states(self, v_th=11, window_size=3):
+        confinement_states = self.confinement_states(return_intervals=False, v_th=v_th, window_size=window_size)
+
+        trajectories = {
+            0: [],
+            1: []
+        }
+
+        def divide_list(a_list):
+            sublists = []
+            current_sublist = []
+            
+            for element in a_list:
+                if len(current_sublist) == 0 or element == current_sublist[0]:
+                    current_sublist.append(element)
+                else:
+                    sublists.append(current_sublist)
+                    current_sublist = [element]
+
+            if len(current_sublist) > 0:
+                sublists.append(current_sublist)
+
+            return sublists
+
+        index = 0
+
+        for sublist in divide_list(confinement_states):
+            trajectories[sublist[0]].append(self.build_noisy_subtrajectory_from_range(index, index+len(sublist)))
+            index += len(sublist)
+        
+        return trajectories
+
+    def build_noisy_subtrajectory_from_range(self, initial_index, final_index):
+        return Trajectory(
+                    x = self.get_noisy_x()[initial_index:final_index],
+                    y = self.get_noisy_y()[initial_index:final_index],
+                    t = self.get_time()[initial_index:final_index],
+                    noisy=True
+                )
+
+    def confinement_states(self,v_th=11,window_size=3, return_intervals=False):
         """
         This method is the Object-Oriented Python implementation of the algorithm proposed in the referenced 
         paper to identify periods of transient confinement within individual trajectories.
@@ -308,6 +381,8 @@ class Trajectory(Document):
             circles.append(new_circle)
 
         states = np.zeros(self.length)
+        times = np.empty(self.length)
+        times[:] = -1
 
         for sub_circles in [circles[i:i+window_size] for i in range(0,len(circles),window_size)]:
             circles_windows_count = sum([sub_circle.count for sub_circle in sub_circles])
@@ -315,36 +390,101 @@ class Trajectory(Document):
             if circles_windows_count > v_th:
                 for sub_circle in sub_circles:
                     states[sub_circle.index_points_inside_area] = 1
+                    times[sub_circle.index_points_inside_area] = self.get_time()[sub_circle.index_points_inside_area]
 
-        return states.tolist()
+        intervals = []
+        current_sublist = []
 
-    def mean_squared_displacement(self, non_linear=True):
+        for num in times:
+            if num != -1:
+                current_sublist.append(num)
+            elif current_sublist:
+                intervals.append(current_sublist)
+                current_sublist = []
+
+        if current_sublist:
+            intervals.append(current_sublist)
+
+        if return_intervals:
+            return states.tolist(), intervals
+        else:
+            return states
+
+    def temporal_average_mean_squared_displacement(self, non_linear=True, log_log_fit_limit=50):
         """
         Code Obtained from https://github.com/hectorbm/DL_anomalous_diffusion/blob/ab13739cb8fdb947dd1ebc9a8f537668eb26266a/Tools/analysis_tools.py#L36C67-L36C67
         """
-        def linear_func(x, beta, d):
-            return d * (x ** 1)
+        def real_func(t, betha, k):
+            return k * (t ** betha)
+
+        def linear_func(t, betha, k):
+            return np.log(k) + (np.log(t) * betha)
 
         x = self.get_noisy_x()
         y = self.get_noisy_y()
         time_length = (self.get_time()[-1] - self.get_time()[0])
         data = np.sqrt(x ** 2 + y ** 2)
-        n_data = np.size(data)
-        number_of_delta_t = np.int((n_data - 1))
-        t_vec = np.arange(1, np.int(number_of_delta_t))
+        number_of_delta_t = self.length - 1
+        t_vec = np.arange(1, number_of_delta_t)
 
-        msd = np.zeros([len(t_vec), 1])
-        for dt, ind in zip(t_vec, range(len(t_vec))):
+        msd = np.zeros(len(t_vec))
+        for index, dt in enumerate(t_vec):
             squared_displacement = (data[1 + dt:] - data[:-1 - dt]) ** 2
-            msd[ind] = np.mean(squared_displacement, axis=0)
+            msd[index] = np.mean(squared_displacement, axis=0)
 
-        msd = np.array(msd)
+        t_vec = np.linspace(self.get_time()[1] - self.get_time()[0], time_length, self.length - 2)
+        #t_vec = self.get_time() - self.get_time()[0]
+        #t_vec = np.linspace(0, self.length-2,1) * 
 
-        t_vec = np.linspace(0.0001, time_length, len(x) - 2)
-        msd = np.array(msd).ravel()
+        msd_fit = msd[0:log_log_fit_limit]
+        t_vec_fit = t_vec[0:log_log_fit_limit]
+
+        popt, _ = curve_fit(linear_func, t_vec_fit, np.log(msd_fit), bounds=((0, 0), (2, np.inf)), maxfev=2000)
+        
+        """
         if non_linear:
-            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0), (2, np.inf)), maxfev=2000)
+            popt, _ = curve_fit(real_func, t_vec_fit, msd_fit, bounds=((0, 0), (2, np.inf)), maxfev=2000)
+            #popt2, _ = curve_fit(linear_func, t_vec_fit, np.log(msd_fit), bounds=((0, 0), (2, np.inf)), maxfev=2000)
         else:
-            a, b = curve_fit(linear_func, t_vec, msd, bounds=((0, 0, -np.inf), (2, np.inf, np.inf)), maxfev=2000)
+            popt, _ = curve_fit(real_func, t_vec_fit, msd_fit, bounds=((0, 0, -np.inf), (2, np.inf, np.inf)), maxfev=2000)
+        """
 
-        return t_vec, msd, a
+        goodness_of_fit = r2_score(np.log(msd_fit), linear_func(t_vec_fit, popt[0], popt[1]))
+
+        return t_vec, msd, popt[0], popt[1], goodness_of_fit
+
+    """
+    Formula from 
+    "Distribution of directional change as a signature of complex dynamic"
+    """
+    def _v(self, step, step_lag):
+        v_x = self.get_noisy_x()[step+step_lag] - self.get_noisy_x()[step]
+        v_y = self.get_noisy_y()[step+step_lag] - self.get_noisy_y()[step]
+        return np.array([v_x, v_y])
+
+    def turning_angles(self, steps_lag=1, return_times=False):
+        angles = []
+        times = []
+
+        try:
+            for index in range(self.length):
+                v_index = self._v(index, steps_lag)
+                v_index_plus_step_lag = self._v(index+steps_lag, steps_lag)
+
+                times.append(self.get_time()[index])
+
+                a = np.inner(v_index, v_index_plus_step_lag)
+                b = np.linalg.norm(v_index) * np.linalg.norm(v_index_plus_step_lag)
+
+                if b != 0:
+                    angle = np.rad2deg(np.arccos(np.clip([a/b], -1, 1)[0]))
+                    assert 0 <= angle <= 180
+                    angles.append(angle)
+
+        except IndexError:
+            pass
+        
+        if return_times:
+            return angles, times
+        else:
+            return angles
