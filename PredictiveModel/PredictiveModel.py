@@ -17,7 +17,7 @@ import matplotlib.patches as mpatches
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
-from .model_utils import ThreadedTrackGenerator
+from .model_utils import ThreadedTrackGenerator, TrackGenerator
 
 class CustomCallback(Callback):
     def __init__(self, thread_queue):
@@ -387,8 +387,10 @@ class PredictiveModel(Document):
 
         self.architecture.summary()
 
+        """
         trajectories_queue = Queue(maxsize=TRAINING_SET_SIZE_PER_EPOCH)
         finished_training_event = Event()
+        """
 
         if self.early_stopping:
             callbacks = [EarlyStopping(
@@ -400,6 +402,7 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
+        """
         callbacks += [CustomCallback(trajectories_queue)]
 
         def create_work(queue, stop_event):
@@ -411,23 +414,24 @@ class PredictiveModel(Document):
             print("STOPPING")
 
         producer = Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True)
-        
         producer.start()
+        """
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                ThreadedTrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=ThreadedTrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.transform_trajectories_to_input, self.transform_trajectories_to_output, trajectories_queue),
+                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
                 shuffle=True
             ).history
 
+        """
         finished_training_event.set()
-
         producer.join()
+        """
 
         if self.trained:
             for dict_key in history_training_info:
