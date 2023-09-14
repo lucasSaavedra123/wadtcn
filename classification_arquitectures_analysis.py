@@ -29,7 +29,7 @@ length_and_f1_score = {
     'f1_lstm': [],
 }
 
-alphas = np.arange(0.05,1.95, 0.01)
+alphas = np.arange(0.05,1.95, 0.05)
 alpha_and_f1_score = {
     'alpha': [],
     'f1_wadtcn': [],
@@ -42,12 +42,12 @@ alpha_and_predictions = {}
 randi_lengths = [25,65,125,225,425]
 randi_classifiers = []
 
-for length in randi_lengths:
+print("Loading RANDI networks...")
+for length in tqdm.tqdm(randi_lengths):
     classifier = LSTMTheoreticalModelClassifier(length, length, simulator=AndiDataSimulation)
     classifier.load_as_file()
     randi_classifiers.append(classifier)
 
-"""
 for length in tqdm.tqdm(lengths):
     trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
     length_and_f1_score['length'].append(length)
@@ -72,10 +72,10 @@ for length in tqdm.tqdm(lengths):
             length_and_f1_score[info[0]].append(f1_score(ground_truth, predictions, average="micro"))
 
     pd.DataFrame(length_and_f1_score).to_csv('length_classification_result.csv', index=False)
-"""
+
 trajectories_and_alpha_by_length = {}
 
-for trajectory_id in range(12500):
+for trajectory_id in tqdm.tqdm(range(100_000)):
     alpha = np.random.choice(alphas)
 
     if alpha < 0.95:
@@ -101,10 +101,10 @@ for trajectory_id in range(12500):
     
     trajectories_and_alpha_by_length[selected_length].append((trajectory, alpha))
 
-for trajectory_info in trajectories_and_alpha_by_length.values():
+for trajectory_info in tqdm.tqdm(trajectories_and_alpha_by_length.values()):
 
-    trajectories = [element[0] for element in trajectory_info]
-    alphas = [element[1] for element in trajectory_info]
+    current_trajectories = [element[0] for element in trajectory_info]
+    current_alphas = [element[1] for element in trajectory_info]
 
     for info in zip(
         ('f1_wadtcn', 'f1_tcn', 'f1_lstm'),
@@ -114,23 +114,23 @@ for trajectory_info in trajectories_and_alpha_by_length.values():
             architecture = info[1]        
 
             already_trained_networks = architecture.objects(simulator_identifier=AndiDataSimulation.STRING_LABEL, trained=True, hyperparameters=architecture.selected_hyperparameters())
-            picked_network = [network for network in already_trained_networks if network.trajectory_length == length][0]
+            picked_network = [network for network in already_trained_networks if network.trajectory_length == current_trajectories[0].length][0]
 
             picked_network.enable_database_persistance()
             picked_network.load_as_file()
 
-            predictions = picked_network.predict(trajectories)
-            ground_truth = np.argmax(transform_trajectories_to_categorical_vector(randi_classifiers[0], trajectories), axis=-1)
+            predictions = picked_network.predict(current_trajectories)
+            ground_truth = np.argmax(transform_trajectories_to_categorical_vector(randi_classifiers[0], current_trajectories), axis=-1)
 
         else:
-            predictions = LSTMTheoreticalModelClassifier.classify_with_combination(trajectories, randi_classifiers)
-            ground_truth = np.argmax(transform_trajectories_to_categorical_vector(randi_classifiers[0], trajectories), axis=-1)
+            predictions = LSTMTheoreticalModelClassifier.classify_with_combination(current_trajectories, randi_classifiers)
+            ground_truth = np.argmax(transform_trajectories_to_categorical_vector(randi_classifiers[0], current_trajectories), axis=-1)
 
 
         if info[0] not in alpha_and_predictions:
-            alpha_and_predictions[info[0]] = {alpha:{'ground_truth':[], 'prediction:':[]} for alpha in alphas}
+            alpha_and_predictions[info[0]] = {alpha:{'ground_truth':[], 'prediction':[]} for alpha in alphas}
 
-        for trajectory_index, alpha in enumerate(alphas):
+        for trajectory_index, alpha in enumerate(current_alphas):
             alpha_and_predictions[info[0]][alpha]['ground_truth'].append(ground_truth[trajectory_index])
             alpha_and_predictions[info[0]][alpha]['prediction'].append(predictions[trajectory_index])
 
@@ -138,10 +138,11 @@ for alpha in alphas:
     alpha_and_f1_score['alpha'].append(alpha)
 
     for arquitecture_name in ('f1_wadtcn', 'f1_tcn', 'f1_lstm'):
-        alpha_and_f1_score[architecture].append(
+        alpha_and_f1_score[arquitecture_name].append(
             f1_score(
                 alpha_and_predictions[arquitecture_name][alpha]['ground_truth'],
-                alpha_and_predictions[arquitecture_name][alpha]['prediction']
+                alpha_and_predictions[arquitecture_name][alpha]['prediction'],
+                average='micro'
             )
         )
 
