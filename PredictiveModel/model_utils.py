@@ -351,10 +351,21 @@ def plot_predicted_and_ground_truth_distribution(ground_truth, predicted):
     plt.grid()
     plt.show()
 
-def plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=None):
+def plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=None, title=None, save=False):
     plt.hist2d(ground_truth, predicted, bins=50, range=range, cmap=plt.cm.Reds)
     plt.rcParams.update({'font.size': 15})
     plt.xlabel('Ground Truth', fontsize=15)
     plt.ylabel('Predicted', fontsize=15)
     plt.grid()
-    plt.show()
+
+    if title is not None:
+        plt.title(f'{title}')
+
+    if save:
+        if title is None:
+            title = 'figure'
+
+        plt.savefig(f'{title}.png', dpi=300)
+        plt.clf()
+    else:
+        plt.show()
