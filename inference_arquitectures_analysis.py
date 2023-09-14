@@ -16,7 +16,7 @@ from DataSimulation import AndiDataSimulation
 randi_lengths = [25,65,125,225,325,425,525,725,925]
 randi_classifiers = []
 
-length_and_f1_score = {
+length_and_mae = {
     'length': [],
     'mae_wadtcn': [],
     'mae_original': [],
@@ -58,7 +58,7 @@ for length in tqdm.tqdm(lengths):
 for length in tqdm.tqdm(lengths):
     trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
 
-    length_and_f1_score['length'].append(length)
+    length_and_mae['length'].append(length)
 
     for info in zip(
         ('mae_wadtcn', 'mae_lstm', 'mae_original'),
@@ -76,9 +76,9 @@ for length in tqdm.tqdm(lengths):
                 ground_truth = [0]
                 predictions = [0]
 
-        length_and_f1_score[info[0]].append(mean_absolute_error(ground_truth, predictions))
+        length_and_mae[info[0]].append(mean_absolute_error(ground_truth, predictions))
 
-    pd.DataFrame(length_and_f1_score).to_csv('length_inference_result.csv', index=False)
+    pd.DataFrame(length_and_mae).to_csv('length_inference_result.csv', index=False)
 
 
 DatabaseHandler.disconnect()
