@@ -149,7 +149,8 @@ for info in zip(
     ('mae_wadtcn', 'mae_lstm', 'mae_original'),
     ('wadtcn', LSTMAnomalousExponentPredicter, 'original')
 ):
-    for trajectories in trajectories_by_length.values():
+    for length in trajectories_by_length:
+        trajectories = trajectories_by_length[length]
         if info[1] == LSTMAnomalousExponentPredicter:            
             predictions = LSTMAnomalousExponentPredicter.classify_with_combination(trajectories, randi_classifiers).tolist()
             ground_truth = transform_trajectories_to_anomalous_exponent(classifier, trajectories)[:,0].tolist()
