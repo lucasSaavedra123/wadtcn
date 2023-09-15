@@ -1,7 +1,9 @@
 import math
 
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
+from scipy.stats import chi2
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
@@ -68,6 +70,37 @@ class Trajectory(Document):
             trajectories.append(Trajectory(trayectory_x, trayectory_y, t=trajectory_time, info={"label": label, "experimental_condition": experimental_condition}, noisy=True))
 
         return trajectories
+
+    @classmethod
+    def ensamble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, alpha=0.95):
+        trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 1]
+
+        ea_msd = np.zeros((len(trajectories), number_of_points_for_msd))
+        mu_t = np.zeros((len(trajectories), number_of_points_for_msd))
+
+        for j_index, trajectory in enumerate(trajectories):
+            positions = np.zeros((trajectory.length,2))
+            positions[:,0] = trajectory.get_noisy_x()
+            positions[:,1] = trajectory.get_noisy_y()
+
+            for index in range(0, number_of_points_for_msd):
+                ea_msd[j_index, index] = np.linalg.norm(positions[index+1]-positions[0]) ** 2
+                mu_t[j_index, index] = np.linalg.norm(positions[index+1]-positions[0])
+
+        ea_msd = np.mean(ea_msd, axis=0)
+        mu_t = np.mean(mu_t, axis=0)
+
+        alpha_1 = chi2.ppf(alpha/2, len(trajectories))
+        alpha_2 = chi2.ppf(1-(alpha/2), len(trajectories))
+
+        A = (ea_msd-(mu_t**2))*len(trajectories)
+
+        intervals = [
+            (A/alpha_1)+(mu_t**2),
+            (A/alpha_2)+(mu_t**2)
+        ]
+
+        return ea_msd, intervals
 
     def __init__(self, x, y=None, z=None, model_category=None, noise_x=None, noise_y=None, noise_z=None, noisy=False, t=None, exponent=None, exponent_type='anomalous', info={}, **kwargs):
 
@@ -281,7 +314,7 @@ class Trajectory(Document):
         rad_gir = np.sqrt((1 / self.length) * r)
         mean_delta_r = np.mean(delta_r)
         criteria = (rad_gir / mean_delta_r) * np.sqrt(np.pi/2)
-        return criteria
+        return float(criteria)
 
     def is_immobile(self, threshold):
         return self.normalized_ratio <= threshold
@@ -328,7 +361,7 @@ class Trajectory(Document):
 
     def confinement_states(self,v_th=11,window_size=3, return_intervals=False):
         """
-        This method is the Object-Oriented Python implementation of the algorithm proposed in the referenced 
+        This method is the Array-Oriented Python implementation of the algorithm proposed in the referenced
         paper to identify periods of transient confinement within individual trajectories.
 
         Sikora, G., Wyłomańska, A., Gajda, J., Solé, L., Akin, E. J., Tamkun, M. M., & Krapf, D. (2017).
@@ -337,76 +370,46 @@ class Trajectory(Document):
         tracking recurrence analysis. Physical review. E, 96(6-1), 062404.
         https://doi.org/10.1103/PhysRevE.96.062404
         """
+        if self.length == 1:
+            if return_intervals:
+                return [0], []
+            else:
+                return [0]
 
-        class Circle:
-            def __init__(self, point_i, point_j):
-                self.point_i = point_i
-                self.point_j = point_j
+        C = self.length-1
 
-                midpoint_x = (self.point_i[0] + self.point_j[0])/2
-                midpoint_y = (self.point_i[1] + self.point_j[1])/2
-                self.midpoint = [midpoint_x, midpoint_y]
+        X = np.zeros((self.length,2))
+        X[:,0] = self.get_noisy_x()
+        X[:,1] = self.get_noisy_y()
 
-                self.diameter = math.dist(self.point_i, self.point_j)
+        M = (X[:-1] + X[1:])/2
+        R = np.linalg.norm(X[:-1] - X[1:], axis=1)/2
 
-                self._count_cache = None
-                self._index_points_inside_area_cache = None
+        S = scipy.sparse.lil_matrix(np.zeros((self.length, C)))
 
-            def count_number_of_times_the_walker_position_lies_within_circle(self, points):
-                self._count_cache = 0
-                self._index_points_inside_area_cache = []
-                for index, point in enumerate(points):
-                    if math.dist(point, self.midpoint) < (self.diameter/2):
-                        self._count_cache += 1
-                        self._index_points_inside_area_cache.append(index)
+        for position_index in range(self.length):
+            distances = scipy.spatial.distance_matrix(np.array([X[position_index]]), M)
+            S[position_index, :] = (distances < R).astype(int)
 
-            @property
-            def count(self):
-                return self._count_cache
-
-            @property
-            def index_points_inside_area(self):
-                return self._index_points_inside_area_cache
-
-        x = self.get_noisy_x().tolist()
-        y = self.get_noisy_y().tolist()
-
-        points = list(zip(x,y))
-
-        circles = []
-
-        for i in range(1,self.length):
-            new_circle = Circle(points[i-1], points[i])
-            new_circle.count_number_of_times_the_walker_position_lies_within_circle(points)
-            circles.append(new_circle)
+        V = np.array(np.sum(S, axis=0))[0]
+        V_convolved = np.convolve(V, np.ones(window_size))
+        V = np.repeat(V_convolved[window_size-1::window_size], window_size)[:C]
+        V = (V > v_th).astype(int)
 
         states = np.zeros(self.length)
-        times = np.empty(self.length)
-        times[:] = -1
 
-        for sub_circles in [circles[i:i+window_size] for i in range(0,len(circles),window_size)]:
-            circles_windows_count = sum([sub_circle.count for sub_circle in sub_circles])
+        for position_index in range(self.length):
+            states[position_index] = np.sum(S[position_index, :] * V)
 
-            if circles_windows_count > v_th:
-                for sub_circle in sub_circles:
-                    states[sub_circle.index_points_inside_area] = 1
-                    times[sub_circle.index_points_inside_area] = self.get_time()[sub_circle.index_points_inside_area]
-
-        intervals = []
-        current_sublist = []
-
-        for num in times:
-            if num != -1:
-                current_sublist.append(num)
-            elif current_sublist:
-                intervals.append(current_sublist)
-                current_sublist = []
-
-        if current_sublist:
-            intervals.append(current_sublist)
+        states = (states > 0).astype(int)
 
         if return_intervals:
-            return states.tolist(), intervals
+            indices = np.nonzero(states[1:] != states[:-1])[0] + 1
+            intervals = np.split(self.get_time(), indices)
+            intervals = intervals[0::2] if states[0] else intervals[1::2]
+            intervals = [interval for interval in intervals if interval[-1] - interval[0] != 0]
+
+            return states, intervals
         else:
             return states
 
@@ -422,7 +425,7 @@ class Trajectory(Document):
 
         x = self.get_noisy_x()
         y = self.get_noisy_y()
-        time_length = (self.get_time()[-1] - self.get_time()[0])
+        time_length = self.duration
         data = np.sqrt(x ** 2 + y ** 2)
         number_of_delta_t = self.length - 1
         t_vec = np.arange(1, number_of_delta_t)
@@ -453,38 +456,59 @@ class Trajectory(Document):
 
         return t_vec, msd, popt[0], popt[1], goodness_of_fit
 
+    def turning_angles(self,steps_lag=1, normalized=False):
+        if self.length/steps_lag <= 2:
+            return []
+
+        X = np.zeros((self.length,2))
+        X[:,0] = self.get_noisy_x()
+        X[:,1] = self.get_noisy_y()
+
+        U_t = X[:self.length-steps_lag]
+        U_t_plus_delta = X[np.arange(0,self.length-steps_lag)+steps_lag]
+
+        V_t = U_t_plus_delta - U_t
+        V_t_plus_delta = V_t[np.arange(0,len(V_t)-steps_lag)+steps_lag]
+        V_t = V_t[:len(V_t)-steps_lag]
+
+        A = np.sum((V_t_plus_delta * V_t), axis=1)
+        B = np.linalg.norm(V_t, axis=1) * np.linalg.norm(V_t_plus_delta, axis=1)
+
+        #Some B values could be 0. These are removed
+        values_to_keep = np.where(B != 0)
+        A = A[values_to_keep]
+        B = B[values_to_keep]
+
+        angles = np.clip(A/B, -1, 1)
+
+        if not normalized:
+            angles = np.rad2deg(np.arccos(angles))
+
+        return angles.tolist()
+    
     """
-    Formula from 
-    "Distribution of directional change as a signature of complex dynamic"
+    This method is a Array-Oriented Python implementation of a similar algorithm proposed in the referenced
+    paper to how direction change in time.
+
+    Taylor, R. W., Holler, C., Mahmoodabadi, R. G., Küppers, M., Dastjerdi, H. M., Zaburdaev, V., . . . Sandoghdar, V. (2020). 
+    High-Precision Protein-Tracking With Interferometric Scattering Microscopy. 
+    Frontiers in Cell and Developmental Biology, 8. 
+    https://doi.org/10.3389/fcell.2020.590158
     """
-    def _v(self, step, step_lag):
-        v_x = self.get_noisy_x()[step+step_lag] - self.get_noisy_x()[step]
-        v_y = self.get_noisy_y()[step+step_lag] - self.get_noisy_y()[step]
-        return np.array([v_x, v_y])
+    def directional_correlation(self, steps_lag=1, window_size=9):
+        angles = self.turning_angles(steps_lag=steps_lag, normalized=True)
+        angles = [angles[0]] + angles + [angles[-1]]
+        return np.convolve(angles, np.ones(window_size), mode='same')/window_size
 
-    def turning_angles(self, steps_lag=1, return_times=False):
-        angles = []
-        times = []
+    def directional_correlation_segmentation(self, steps_lag=1, window_size=9, threshold=0.5):
+        assert 0 < threshold < 1
 
-        try:
-            for index in range(self.length):
-                v_index = self._v(index, steps_lag)
-                v_index_plus_step_lag = self._v(index+steps_lag, steps_lag)
+        def label_angles(x):
+            if x < -threshold:
+                return -1
+            elif -threshold <= x < threshold:
+                return 0
+            else:
+                return 1
 
-                times.append(self.get_time()[index])
-
-                a = np.inner(v_index, v_index_plus_step_lag)
-                b = np.linalg.norm(v_index) * np.linalg.norm(v_index_plus_step_lag)
-
-                if b != 0:
-                    angle = np.rad2deg(np.arccos(np.clip([a/b], -1, 1)[0]))
-                    assert 0 <= angle <= 180
-                    angles.append(angle)
-
-        except IndexError:
-            pass
-        
-        if return_times:
-            return angles, times
-        else:
-            return angles
+        return np.vectorize(label_angles)(self.directional_correlation(window_size=window_size, steps_lag=steps_lag))
