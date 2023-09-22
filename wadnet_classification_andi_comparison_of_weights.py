@@ -5,7 +5,7 @@ from DatabaseHandler import DatabaseHandler
 from DataSimulation import AndiDataSimulation
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
 
-REFERENCE_LENGTH = 500
+REFERENCE_LENGTH = 100
 LENGTHS = list(range(25,1000,25))
 f1_scores = []
 
