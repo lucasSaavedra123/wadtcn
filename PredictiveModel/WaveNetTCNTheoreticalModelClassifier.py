@@ -3,7 +3,7 @@ from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import ANDI_MODELS, ALL_MODELS
-from .model_utils import transform_trajectories_into_displacements, build_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
+from .model_utils import transform_trajectories_into_displacements, build_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector, build_wavenet_tcn_classifier_from_encoder_for
 
 
 class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
@@ -40,7 +40,10 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
         }
 
     def build_network(self):
-        build_wavenet_tcn_classifier_for(self)
+        if self.wadnet_tcn_encoder is None:
+            build_wavenet_tcn_classifier_for(self)
+        else:
+            build_wavenet_tcn_classifier_from_encoder_for(self, 320)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          amsgrad=self.hyperparameters['amsgrad'],
@@ -52,13 +55,17 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
         X = self.transform_trajectories_to_input(trajectories)
         Y_predicted = self.architecture.predict(X)
         Y_predicted = np.argmax(Y_predicted, axis=-1)
+
         return Y_predicted
 
     def transform_trajectories_to_output(self, trajectories):
         return transform_trajectories_to_categorical_vector(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+        X = transform_trajectories_into_displacements(self, trajectories)
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X)
+        return X
 
     @property
     def type_name(self):

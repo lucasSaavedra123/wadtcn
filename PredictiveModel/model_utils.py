@@ -1,5 +1,6 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
+from tensorflow.keras import Sequential
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D
 from keras.models import Model
 
@@ -194,6 +195,13 @@ def build_wavenet_tcn_classifier_for(predictive_model, filters=64):
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
+def build_wavenet_tcn_classifier_from_encoder_for(predictive_model, input_size):
+    inputs = Input(shape=(input_size))
+    dense_1 = Dense(units=512, activation='relu')(inputs)
+    dense_2 = Dense(units=128, activation='relu')(dense_1)
+    output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
+    predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
 def build_segmentator_for(predictive_model):
     # Networks filters and kernels
     initializer = 'he_normal'
@@ -369,3 +377,12 @@ def plot_predicted_and_ground_truth_histogram(ground_truth, predicted, a_range=N
         plt.clf()
     else:
         plt.show()
+
+def get_encoder_from_classifier(a_classifier, layer_index):
+    encoding_layer = a_classifier.architecture.layers[layer_index]
+    encoding_model = Model(
+        inputs=a_classifier.architecture.input,
+        outputs=encoding_layer.output
+    )
+
+    return encoding_model
