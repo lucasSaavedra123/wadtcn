@@ -254,6 +254,7 @@ class PredictiveModel(Document):
         self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
         self.early_stopping = False
+        self.wadnet_tcn_encoder = None
 
         if 'simulator_identifier' in kwargs:
             simulator_identifier = kwargs['simulator_identifier']
