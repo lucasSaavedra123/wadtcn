@@ -64,7 +64,7 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_displacements(self, trajectories)
         if self.wadnet_tcn_encoder is not None:
-            X = self.wadnet_tcn_encoder.predict(X)
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
         return X
 
     @property
