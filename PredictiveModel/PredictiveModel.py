@@ -17,7 +17,7 @@ import matplotlib.patches as mpatches
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
-from .model_utils import ThreadedTrackGenerator, TrackGenerator
+from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
 
 class CustomCallback(Callback):
     def __init__(self, thread_queue):
@@ -254,7 +254,7 @@ class PredictiveModel(Document):
         self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
         self.early_stopping = False
-        self.wadnet_tcn_encoder = None
+        self.__wadnet_tcn_encoder = None
 
         if 'simulator_identifier' in kwargs:
             simulator_identifier = kwargs['simulator_identifier']
@@ -293,6 +293,15 @@ class PredictiveModel(Document):
                 simulator_identifier=simulator_identifier,
                 extra_parameters = kwargs
             )
+
+    def set_wadnet_tcn_encoder(self, reference_classifier, layer_index):
+        reference_encoder = get_encoder_from_classifier(reference_classifier, layer_index)
+
+        self.build_network()
+        self.__wadnet_tcn_encoder = get_encoder_from_classifier(self, layer_index)
+        self.__wadnet_tcn_encoder.set_weights(reference_encoder.get_weights())
+
+        self.architecture = None
 
     @property
     def number_of_models_involved(self):
