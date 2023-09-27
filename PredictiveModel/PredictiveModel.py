@@ -254,7 +254,7 @@ class PredictiveModel(Document):
         self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
         self.early_stopping = False
-        self.__wadnet_tcn_encoder = None
+        self.wadnet_tcn_encoder = None
 
         if 'simulator_identifier' in kwargs:
             simulator_identifier = kwargs['simulator_identifier']
@@ -298,8 +298,8 @@ class PredictiveModel(Document):
         reference_encoder = get_encoder_from_classifier(reference_classifier, layer_index)
 
         self.build_network()
-        self.__wadnet_tcn_encoder = get_encoder_from_classifier(self, layer_index)
-        self.__wadnet_tcn_encoder.set_weights(reference_encoder.get_weights())
+        self.wadnet_tcn_encoder = get_encoder_from_classifier(self, layer_index)
+        self.wadnet_tcn_encoder.set_weights(reference_encoder.get_weights())
 
         self.architecture = None
 
