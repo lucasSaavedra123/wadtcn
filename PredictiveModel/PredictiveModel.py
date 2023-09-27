@@ -428,7 +428,7 @@ class PredictiveModel(Document):
         """
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        if self.wadnet_tcn_encoder is None:
+        if self.__wadnet_tcn_encoder is None:
             with device(device_name):
                 history_training_info = self.architecture.fit(
                     TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
