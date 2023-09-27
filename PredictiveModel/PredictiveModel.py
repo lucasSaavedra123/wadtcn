@@ -417,17 +417,28 @@ class PredictiveModel(Document):
         producer = Thread(target=create_work, args=[trajectories_queue, finished_training_event], daemon=True)
         producer.start()
         """
-
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        with device(device_name):
-            history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
-                epochs=real_epochs,
-                callbacks=callbacks,
-                validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
-                shuffle=True
-            ).history
+        if self.wadnet_tcn_encoder is None:
+            with device(device_name):
+                history_training_info = self.architecture.fit(
+                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    epochs=real_epochs,
+                    callbacks=callbacks,
+                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    shuffle=True
+                ).history
+        else:
+            with device(device_name):
+                X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+
+                history_training_info = self.architecture.fit(
+                    X_train, Y_train,
+                    epochs=real_epochs,
+                    callbacks=callbacks,
+                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    shuffle=True
+                ).history
 
         """
         finished_training_event.set()
