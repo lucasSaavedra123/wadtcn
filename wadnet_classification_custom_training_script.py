@@ -23,22 +23,25 @@ else:
     with open('lengths_cache.txt', 'r') as file:
         lengths = [int(line.strip()) for line in file.readlines()]
 
-already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
+already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(
+    simulator_identifier=CustomDataSimulation.STRING_LABEL,
+    trained=True,
+    hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters(),
+)
 
-print("Number of Lengths:", len(lengths))
-
-length_and_f1_score = {
-    'length': [],
-    'f1': []
-}
-
-for length in tqdm.tqdm(lengths):
-    print(length)
+for index, length in tqdm.tqdm(enumerate(lengths)):
+    print("Length:", length)
     clear_session()
     networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
 
     if len(networks_of_length) == 0:
         classifier = WaveNetTCNTheoreticalModelClassifier(length, length * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation)
+
+        if index == 0:
+            reference_architecture = classifier
+        else:
+            classifier.set_wadnet_tcn_encoder(reference_architecture, -4)
+
         classifier.enable_early_stopping()
         classifier.enable_database_persistance()
         classifier.fit()
@@ -46,15 +49,13 @@ for length in tqdm.tqdm(lengths):
     else:
         assert len(networks_of_length) == 1
         classifier = networks_of_length[0]
+
+        if index == 0:
+            reference_architecture = classifier
+        else:
+            classifier.set_wadnet_tcn_encoder(reference_architecture, -4)
+
         classifier.enable_database_persistance()
         classifier.load_as_file()
-
-    length_and_f1_score['length'].append(length)
-    length_and_f1_score['f1'].append(classifier.micro_f1_score())
-
-    if length == 25 or length == 50:
-        classifier.plot_confusion_matrix()
-
-    pd.DataFrame(length_and_f1_score).to_csv('custom_model_classification_result.csv', index=False)
 
 DatabaseHandler.disconnect()
