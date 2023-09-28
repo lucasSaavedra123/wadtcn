@@ -29,6 +29,8 @@ already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(
     hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters(),
 )
 
+lengths = [lengths[0]] + lengths[len(lengths)//2:]
+
 for index, length in tqdm.tqdm(list(enumerate(lengths))):
     print("Length:", length)
     clear_session()
