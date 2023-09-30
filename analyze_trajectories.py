@@ -130,20 +130,20 @@ number_of_immobile_trajectories = number_of_trayectories - len(filtered_trajecto
 
 print(f"There are {number_of_trayectories} trajectories and {number_of_immobile_trajectories} are immobile ({100 * round(number_of_immobile_trajectories/number_of_trayectories, 2)}%).")
 
-DatabaseHandler.disconnect()
-
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
-
-already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
-
-network_and_length = {}
+reference_network = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trajectory_length=25, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
+assert len(reference_network) == 1
+network_and_length = {25: reference_network[0]}
+network_and_length[25].enable_database_persistance()
+network_and_length[25].load_as_file()
 
 classification_accuracies = []
 
-for network in already_trained_networks:
-    network.enable_database_persistance()
-    network.load_as_file()
-    network_and_length[network.trajectory_length] = network
+for network in WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()):
+    if network.trajectory_length != 25:
+        network.set_wadnet_tcn_encoder(network_and_length[25], -4)
+        network.enable_database_persistance()
+        network.load_as_file()
+        network_and_length[network.trajectory_length] = network
 
 DatabaseHandler.disconnect()
 
