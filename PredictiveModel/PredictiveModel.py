@@ -440,12 +440,13 @@ class PredictiveModel(Document):
         else:
             with device(device_name):
                 X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+                X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH)
 
                 history_training_info = self.architecture.fit(
                     X_train, Y_train,
                     epochs=real_epochs,
                     callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    validation_data=[X_val, Y_val],
                     shuffle=True
                 ).history
 
