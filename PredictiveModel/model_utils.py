@@ -296,7 +296,7 @@ def build_segmentator_for(predictive_model):
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
-def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
+def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32, number_of_features=2):
     initializer = 'he_normal'
     x1_kernel = 4
     x2_kernel = 2
@@ -307,7 +307,7 @@ def build_more_complex_wavenet_tcn_classifier_for(predictive_model, filters=32):
 
     dilation_depth = 8
 
-    inputs = Input(shape=(predictive_model.trajectory_length-1, 2))
+    inputs = Input(shape=(predictive_model.trajectory_length-1, number_of_features))
 
     x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
