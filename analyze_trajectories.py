@@ -8,7 +8,7 @@ from DataSimulation import CustomDataSimulation
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
 from TheoreticalModels import ALL_MODELS, Model
 from Trajectory import Trajectory
-from collections import Counter
+from collections import Counter, defaultdict
 
 
 """
@@ -117,7 +117,6 @@ def show_classification_results(tl_range, exp_label, net_name):
     plt.show()
 """
 
-
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
 
 all_trajectories = Trajectory.objects()
@@ -125,6 +124,11 @@ all_trajectories = Trajectory.objects()
 number_of_trayectories = len(all_trajectories)
 
 filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
+
+trajectories_by_length = defaultdict(lambda: [])
+
+for trajectory in filtered_trajectories:
+    trajectories_by_length[trajectory.length].append(trajectory)
 
 number_of_immobile_trajectories = number_of_trayectories - len(filtered_trajectories)
 
@@ -151,14 +155,13 @@ predictions = []
 
 number_of_tracks = 0
 
-for trajectory in tqdm.tqdm(filtered_trajectories):
-    if trajectory.length in network_and_length:
-        prediction = network_and_length[trajectory.length].predict([trajectory])
-        classification_accuracies.append(np.mean(network_and_length[trajectory.length].history_training_info['val_categorical_accuracy'][-2:]))
-        trajectory.info['model_prediction'] = ALL_MODELS[prediction[0]].STRING_LABEL
-        predictions.append(trajectory.info['model_prediction'])
-        number_of_tracks+=1
-        #trajectory.save()
+for length in tqdm.tqdm(trajectories_by_length.keys()):
+    print(length)
+    if length in network_and_length:
+        trajectories = trajectories_by_length[length]
+        classification_accuracies += [network_and_length[length].history_training_info['val_categorical_accuracy'][-1]] * len(trajectories)
+        predictions += [ ALL_MODELS[i].STRING_LABEL for i in network_and_length[length].predict(trajectories).tolist()]
+        number_of_tracks+=len(trajectories)
 
 print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
 
