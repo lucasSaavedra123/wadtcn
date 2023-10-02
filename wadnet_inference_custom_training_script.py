@@ -30,7 +30,7 @@ reference_architectures = {
     WavenetTCNWithLSTMHurstExponentPredicter: {},
 }
 
-for index, length in tqdm.tqdm(enumerate(lengths)):
+for index, length in tqdm.tqdm(list(enumerate(lengths))):
     clear_session()
     for network_class in [WaveNetTCNFBMModelClassifier, WaveNetTCNSBMModelClassifier, WavenetTCNWithLSTMHurstExponentPredicter]:
 
