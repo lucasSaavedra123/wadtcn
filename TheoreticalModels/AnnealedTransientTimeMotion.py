@@ -107,5 +107,8 @@ class AnnealedTransientTimeMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': 'anomalous',
             'exponent': self.anomalous_exponent,
-            'info': {'ds':ds}
+            'info': {
+                    'switching': len(np.unique(ds)) > 1,
+                    'ds': ds
+                }
         }
