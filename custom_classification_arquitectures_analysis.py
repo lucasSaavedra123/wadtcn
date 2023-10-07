@@ -14,6 +14,7 @@ assert len(reference_network) == 1
 network_and_length = {25: reference_network[0]}
 network_and_length[25].enable_database_persistance()
 network_and_length[25].load_as_file()
+network_and_length[25].plot_confusion_matrix()
 
 for network in WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()):
     if network.trajectory_length != 25:

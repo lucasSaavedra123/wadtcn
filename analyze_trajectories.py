@@ -120,19 +120,18 @@ def show_classification_results(tl_range, exp_label, net_name):
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
 
 all_trajectories = Trajectory.objects()
-
-number_of_trayectories = len(all_trajectories)
-
-filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
+plt.hist([trajectory.length for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)and trajectory.length < 250], bins=50)
+plt.show()
+print(len(all_trajectories))
+filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == 'CDx-Chol' and trajectory.info['label'] == 'BTX']
+print(len(filtered_trajectories))
+filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
+print(len(filtered_trajectories))
 
 trajectories_by_length = defaultdict(lambda: [])
 
 for trajectory in filtered_trajectories:
     trajectories_by_length[trajectory.length].append(trajectory)
-
-number_of_immobile_trajectories = number_of_trayectories - len(filtered_trajectories)
-
-print(f"There are {number_of_trayectories} trajectories and {number_of_immobile_trajectories} are immobile ({100 * round(number_of_immobile_trajectories/number_of_trayectories, 2)}%).")
 
 reference_network = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trajectory_length=25, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
 assert len(reference_network) == 1
