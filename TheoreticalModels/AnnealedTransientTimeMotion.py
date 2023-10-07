@@ -72,13 +72,20 @@ class AnnealedTransientTimeMotion(Model):
 
         extensions = 3
 
+        ds = []
+
         while len(posX) < extensions * trajectory_length:
             d, t = generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, 0.12, 0.10)
+
+            while 0.05 < d:
+                d, t = generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, 0.12, 0.10)
 
             number_of_steps =int(t/time_per_step)
 
             if trajectory_length < number_of_steps:
                 number_of_steps = trajectory_length
+
+            ds += [d] * number_of_steps
 
             distX = np.sqrt(2*d*time_per_step)*np.random.randn(number_of_steps)
             distY = np.sqrt(2*d*time_per_step)*np.random.randn(number_of_steps)                
@@ -87,6 +94,7 @@ class AnnealedTransientTimeMotion(Model):
 
         cut_index = np.random.randint(0, len(posX) - trajectory_length)
         posX, posY = np.cumsum(posX)[cut_index:trajectory_length+cut_index] * 1000, np.cumsum(posY)[cut_index:trajectory_length+cut_index] * 1000 #*1000 to nm
+        ds = ds[cut_index:trajectory_length+cut_index]
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, posX, posY)
         t = simulate_track_time(trajectory_length, trajectory_time)
@@ -99,5 +107,5 @@ class AnnealedTransientTimeMotion(Model):
             'y_noisy': y_noisy,
             'exponent_type': 'anomalous',
             'exponent': self.anomalous_exponent,
-            'info': {}
+            'info': {'ds':ds}
         }
