@@ -56,16 +56,13 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
         already_trained_networks.append(classifier)
         new_networks.append(classifier)
     else:
-        assert len(available_networks) == 1
-        classifier = available_networks[0]
-
         if index == 0:
-            reference_architecture = classifier        
-        elif classifier != reference_architecture:
-            classifier.set_wadnet_tcn_encoder(reference_architecture, -4)
-
-        if classifier not in new_networks:
-            classifier.enable_database_persistance()
-            classifier.load_as_file()
+            if len(available_networks) == 1:
+                classifier = available_networks[0]
+            else:
+                classifier = max(*available_networks, key= lambda net: net.trajectory_time)
+                reference_architecture = classifier
+                classifier.enable_database_persistance()
+                classifier.load_as_file()
 
 DatabaseHandler.disconnect()

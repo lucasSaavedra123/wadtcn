@@ -77,8 +77,8 @@ class Model():
                 noisy=True
             )
         else:
-            new_trajectory_time = trajectory_time * np.random.uniform(1,1.15)
-            new_trajectory_length = int(new_trajectory_time/EXPERIMENT_TIME_FRAME_BY_FRAME)
+            new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
+            new_trajectory_length = max(int(new_trajectory_time/EXPERIMENT_TIME_FRAME_BY_FRAME), trajectory_length)
             simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * EXPERIMENT_TIME_FRAME_BY_FRAME)
 
             current_length = new_trajectory_length
