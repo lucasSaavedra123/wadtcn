@@ -61,8 +61,9 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
                 classifier = available_networks[0]
             else:
                 classifier = max(*available_networks, key= lambda net: net.trajectory_time)
-                reference_architecture = classifier
-                classifier.enable_database_persistance()
-                classifier.load_as_file()
+
+            reference_architecture = classifier
+            classifier.enable_database_persistance()
+            classifier.load_as_file()
 
 DatabaseHandler.disconnect()
