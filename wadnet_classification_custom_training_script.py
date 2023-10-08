@@ -60,8 +60,8 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
         classifier = available_networks[0]
 
         if index == 0:
-            reference_architecture = classifier
-        else:
+            reference_architecture = classifier        
+        elif classifier != reference_architecture:
             classifier.set_wadnet_tcn_encoder(reference_architecture, -4)
 
         if classifier not in new_networks:
