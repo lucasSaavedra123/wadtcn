@@ -31,7 +31,6 @@ already_trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(
     hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters(),
 ))
 
-new_networks = []
 
 for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
     print("Length,Duration:", length_duration)
@@ -54,7 +53,6 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
         classifier.save()
 
         already_trained_networks.append(classifier)
-        new_networks.append(classifier)
     else:
         if index == 0:
             if len(available_networks) == 1:
@@ -65,5 +63,8 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
             reference_architecture = classifier
             classifier.enable_database_persistance()
             classifier.load_as_file()
+
+            already_trained_networks.append(classifier)
+
 
 DatabaseHandler.disconnect()
