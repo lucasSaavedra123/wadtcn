@@ -86,7 +86,7 @@ class Model():
             current_length = new_length
 
             while current_length > trajectory_length:
-                index_to_delete = np.random.choice(list(range(0, current_length)))
+                index_to_delete = np.random.choice(list(range(1, current_length-1)))
 
                 simulation_result['x'] = np.delete(simulation_result['x'], index_to_delete)
                 simulation_result['y'] = np.delete(simulation_result['y'], index_to_delete)
