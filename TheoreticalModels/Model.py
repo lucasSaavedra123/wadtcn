@@ -4,7 +4,7 @@ import io
 import numpy as np
 
 from Trajectory import Trajectory
-from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD
+from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME
 from andi_datasets.datasets_theory  import datasets_theory
 from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Functio
 from andi_datasets.datasets_challenge import challenge_phenom_dataset
@@ -77,13 +77,11 @@ class Model():
                 noisy=True
             )
         else:
-            step_by_step = trajectory_time / trajectory_length
+            new_trajectory_time = trajectory_time * np.random.uniform(1,1.15)
+            new_trajectory_length = int(new_trajectory_time/EXPERIMENT_TIME_FRAME_BY_FRAME)
+            simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * EXPERIMENT_TIME_FRAME_BY_FRAME)
 
-            new_length = int(trajectory_length * np.random.uniform(1,2))
-
-            simulation_result = self.custom_simulate_rawly(new_length, new_length * step_by_step)
-
-            current_length = new_length
+            current_length = new_trajectory_length
 
             while current_length > trajectory_length:
                 index_to_delete = np.random.choice(list(range(1, current_length-1)))

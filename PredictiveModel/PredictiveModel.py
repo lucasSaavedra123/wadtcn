@@ -506,3 +506,6 @@ class PredictiveModel(Document):
     @property
     def models_involved_in_predictive_model(self):
         return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
+
+    def compatible_with_trajectory_for_custom_prediction(self, trajectory):
+        return self.trajectory_time <= trajectory.duration <= self.trajectory_time * 1.15
