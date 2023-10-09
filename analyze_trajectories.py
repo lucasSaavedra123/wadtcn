@@ -120,33 +120,25 @@ def show_classification_results(tl_range, exp_label, net_name):
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
 
 all_trajectories = Trajectory.objects()
-plt.hist([trajectory.length for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)and trajectory.length < 250], bins=50)
-plt.show()
 print(len(all_trajectories))
-filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == 'CDx-Chol' and trajectory.info['label'] == 'BTX']
+#filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == 'CDx-Chol' and trajectory.info['label'] == 'BTX']
+#print(len(filtered_trajectories))
+filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
 print(len(filtered_trajectories))
-filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
-print(len(filtered_trajectories))
 
-trajectories_by_length = defaultdict(lambda: [])
+trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()))
+trained_networks = sorted(trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
 
-for trajectory in filtered_trajectories:
-    trajectories_by_length[trajectory.length].append(trajectory)
-
-reference_network = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trajectory_length=25, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
-assert len(reference_network) == 1
-network_and_length = {25: reference_network[0]}
-network_and_length[25].enable_database_persistance()
-network_and_length[25].load_as_file()
+for index, network in enumerate(trained_networks):
+    if index == 0:
+        reference_network = network   
+    else:
+        network.set_wadnet_tcn_encoder(reference_network, -4)
+    
+    network.enable_database_persistance()
+    network.load_as_file()
 
 classification_accuracies = []
-
-for network in WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()):
-    if network.trajectory_length != 25:
-        network.set_wadnet_tcn_encoder(network_and_length[25], -4)
-        network.enable_database_persistance()
-        network.load_as_file()
-        network_and_length[network.trajectory_length] = network
 
 DatabaseHandler.disconnect()
 
@@ -154,13 +146,21 @@ predictions = []
 
 number_of_tracks = 0
 
-for length in tqdm.tqdm(trajectories_by_length.keys()):
-    print(length)
-    if length in network_and_length:
-        trajectories = trajectories_by_length[length]
-        classification_accuracies += [network_and_length[length].history_training_info['val_categorical_accuracy'][-1]] * len(trajectories)
-        predictions += [ ALL_MODELS[i].STRING_LABEL for i in network_and_length[length].predict(trajectories).tolist()]
-        number_of_tracks+=len(trajectories)
+for trajectory in tqdm.tqdm(filtered_trajectories):
+    available_networks = [network for network in trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15)]
+
+    if len(available_networks) == 0:
+        continue
+    elif len(available_networks) == 1:
+        network = available_networks[0]
+    else:
+        network_to_select_index = np.argmin(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration)
+        network = available_networks[network_to_select_index]
+
+    classification_accuracies.append(network.history_training_info['val_categorical_accuracy'][-1])
+    predictions += [ ALL_MODELS[i].STRING_LABEL for i in network.predict([trajectory]).tolist()]
+
+    number_of_tracks+=1
 
 print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
 
