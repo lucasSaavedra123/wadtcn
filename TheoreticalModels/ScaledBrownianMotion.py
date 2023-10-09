@@ -22,8 +22,8 @@ class ScaledBrownianMotion(Model):
         elif selected_diffusion == 'brownian':
             selected_range = cls.NOT_EXACT_BROWNIAN_ANOMALOUS_EXPONENT_RANGE
 
-        selected_anomalous_exponent = np.random.uniform(
-            selected_range[0], selected_range[1])
+        selected_anomalous_exponent = np.random.uniform(selected_range[0], selected_range[1])
+        #selected_anomalous_exponent = np.random.uniform(cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[0], cls.SUP_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[1])
 
         return cls(anomalous_exponent=selected_anomalous_exponent)
 
