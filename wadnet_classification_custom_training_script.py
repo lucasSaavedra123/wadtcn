@@ -64,7 +64,6 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
             classifier.enable_database_persistance()
             classifier.load_as_file()
 
-            already_trained_networks.append(classifier)
 
 
 DatabaseHandler.disconnect()
