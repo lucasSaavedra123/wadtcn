@@ -429,7 +429,9 @@ class Trajectory(Document):
                     x = self.get_noisy_x()[initial_index:final_index],
                     y = self.get_noisy_y()[initial_index:final_index],
                     t = self.get_time()[initial_index:final_index],
-                    noisy=True
+                    noisy=True,
+                    info=self.info,
+                    exponent=self.anomalous_exponent
                 )
 
     def confinement_states(self,v_th=11,window_size=3, return_intervals=False):
