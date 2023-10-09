@@ -49,7 +49,14 @@ def transform_trajectories_into_displacements_with_time(predictive_model, trajec
 
     return X
 
+def transform_trajectories_to_mean_square_displacement_segments(predictive_model, trajectories):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length-2, 1))
 
+    for index, trajectory in enumerate(trajectories):
+        _, msd, _, _, _ = trajectory.temporal_average_mean_squared_displacement()
+        X[index, :, 0] = msd
+
+    return X
 
 def transform_trajectories_into_squared_differences(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 1))
