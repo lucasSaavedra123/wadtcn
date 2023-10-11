@@ -153,7 +153,7 @@ for label in ['BTX', 'mAb']:
             elif len(available_networks) == 1:
                 network = available_networks[0]
             else:
-                network_to_select_index = np.argmin(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration)
+                network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
                 network = available_networks[network_to_select_index]
 
             classification_accuracies.append(network.history_training_info['val_categorical_accuracy'][-1])
