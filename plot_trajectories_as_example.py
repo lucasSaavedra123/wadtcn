@@ -13,7 +13,7 @@ from Trajectory import Trajectory
 
 IDS_TO_PLOT = {
     'lw': '6514af77e7868d448ea77f73',
-    'ctrw': '6514ae30e7868d448ea7623a',
+    'ctrw': '6514abbfe7868d448ea727a5',
     'sbm': '6514ac74e7868d448ea73820',
     'fbm': '6514ac46e7868d448ea733c5',
     'attm': '6514ae30e7868d448ea76249',
