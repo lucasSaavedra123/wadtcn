@@ -38,13 +38,13 @@ def normalize(trajs, variance=None):
 class Model():
     STRING_LABELS = ['ctrw', 'fbm', 'od', 'lw', 'attm', 'sbm', 'bm']
     MODEL_COLORS = {
-        'ctrw': 'orangered',
-        'fbm': 'firebrick',
-        'od': 'dodgerblue',
-        'lw': 'green',
-        'id': 'red',
-        'attm': 'grey',
-        'sbm': 'purple',
+        'ctrw': '#ff8000',
+        'fbm': '#a00000',
+        'od': '#8c7c37',
+        'lw': '#00c000',
+        'id': '#ac07e3',
+        'attm': 'red',
+        'sbm': '#0f99b2',
         'bm': 'cyan'
     }
 
