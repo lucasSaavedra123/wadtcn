@@ -137,13 +137,8 @@ for label in ['BTX', 'mAb']:
     for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
         filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
         filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]
-        print(len(filtered_trajectories))
-
-        classification_accuracies = []
 
         predictions = []
-
-        number_of_tracks = 0
 
         for trajectory in tqdm.tqdm(filtered_trajectories):
             available_networks = [network for network in trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15)]
@@ -156,47 +151,11 @@ for label in ['BTX', 'mAb']:
                 network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
                 network = available_networks[network_to_select_index]
 
-            classification_accuracies.append(network.history_training_info['val_categorical_accuracy'][-1])
-            predictions += [ ALL_MODELS[i].STRING_LABEL for i in network.predict([trajectory]).tolist()]
+            trajectory.info['prediction'] = {
+                'classified_model': [ ALL_MODELS[i].STRING_LABEL for i in network.predict([trajectory]).tolist()][0],
+                'model_classification_accuracy': network.history_training_info['val_categorical_accuracy'][-1],
+            }
 
-            number_of_tracks+=1
-
-        print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
-
-        model_strings = [class_model.STRING_LABEL for class_model in ALL_MODELS]
-        count = np.zeros((len(model_strings))).tolist()
-        pc = 1 - np.percentile(classification_accuracies, 5)
-
-        counter = Counter(predictions)
-
-        for model_string in model_strings:
-            count[model_strings.index(model_string)] = counter[model_string]
-
-        errors = [[], []]
-        aux = 0
-
-        for i in range(len(count)):
-            error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * np.sum(count[:i] + count[i+1:])/number_of_tracks) 
-            errors[0].append(error_yi[0])
-            errors[1].append(error_yi[1])
-
-        count = [(100 * x) / number_of_tracks for x in count]
-
-        with open(f"{label}_{experimental_condition}.txt", 'w') as a_file:
-            for model_string in ['attm', 'sbm', 'fbm', 'ctrw', 'lw', 'od', 'id']:
-                index = model_strings.index(model_string)
-                a_file.write(f"{count[index]},{errors[1][index]},{errors[0][index]},")
+            trajectory.save()
 
 DatabaseHandler.disconnect()
-
-"""
-colors = [Model.Model.MODEL_COLORS[model_string] for model_string in model_strings]
-
-plt.bar(x=[(aux + i) for i in range(len(ALL_MODELS))], height=count, width=0.6, align='center', color=colors, yerr=errors)
-handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in colors]
-plt.legend(handles, model_strings, bbox_to_anchor=(1.04,1), borderaxespad=0, fontsize=14)
-
-#plt.rcParams['lines.color'] = 'b'
-#plt.rcParams['lines.linewidth'] = 3
-plt.show()
-"""
