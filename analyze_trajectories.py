@@ -136,7 +136,7 @@ for index, network in enumerate(trained_networks):
 for label in ['BTX', 'mAb']:
     for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
         filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
-        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
+        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]
         print(len(filtered_trajectories))
 
         classification_accuracies = []
