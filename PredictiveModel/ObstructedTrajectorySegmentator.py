@@ -53,7 +53,7 @@ class ObstructedTrajectorySegmentator(PredictiveModel):
         }
 
     def build_network(self):
-        build_segmentator_for(self)
+        build_segmentator_for(self, with_wadnet=True)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
