@@ -31,6 +31,7 @@ already_trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(
     hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters(),
 ))
 
+lengths_durations = [lengths_durations[0]] + [a for a in lengths_durations if 250 < a[0] < 500]
 
 for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
     print("Length,Duration:", length_duration)
