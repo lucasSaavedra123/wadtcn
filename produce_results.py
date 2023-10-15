@@ -118,48 +118,25 @@ def show_classification_results(tl_range, exp_label, net_name):
 """
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
-
-all_trajectories = Trajectory.objects()
-
-trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()))
-trained_networks = sorted(trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
-
-for index, network in enumerate(trained_networks):
-    if index == 0:
-        reference_network = network   
-    else:
-        network.set_wadnet_tcn_encoder(reference_network, -4)
-
-    network.enable_database_persistance()
-    network.load_as_file()
+all_trajectories = list(Trajectory.objects())
+DatabaseHandler.disconnect()
 
 for label in ['BTX', 'mAb']:
     for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
         filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
         filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]
-        print(len(filtered_trajectories))
 
-        classification_accuracies = []
+        infos = [trajectory.info.get('prediction', {}) for trajectory in filtered_trajectories]
 
-        predictions = []
+        predictions = [info.get('classified_model', None) for info in infos]
+        predictions = [prediction for prediction in predictions if prediction is not None]
 
-        number_of_tracks = 0
+        classification_accuracies = [info.get('model_classification_accuracy', None) for info in infos]
+        classification_accuracies = [accuracy for accuracy in classification_accuracies if accuracy is not None]
 
-        for trajectory in tqdm.tqdm(filtered_trajectories):
-            available_networks = [network for network in trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15)]
+        assert len(predictions) == len(classification_accuracies)
 
-            if len(available_networks) == 0:
-                continue
-            elif len(available_networks) == 1:
-                network = available_networks[0]
-            else:
-                network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
-                network = available_networks[network_to_select_index]
-
-            classification_accuracies.append(network.history_training_info['val_categorical_accuracy'][-1])
-            predictions += [ ALL_MODELS[i].STRING_LABEL for i in network.predict([trajectory]).tolist()]
-
-            number_of_tracks+=1
+        number_of_tracks = len(predictions)
 
         print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
 
@@ -186,5 +163,3 @@ for label in ['BTX', 'mAb']:
             for model_string in ['attm', 'sbm', 'fbm', 'ctrw', 'lw', 'od', 'id']:
                 index = model_strings.index(model_string)
                 a_file.write(f"{count[index]},{errors[1][index]},{errors[0][index]},")
-
-DatabaseHandler.disconnect()
