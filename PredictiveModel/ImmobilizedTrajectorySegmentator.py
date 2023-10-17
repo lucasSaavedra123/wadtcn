@@ -12,7 +12,7 @@ import seaborn as sns
 from CONSTANTS import *
 
 from .PredictiveModel import PredictiveModel
-from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_states
+from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_states, build_wavenet_tcn_classifier_from_encoder_for
 
 class ImmobilizedTrajectorySegmentator(PredictiveModel):
     @property
@@ -52,7 +52,10 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         }
 
     def build_network(self):
-        build_segmentator_for(self, with_wadnet=True)
+        if self.wadnet_tcn_encoder is None:
+            build_segmentator_for(self, with_wadnet=True)
+        else:
+            build_wavenet_tcn_classifier_from_encoder_for(self, 160)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
@@ -70,7 +73,12 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         return transform_trajectories_into_states(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+
+        return X
 
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)

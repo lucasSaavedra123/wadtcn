@@ -232,6 +232,13 @@ def build_wavenet_tcn_classifier_from_encoder_for(predictive_model, input_size):
     output_network = Dense(units=predictive_model.number_of_models_involved, activation='softmax')(dense_2)
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
+def build_wavenet_tcn_segmentor_from_encoder_for(predictive_model, input_size):
+    inputs = Input(shape=(input_size))
+    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(inputs)
+    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
+
 def build_segmentator_for(predictive_model, with_wadnet=False):
     # Networks filters and kernels
     initializer = 'he_normal'
