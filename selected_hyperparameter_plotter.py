@@ -5,6 +5,7 @@ from PredictiveModel.WaveNetTCNFBMModelClassifier import WaveNetTCNFBMModelClass
 from PredictiveModel.WaveNetTCNSBMModelClassifier import WaveNetTCNSBMModelClassifier
 from PredictiveModel.WavenetTCNWithLSTMHurstExponentPredicter import WavenetTCNWithLSTMHurstExponentPredicter
 from PredictiveModel.ImmobilizedTrajectorySegmentator import ImmobilizedTrajectorySegmentator
+from PredictiveModel.WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter import WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion')
@@ -45,5 +46,6 @@ WavenetTCNWithLSTMHurstExponentPredicter.plot_hyperparameter_search(25, 25, simu
 WavenetTCNWithLSTMHurstExponentPredicter.plot_hyperparameter_search(25, 25, simulator=AndiDataSimulation, model='attm', discriminator={'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 30}, title='Hurst Exponent of ATTM Predictor')
 
 ImmobilizedTrajectorySegmentator.plot_hyperparameter_search(25, 25 * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation, discriminator={'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-7, 'epochs': 30}, title='Immobilization Segmenter')
+WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter.plot_hyperparameter_search(25, 25 * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation, discriminator=None, title='fBM Diffusion Coefficient Predictor')
 
 DatabaseHandler.disconnect()
