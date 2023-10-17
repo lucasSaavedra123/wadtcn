@@ -23,14 +23,23 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
     def number_of_categories(self):
         return None
 
-    #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
             'lr': 0.001,
             'epochs': 100,
             'batch_size': 16,
-            'amsgrad': False,
-            'epsilon': 1e-6,
+            'amsgrad': True,
+            'epsilon': 1e-7,
+        }
+
+    @classmethod
+    def selected_hyperparameters(self):
+        return {
+            'lr': 0.001,
+            'epochs': 100,
+            'batch_size': 16,
+            'amsgrad': True,
+            'epsilon': 1e-7,
         }
 
     @classmethod
