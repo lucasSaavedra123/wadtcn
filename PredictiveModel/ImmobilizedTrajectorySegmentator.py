@@ -12,7 +12,7 @@ import seaborn as sns
 from CONSTANTS import *
 
 from .PredictiveModel import PredictiveModel
-from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_states, build_wavenet_tcn_classifier_from_encoder_for
+from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_states, build_wavenet_tcn_segmenter_from_encoder_for
 
 class ImmobilizedTrajectorySegmentator(PredictiveModel):
     @property
@@ -55,7 +55,7 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         if self.wadnet_tcn_encoder is None:
             build_segmentator_for(self, with_wadnet=True)
         else:
-            build_wavenet_tcn_classifier_from_encoder_for(self, 160)
+            build_wavenet_tcn_segmenter_from_encoder_for(self, 160)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
