@@ -63,10 +63,13 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
-    def predict(self, trajectories):
+    def predict(self, trajectories, apply_threshold=True):
         X = self.transform_trajectories_to_input(trajectories)
         Y_predicted = self.architecture.predict(X)
-        Y_predicted = (Y_predicted > 0.5).astype(int)
+
+        if apply_threshold:
+            Y_predicted = (Y_predicted > self.selected_threshold).astype(int)
+
         return Y_predicted
 
     def transform_trajectories_to_output(self, trajectories):
@@ -103,6 +106,10 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
+
+    @property
+    def selected_threshold(self):
+        return 0.5
 
     @property
     def type_name(self):
