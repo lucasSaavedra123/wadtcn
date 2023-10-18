@@ -10,9 +10,9 @@ from CONSTANTS import *
 class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
     def default_hyperparameters(self):
         return {
-            'lr': 0.0001,
-            'batch_size': 8,
-            'amsgrad': False,
+            'lr': 0.001,
+            'batch_size': 64,
+            'amsgrad': True,
             'epsilon': 1e-08,
             'epochs': 100
         }
@@ -20,9 +20,9 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
     @classmethod
     def selected_hyperparameters(self):
         return {
-            'lr': 0.0001,
-            'batch_size': 8,
-            'amsgrad': False,
+            'lr': 0.001,
+            'batch_size': 64,
+            'amsgrad': True,
             'epsilon': 1e-08,
             'epochs': 100
         }

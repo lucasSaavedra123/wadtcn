@@ -239,16 +239,20 @@ def build_wavenet_tcn_segmenter_from_encoder_for(predictive_model, input_size):
     output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
-def build_segmentator_for(predictive_model, with_wadnet=False):
+def build_segmentator_for(predictive_model, with_wadnet=False, number_of_features=2, filters=32, input_size=None):
+
+    if input_size is None:
+        input_size = predictive_model.trajectory_length
+
     # Networks filters and kernels
     initializer = 'he_normal'
-    filters_size = 32
+    filters_size = filters
     x1_kernel_size = 4
     x2_kernel_size = 2
     x3_kernel_size = 3
     x4_kernel_size = 10
     x5_kernel_size = 20
-    inputs = Input(shape=(predictive_model.trajectory_length, 2))
+    inputs = Input(shape=(input_size, number_of_features))
 
     if with_wadnet:
         x = WaveNetEncoder(filters_size, 8, initializer=initializer)(inputs)
