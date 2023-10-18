@@ -53,7 +53,7 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            build_segmentator_for(self, with_wadnet=True, number_of_features=3, filters=64, input_size=self.trajectory_length-1)
+            build_segmentator_for(self, with_wadnet=True, number_of_features=3, filters=64, input_size=self.trajectory_length-1, with_skip_connections=True)
         else:
             build_wavenet_tcn_segmenter_from_encoder_for(self, 320)
 

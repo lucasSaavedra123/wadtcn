@@ -239,7 +239,7 @@ def build_wavenet_tcn_segmenter_from_encoder_for(predictive_model, input_size):
     output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
-def build_segmentator_for(predictive_model, with_wadnet=False, number_of_features=2, filters=32, input_size=None):
+def build_segmentator_for(predictive_model, with_wadnet=False, number_of_features=2, filters=32, input_size=None, with_skip_connections=False):
 
     if input_size is None:
         input_size = predictive_model.trajectory_length
@@ -270,6 +270,12 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
                 activation='relu',
                 kernel_initializer=initializer)(x1)
     x1 = BatchNormalization()(x1)
+
+    if with_skip_connections:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x_skip = BatchNormalization()(x_skip)
+        x1 = Add()([x1, x_skip])
+
     x1 = GlobalAveragePooling1D()(x1)
     x2 = Conv1D(filters=filters_size, kernel_size=x2_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
@@ -282,6 +288,12 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
                 activation='relu',
                 kernel_initializer=initializer)(x2)
     x2 = BatchNormalization()(x2)
+
+    if with_skip_connections:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x_skip = BatchNormalization()(x_skip)
+        x2 = Add()([x2, x_skip])
+
     x2 = GlobalAveragePooling1D()(x2)
     x3 = Conv1D(filters=filters_size, kernel_size=x3_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
@@ -294,6 +306,12 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
                 activation='relu',
                 kernel_initializer=initializer)(x3)
     x3 = BatchNormalization()(x3)
+
+    if with_skip_connections:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x_skip = BatchNormalization()(x_skip)
+        x3 = Add()([x3, x_skip])
+
     x3 = GlobalAveragePooling1D()(x3)
     x4 = Conv1D(filters=filters_size, kernel_size=x4_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
@@ -306,10 +324,22 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
                 activation='relu',
                 kernel_initializer=initializer)(x4)
     x4 = BatchNormalization()(x4)
+
+    if with_skip_connections:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x_skip = BatchNormalization()(x_skip)
+        x4 = Add()([x4, x_skip])
+
     x4 = GlobalAveragePooling1D()(x4)
     x5 = Conv1D(filters=filters_size, kernel_size=x5_kernel_size, padding='same', activation='relu',
                 kernel_initializer=initializer)(x)
     x5 = BatchNormalization()(x5)
+
+    if with_skip_connections:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x_skip = BatchNormalization()(x_skip)
+        x5 = Add()([x5, x_skip])
+
     x5 = GlobalAveragePooling1D()(x5)
     x_concat = concatenate(inputs=[x1, x2, x3, x4, x5])
     dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
