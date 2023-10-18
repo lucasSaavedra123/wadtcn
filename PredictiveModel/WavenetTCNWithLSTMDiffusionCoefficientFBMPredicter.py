@@ -67,14 +67,14 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
 
             x = Dense(units=256, activation='relu')(x)
             x = Dense(units=128, activation='relu')(x)
-            output_network = Dense(units=1, activation='sigmoid')(x)
+            output_network = Dense(units=1, activation='tanh')(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
         else:
             inputs = Input(shape=(64))
             x = Dense(units=256, activation='relu')(x)
             x = Dense(units=128, activation='relu')(x)
-            output_network = Dense(units=1, activation='sigmoid')(x)
+            output_network = Dense(units=1, activation='tanh')(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -112,4 +112,4 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         predicted = self.predict(trajectories).flatten()
 
-        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=[[0,1],[0,1]])
+        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, a_range=[[0,1], [0,1]])
