@@ -42,7 +42,7 @@ for index, length_duration in tqdm.tqdm(list(enumerate(lengths_durations))):
         if index == 0:
             reference_architecture = classifier
         else:
-            classifier.set_wadnet_tcn_encoder(reference_architecture, -4)
+            classifier.set_wadnet_tcn_encoder(reference_architecture, -3)
 
         classifier.enable_early_stopping()
         classifier.enable_database_persistance()

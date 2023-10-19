@@ -1,5 +1,7 @@
 from keras.layers import Dense, Input, GlobalAveragePooling1D
 from keras.models import Model
+from keras.layers import Dense, Input, LSTM, Bidirectional
+from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotion
@@ -47,7 +49,7 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
         return transform_trajectories_to_diffusion_coefficient(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_squared_differences(self, trajectories, normalize=True)
+        X = transform_trajectories_into_displacements_with_time(self, trajectories, normalize=False)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
@@ -56,26 +58,27 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            inputs = Input(shape=(self.trajectory_length-1, 1))
+            inputs = Input(shape=(self.trajectory_length-1, 3))
             filters = 64
             dilation_depth = 8
             initializer = 'he_normal'
 
             x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
-            x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
-            x = GlobalAveragePooling1D()(x)
 
-            x = Dense(units=256, activation='relu')(x)
-            x = Dense(units=128, activation='relu')(x)
-            output_network = Dense(units=1, activation='tanh')(x)
+            x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
+
+            x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
+            x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
+
+            x = Dense(units=128, activation='selu')(x)
+            output_network = Dense(units=1, activation='sigmoid')(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
+
         else:
             inputs = Input(shape=(64))
-            x = Dense(units=256, activation='relu')(x)
-            x = Dense(units=128, activation='relu')(x)
-            output_network = Dense(units=1, activation='tanh')(x)
-
+            x = Dense(units=128, activation='selu')(inputs)
+            output_network = Dense(units=1, activation='sigmoid')(x)
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
