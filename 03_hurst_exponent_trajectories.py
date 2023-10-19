@@ -10,12 +10,16 @@ from Trajectory import Trajectory
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
 
 print("Loading trajectories...")
-all_trajectories = Trajectory.objects()
-filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25 and trajectory.info['prediction']['classified_model'] not in ['od', 'id']]
+filtered_trajectories = [trajectory for trajectory in Trajectory.objects() if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25 and trajectory.info['prediction']['classified_model'] not in ['od', 'id']]
 
 print("Loading Hurst Exponent Regression Networks...")
-reference_classification_trained_networks = [network for network in WavenetTCNWithLSTMHurstExponentPredicter.objects() if network.trajectory_length == reference_network.trajectory_length and network.trajectory_time == reference_network.trajectory_time]
-transfer_learning_classification_trained_networks = [network for network in WavenetTCNWithLSTMHurstExponentPredicter.objects() if network.trajectory_length != reference_network.trajectory_length and network.trajectory_time != reference_network.trajectory_time]
+
+all_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WavenetTCNWithLSTMHurstExponentPredicter.selected_hyperparameters()))
+all_networks = sorted(all_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
+reference_network = all_networks[0]
+
+reference_classification_trained_networks = [network for network in all_networks if network.trajectory_length == reference_network.trajectory_length and network.trajectory_time == reference_network.trajectory_time]
+transfer_learning_classification_trained_networks = [network for network in all_networks if network.trajectory_length != reference_network.trajectory_length and network.trajectory_time != reference_network.trajectory_time]
 
 for reference_network in tqdm.tqdm(reference_classification_trained_networks):
     reference_network.enable_database_persistance()
