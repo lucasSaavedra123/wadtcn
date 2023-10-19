@@ -14,10 +14,10 @@ print("Loading trajectories...")
 all_trajectories = Trajectory.objects()
 filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]
 
+print("Loading Model Classification Networks...")
 classification_trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()))
 classification_trained_networks = sorted(classification_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
 
-print("Loading Model Classification Networks...")
 for index, network in tqdm.tqdm(list(enumerate(classification_trained_networks))):
     if index == 0:
         reference_network = network   
@@ -38,10 +38,8 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
         network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
         network = available_networks[network_to_select_index]
 
-    trajectory.info['prediction'] = {
-        'classified_model': [ network.models_involved_in_predictive_model[i].STRING_LABEL for i in network.predict([trajectory]).tolist()][0],
-        'model_classification_accuracy': network.history_training_info['val_categorical_accuracy'][-1],
-    }
+    trajectory.info['prediction']['classified_model'] = [ network.models_involved_in_predictive_model[i].STRING_LABEL for i in network.predict([trajectory]).tolist()][0]
+    trajectory.info['prediction']['model_classification_accuracy'] = network.history_training_info['val_categorical_accuracy'][-1]
 
     trajectory.save()
 
