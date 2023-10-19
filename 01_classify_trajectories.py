@@ -3,7 +3,6 @@ import numpy as np
 
 from DatabaseHandler import DatabaseHandler
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
-from PredictiveModel.WavenetTCNWithLSTMHurstExponentPredicter import WavenetTCNWithLSTMHurstExponentPredicter
 from DataSimulation import CustomDataSimulation
 from CONSTANTS import IMMOBILE_THRESHOLD
 from Trajectory import Trajectory
