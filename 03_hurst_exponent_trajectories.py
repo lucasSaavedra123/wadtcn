@@ -42,7 +42,7 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
     available_networks = [network for network in regression_trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15) and network.extra_parameters['model'] == string_filter]
 
     if len(available_networks) == 0:
-        continue
+        raise Exception(f'There is no available network for {trajectory.length} and {trajectory.duration}s')
     elif len(available_networks) == 1:
         network = available_networks[0]
     else:
