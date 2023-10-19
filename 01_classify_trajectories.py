@@ -37,7 +37,8 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
     else:
         network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
         network = available_networks[network_to_select_index]
-
+    
+    trajectory.info['prediction'] = {}
     trajectory.info['prediction']['classified_model'] = [ network.models_involved_in_predictive_model[i].STRING_LABEL for i in network.predict([trajectory]).tolist()][0]
     trajectory.info['prediction']['model_classification_accuracy'] = network.history_training_info['val_categorical_accuracy'][-1]
 
