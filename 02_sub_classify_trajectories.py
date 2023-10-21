@@ -43,7 +43,7 @@ for index, network in tqdm.tqdm(list(enumerate(classification_trained_networks['
 
 
 for trajectory in tqdm.tqdm(filtered_trajectories):
-    available_networks = [network for network in classification_trained_networks[trajectory.info['prediction']['classified_model']] if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15)]
+    available_networks = [network for network in classification_trained_networks[trajectory.info['prediction']['classified_model']] if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= round(trajectory.duration, 2) <= network.trajectory_time * 1.15)]
 
     if len(available_networks) == 0:
         raise Exception(f'There is no available network for {trajectory.length} and {trajectory.duration}s')

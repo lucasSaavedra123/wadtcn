@@ -14,24 +14,21 @@ filtered_trajectories = [trajectory for trajectory in Trajectory.objects() if no
 
 print("Loading Hurst Exponent Regression Networks...")
 
-all_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WavenetTCNWithLSTMHurstExponentPredicter.selected_hyperparameters()))
-all_networks = sorted(all_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
-reference_network = all_networks[0]
+regression_trained_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WavenetTCNWithLSTMHurstExponentPredicter.selected_hyperparameters()))
+regression_trained_networks = sorted(regression_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
+reference_network = regression_trained_networks[0]
 
-reference_classification_trained_networks = [network for network in all_networks if network.trajectory_length == reference_network.trajectory_length and network.trajectory_time == reference_network.trajectory_time]
-transfer_learning_classification_trained_networks = [network for network in all_networks if network.trajectory_length != reference_network.trajectory_length and network.trajectory_time != reference_network.trajectory_time]
+reference_classification_trained_networks = [network for network in regression_trained_networks if network.trajectory_length == reference_network.trajectory_length and network.trajectory_time == reference_network.trajectory_time]
 
 for reference_network in tqdm.tqdm(reference_classification_trained_networks):
     reference_network.enable_database_persistance()
     reference_network.load_as_file()
 
-for transfer_learning_network in tqdm.tqdm(transfer_learning_classification_trained_networks):
+for transfer_learning_network in tqdm.tqdm([n for n in regression_trained_networks if n not in reference_classification_trained_networks]):
     reference_network = [network for network in reference_classification_trained_networks if transfer_learning_network.extra_parameters['model'] == network.extra_parameters['model']][0]
     transfer_learning_network.set_wadnet_tcn_encoder(reference_network, -3)
     transfer_learning_network.enable_database_persistance()
     transfer_learning_network.load_as_file()
-
-regression_trained_networks = reference_classification_trained_networks + transfer_learning_classification_trained_networks
 
 for trajectory in tqdm.tqdm(filtered_trajectories):
     if 'sub_classified_model' in trajectory.info['prediction']:
@@ -39,7 +36,7 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
     else:
         string_filter = trajectory.info['prediction']['classified_model']
 
-    available_networks = [network for network in regression_trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= trajectory.duration <= network.trajectory_time * 1.15) and network.extra_parameters['model'] == string_filter]
+    available_networks = [network for network in regression_trained_networks if network.trajectory_length == trajectory.length and (network.trajectory_time * 0.85 <= round(trajectory.duration, 2) <= network.trajectory_time * 1.15) and network.extra_parameters['model'] == string_filter]
 
     if len(available_networks) == 0:
         raise Exception(f'There is no available network for {trajectory.length} and {trajectory.duration}s')
