@@ -45,7 +45,7 @@ WavenetTCNWithLSTMHurstExponentPredicter.plot_hyperparameter_search(25, 25, simu
 WavenetTCNWithLSTMHurstExponentPredicter.plot_hyperparameter_search(25, 25, simulator=AndiDataSimulation, model='ctrw', discriminator={'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 30}, title='Hurst Exponent of CTRW Predictor')
 WavenetTCNWithLSTMHurstExponentPredicter.plot_hyperparameter_search(25, 25, simulator=AndiDataSimulation, model='attm', discriminator={'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 30}, title='Hurst Exponent of ATTM Predictor')
 
-ImmobilizedTrajectorySegmentator.plot_hyperparameter_search(25, 25 * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation, discriminator={'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-7, 'epochs': 30}, title='Immobilization Segmenter')
+ImmobilizedTrajectorySegmentator.plot_hyperparameter_search(25, 25 * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation, discriminator={'lr': 0.001, 'epochs': 30, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06}, title='Immobilization Segmenter')
 WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter.plot_hyperparameter_search(25, 25 * EXPERIMENT_TIME_FRAME_BY_FRAME, simulator=CustomDataSimulation, discriminator={'lr': 0.001, 'batch_size': 64, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 30}, title='fBM Diffusion Coefficient Predictor')
 
 DatabaseHandler.disconnect()

@@ -27,9 +27,9 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         return {
             'lr': 0.001,
             'epochs': 100,
-            'batch_size': 16,
-            'amsgrad': True,
-            'epsilon': 1e-7,
+            'batch_size': 32,
+            'amsgrad': False,
+            'epsilon': 1e-6,
         }
 
     @classmethod
@@ -37,9 +37,9 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         return {
             'lr': 0.001,
             'epochs': 100,
-            'batch_size': 16,
-            'amsgrad': True,
-            'epsilon': 1e-7,
+            'batch_size': 32,
+            'amsgrad': False,
+            'epsilon': 1e-6,
         }
 
     @classmethod
