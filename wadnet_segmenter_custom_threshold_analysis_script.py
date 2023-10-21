@@ -1,21 +1,18 @@
 import numpy as np
 import ghostml
-from sklearn.metrics import f1_score
-from sklearn.metrics import roc_curve
 from DataSimulation import CustomDataSimulation
 from PredictiveModel.ImmobilizedTrajectorySegmentator import ImmobilizedTrajectorySegmentator
+from DatabaseHandler import DatabaseHandler
 
+DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
 
-TRAIN_NEW_NETWORK = False
+trained_networks = list(ImmobilizedTrajectorySegmentator.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=ImmobilizedTrajectorySegmentator.selected_hyperparameters()))
+trained_networks = sorted(trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
+segmenter = trained_networks[0]
+segmenter.enable_database_persistance()
+segmenter.load_as_file()
 
-segmenter = ImmobilizedTrajectorySegmentator(25,0.25, simulator=CustomDataSimulation)
-
-if TRAIN_NEW_NETWORK:
-    segmenter.enable_early_stopping()
-    segmenter.fit()
-    segmenter.save_as_file()
-else:
-    segmenter.load_as_file()
+DatabaseHandler.disconnect()
 
 print("Generating trayectories...")
 trajectories = segmenter.simulator().simulate_trajectories_by_model(
