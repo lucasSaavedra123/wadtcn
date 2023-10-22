@@ -14,7 +14,7 @@ filtered_trajectories = [trajectory for trajectory in Trajectory.objects() if no
 
 print("Loading Hurst Exponent Regression Networks...")
 
-regression_trained_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WavenetTCNWithLSTMHurstExponentPredicter.selected_hyperparameters()))
+regression_trained_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True))
 regression_trained_networks = sorted(regression_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
 reference_network = regression_trained_networks[0]
 
