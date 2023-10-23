@@ -130,8 +130,6 @@ for label in ['BTX', 'mAb']:
 
         number_of_tracks = len(predictions)
 
-        print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
-
         model_strings = [class_model.STRING_LABEL for class_model in ALL_MODELS]
         count = np.zeros((len(model_strings))).tolist()
         pc = 1 - np.percentile(classification_accuracies, 5)
