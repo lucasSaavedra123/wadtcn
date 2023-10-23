@@ -36,7 +36,7 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
         network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
         network = available_networks[network_to_select_index]
 
-    trajectory.info['prediction']['diffusion_coefficient'] =  network.predict([trajectory]).tolist()[0]
+    trajectory.info['prediction']['diffusion_coefficient'] =  network.predict([trajectory]).tolist()[0][0]
     trajectory.info['prediction']['diffusion_coefficient_mae'] = network.history_training_info['val_mae'][-1]
 
     trajectory.save()
