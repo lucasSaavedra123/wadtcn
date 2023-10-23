@@ -37,7 +37,7 @@ for trajectory in tqdm.tqdm(filtered_trajectories):
         network_to_select_index = np.argmin(np.abs(np.array([network.trajectory_time for network in available_networks]) - trajectory.duration))
         network = available_networks[network_to_select_index]
 
-    trajectory.info['prediction']['segmentation'] =  network.predict([trajectory]).tolist()
+    trajectory.info['prediction']['segmentation'] =  network.predict([trajectory]).tolist()[0]
     trajectory.save()
 
 DatabaseHandler.disconnect()
