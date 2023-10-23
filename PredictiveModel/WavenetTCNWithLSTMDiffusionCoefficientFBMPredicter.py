@@ -12,20 +12,20 @@ from CONSTANTS import *
 class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
     def default_hyperparameters(self):
         return {
-            'lr': 0.001,
+            'lr': 0.0001,
             'batch_size': 64,
             'amsgrad': True,
-            'epsilon': 1e-08,
+            'epsilon': 1e-07,
             'epochs': 100
         }
 
     @classmethod
     def selected_hyperparameters(self):
         return {
-            'lr': 0.001,
+            'lr': 0.0001,
             'batch_size': 64,
             'amsgrad': True,
-            'epsilon': 1e-08,
+            'epsilon': 1e-07,
             'epochs': 100
         }
 
