@@ -158,7 +158,7 @@ for label in ['BTX', 'mAb']:
         filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
         filtered_trajectories = [trajectory for trajectory in filtered_trajectories if trajectory.info['prediction']['classified_model'] not in ['id', 'od']]
 
-        predictions = [trajectory.info['prediction']['hurst_exponent'][0] for trajectory in filtered_trajectories]
+        predictions = [trajectory.info['prediction']['hurst_exponent'] for trajectory in filtered_trajectories]
 
         with open(f"hurst_exponent_{label}_{experimental_condition}.txt", 'w') as a_file:
             for prediction in predictions:
