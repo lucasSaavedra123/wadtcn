@@ -118,23 +118,15 @@ def show_classification_results(tl_range, exp_label, net_name):
 """
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
-all_trajectories = list(Trajectory.objects())
+all_trajectories = [trajectory for trajectory in Trajectory.objects() if 'prediction' in trajectory.info]
 DatabaseHandler.disconnect()
 
 for label in ['BTX', 'mAb']:
     for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
         filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
-        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]
 
-        infos = [trajectory.info.get('prediction', {}) for trajectory in filtered_trajectories]
-
-        predictions = [info.get('classified_model', None) for info in infos]
-        predictions = [prediction for prediction in predictions if prediction is not None]
-
-        classification_accuracies = [info.get('model_classification_accuracy', None) for info in infos]
-        classification_accuracies = [accuracy for accuracy in classification_accuracies if accuracy is not None]
-
-        assert len(predictions) == len(classification_accuracies)
+        predictions = [trajectory.info['prediction']['classified_model'] for trajectory in filtered_trajectories]
+        classification_accuracies = [trajectory.info['prediction']['model_classification_accuracy'] for trajectory in filtered_trajectories]
 
         number_of_tracks = len(predictions)
 
@@ -159,7 +151,7 @@ for label in ['BTX', 'mAb']:
 
         count = [(100 * x) / number_of_tracks for x in count]
 
-        with open(f"{label}_{experimental_condition}.txt", 'w') as a_file:
+        with open(f"model_classification_{label}_{experimental_condition}.txt", 'w') as a_file:
             for model_string in ['attm', 'sbm', 'fbm', 'ctrw', 'lw', 'od', 'id']:
                 index = model_strings.index(model_string)
                 a_file.write(f"{count[index]},{errors[1][index]},{errors[0][index]},")
