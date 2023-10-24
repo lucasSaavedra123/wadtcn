@@ -142,7 +142,7 @@ for label in ['BTX', 'mAb']:
         errors = [[], []]
 
         for i in range(len(count)):
-            error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * np.sum(count[:i] + count[i+1:])/number_of_tracks) 
+            error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * (number_of_tracks - count[i])/number_of_tracks) 
             errors[0].append(error_yi[0])
             errors[1].append(error_yi[1])
 
@@ -151,7 +151,7 @@ for label in ['BTX', 'mAb']:
         with open(f"model_classification_{label}_{experimental_condition}.txt", 'w') as a_file:
             for model_string in model_strings:
                 index = model_strings.index(model_string)
-                a_file.write(f"{count[index]},{errors[1][index]},{errors[0][index]},")
+                a_file.write(f"{count[index]},{count[index] + errors[1][index]},{count[index] - errors[0][index]},")
 
 for label in ['BTX', 'mAb']:
     for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
@@ -199,7 +199,7 @@ for theoretical_model in ['fbm', 'sbm']:
             errors = [[], []]
 
             for i in range(len(count)):
-                error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * np.sum(count[:i] + count[i+1:])/number_of_tracks) 
+                error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * (number_of_tracks - count[i])/number_of_tracks) 
                 errors[0].append(error_yi[0])
                 errors[1].append(error_yi[1])
 
@@ -208,4 +208,4 @@ for theoretical_model in ['fbm', 'sbm']:
             with open(f"sub_{theoretical_model}_model_classification_{label}_{experimental_condition}.txt", 'w') as a_file:
                 for model_string in model_strings:
                     index = model_strings.index(model_string)
-                    a_file.write(f"{count[index]},{errors[1][index]},{errors[0][index]},")
+                    a_file.write(f"{count[index]},{count[index] + errors[1][index]},{count[index] - errors[0][index]},")
