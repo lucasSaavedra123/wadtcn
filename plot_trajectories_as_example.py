@@ -43,8 +43,8 @@ for index, key in enumerate(IDS_TO_PLOT):
     x = trajectory.get_noisy_x()
     y = trajectory.get_noisy_y()
 
-    x = (x - np.mean(x)) + (offset_dictionary[index][0] * offset)
-    y = (y - np.mean(y)) + (offset_dictionary[index][1] * offset)
+    x = (x - np.mean(x)) + (750 * index)# + (offset_dictionary[index][0] * offset)
+    y = (y - np.mean(y))# + (offset_dictionary[index][1] * offset)
 
     ax.plot(x, y, color=Model.Model.MODEL_COLORS[key], linewidth=1.25)
 
