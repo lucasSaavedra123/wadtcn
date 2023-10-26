@@ -152,22 +152,8 @@ pd.DataFrame(to_save_theoretical_model_and_mae).to_csv('model_inference_result.c
 trajectories_by_length = {}
 
 for trajectory_id in range(12500):
-    alpha = np.random.uniform(0.05,1.95)
-
-    if alpha < 0.95:
-        choice_models = SUB_DIFFUSIVE_MODELS
-    elif 0.95 <= alpha < 1.05:
-        choice_models = BROWNIAN_MODELS
-    else:
-        choice_models = SUP_DIFFUSIVE_MODELS
-
-    model = np.random.choice(choice_models)
+    model = np.random.choice(ANDI_MODELS)
     model_instance = model.create_random_instance()
-
-    if model == FractionalBrownianMotion:
-        model_instance.hurst_exponent = alpha/2
-    else:
-        model_instance.anomalous_exponent = alpha
 
     selected_length = np.random.choice(lengths)
     trajectory = model_instance.simulate_trajectory(selected_length, selected_length, from_andi=True)
@@ -199,6 +185,8 @@ for info in zip(
             all_info[info[0]]['ground_truth'].append(ground_truth[i])    
 
 for arquitecture_name in all_info:
-    plot_predicted_and_ground_truth_histogram(all_info[arquitecture_name]['ground_truth'], all_info[arquitecture_name]['predictions'], range=[[0,2], [0,2]], title=arquitecture_name, save=True)
+    result = np.histogram2d(all_info[arquitecture_name]['ground_truth'], all_info[arquitecture_name]['predictions'], bins=50, range=[[0,2], [0,2]])
+    dataframe = pd.DataFrame(np.flipud(result[0]), result[2][1:51][::-1], columns=result[1][1:51])
+    dataframe.to_csv(f"{arquitecture_name}.csv")
 
 DatabaseHandler.disconnect()
