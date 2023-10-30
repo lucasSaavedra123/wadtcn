@@ -5,10 +5,27 @@ from PredictiveModel.WavenetTCNWithLSTMHurstExponentPredicter import WavenetTCNW
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
 from PredictiveModel.WaveNetTCNFBMModelClassifier import WaveNetTCNFBMModelClassifier
 from PredictiveModel.WaveNetTCNSBMModelClassifier import WaveNetTCNSBMModelClassifier
+from PredictiveModel.ImmobilizedTrajectorySegmentator import ImmobilizedTrajectorySegmentator
+from PredictiveModel.WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter import WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter
 from DataSimulation import CustomDataSimulation
 
 
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+
+def download_networks(class_name, simulator_class, layer_index):
+    networks = list(class_name.objects(simulator_identifier=simulator_class.STRING_LABEL, trained=True, hyperparameters=class_name.selected_hyperparameters()))
+    networks = sorted(networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
+
+    for index, network in tqdm.tqdm(list(enumerate(networks))):
+        if index == 0:
+            reference_network = network   
+        else:
+            network.set_wadnet_tcn_encoder(reference_network, layer_index)
+
+        network.enable_database_persistance()
+        network.load_as_file()
+        network.disable_database_persistance()
+        network.save_as_file()
 
 print("Downloading Hurst Exponent Regression Networks...")
 regression_trained_networks = list(WavenetTCNWithLSTMHurstExponentPredicter.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True))
@@ -32,48 +49,18 @@ for transfer_learning_network in tqdm.tqdm([n for n in regression_trained_networ
     transfer_learning_network.save_as_file()
 
 print("Downloading Model Classification Networks...")
-classification_trained_networks = list(WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters()))
-classification_trained_networks = sorted(classification_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
-
-for index, network in tqdm.tqdm(list(enumerate(classification_trained_networks))):
-    if index == 0:
-        reference_network = network   
-    else:
-        network.set_wadnet_tcn_encoder(reference_network, -4)
-
-    network.enable_database_persistance()
-    network.load_as_file()
-    network.disable_database_persistance()
-    network.save_as_file()
+download_networks(WaveNetTCNTheoreticalModelClassifier, CustomDataSimulation, -4)
 
 print("Downloading fBM Sub-Classification Networks...")
-sub_classification_trained_networks = list(WaveNetTCNFBMModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNFBMModelClassifier.selected_hyperparameters()))
-sub_classification_trained_networks = sorted(sub_classification_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
-
-for index, network in tqdm.tqdm(list(enumerate(sub_classification_trained_networks))):
-    if index == 0:
-        reference_network = network   
-    else:
-        network.set_wadnet_tcn_encoder(reference_network, -4)
-
-    network.enable_database_persistance()
-    network.load_as_file()
-    network.disable_database_persistance()
-    network.save_as_file()
+download_networks(WaveNetTCNFBMModelClassifier, CustomDataSimulation, -4)
 
 print("Downloading SBM Sub-Classification Networks...")
-sub_classification_trained_networks = list(WaveNetTCNSBMModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNSBMModelClassifier.selected_hyperparameters()))
-sub_classification_trained_networks = sorted(sub_classification_trained_networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
+download_networks(WaveNetTCNSBMModelClassifier, CustomDataSimulation, -4)
 
-for index, network in tqdm.tqdm(list(enumerate(sub_classification_trained_networks))):
-    if index == 0:
-        reference_network = network   
-    else:
-        network.set_wadnet_tcn_encoder(reference_network, -4)
+print("Downloading ID Segmenter Networks...")
+download_networks(ImmobilizedTrajectorySegmentator, CustomDataSimulation, -4)
 
-    network.enable_database_persistance()
-    network.load_as_file()
-    network.disable_database_persistance()
-    network.save_as_file()
+print("Downloading DIffusion Coefficient Networks...")
+download_networks(WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter, CustomDataSimulation, -4)
 
 DatabaseHandler.disconnect()
