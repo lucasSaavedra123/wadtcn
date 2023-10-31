@@ -6,6 +6,8 @@ from TheoreticalModels.TwoStateObstructedDiffusion import TwoStateObstructedDiff
 
 from tensorflow.keras.optimizers.legacy import Adam
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
+from tensorflow import device, config
+from keras.callbacks import EarlyStopping, Callback
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -108,3 +110,43 @@ class ObstructedTrajectorySegmentator(PredictiveModel):
     @property
     def type_name(self):
         return 'obstructed_trajectory_segmentator'
+
+    def fit(self):
+        if not self.trained:
+            self.build_network()
+            real_epochs = self.hyperparameters['epochs']
+        else:
+            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        with device(device_name):
+            X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+            X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH)
+
+            history_training_info = self.architecture.fit(
+                X_train, Y_train,
+                epochs=real_epochs,
+                callbacks=callbacks,
+                validation_data=[X_val, Y_val],
+                shuffle=True
+            ).history
+
+        if self.trained:
+            for dict_key in history_training_info:
+                self.history_training_info[dict_key] += history_training_info[dict_key]
+        else:
+            self.history_training_info = history_training_info
+            self.trained = True
