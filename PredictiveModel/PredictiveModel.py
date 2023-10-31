@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from sklearn.metrics import confusion_matrix, f1_score
+from sklearn.metrics import confusion_matrix, f1_score, mean_absolute_error
 import matplotlib.patches as mpatches
 
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
@@ -353,7 +353,7 @@ class PredictiveModel(Document):
                 plt.show()
 
     def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{self.simulator.STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
+        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
     def prepare_dataset(self, set_size):
         trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -440,12 +440,13 @@ class PredictiveModel(Document):
         else:
             with device(device_name):
                 X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+                X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH)
 
                 history_training_info = self.architecture.fit(
                     X_train, Y_train,
                     epochs=real_epochs,
                     callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    validation_data=[X_val, Y_val],
                     shuffle=True
                 ).history
 
@@ -478,6 +479,15 @@ class PredictiveModel(Document):
         Y_predicted = self.predict(trajectories)
         return f1_score(ground_truth, Y_predicted, average="micro")
 
+    def mae_score(self, trajectories=None):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories)
+        Y_predicted = self.predict(trajectories).flatten()
+
+        return mean_absolute_error(ground_truth, Y_predicted)
+
     def plot_confusion_matrix(self, trajectories=None, normalized=True):
         if trajectories is None:
             trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -505,3 +515,6 @@ class PredictiveModel(Document):
     @property
     def models_involved_in_predictive_model(self):
         return ANDI_MODELS if self.simulator.STRING_LABEL == 'andi' else ALL_MODELS
+
+    def compatible_with_trajectory_for_custom_prediction(self, trajectory):
+        return 0.85 * self.trajectory_time <= trajectory.duration <= self.trajectory_time * 1.15

@@ -3,7 +3,7 @@ from tensorflow.keras.optimizers.legacy import Adam
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import FBM_MODELS
-from .model_utils import transform_trajectories_into_displacements, build_more_complex_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector
+from .model_utils import transform_trajectories_into_displacements, build_more_complex_wavenet_tcn_classifier_for, transform_trajectories_to_categorical_vector, transform_trajectories_into_displacements_with_time, build_wavenet_tcn_classifier_from_encoder_for
 
 
 class WaveNetTCNFBMModelClassifier(PredictiveModel):
@@ -40,7 +40,11 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
         }
 
     def build_network(self):
-        build_more_complex_wavenet_tcn_classifier_for(self)
+        if self.wadnet_tcn_encoder is None:
+            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 3
+            build_more_complex_wavenet_tcn_classifier_for(self, number_of_features=number_of_features)
+        else:
+            build_wavenet_tcn_classifier_from_encoder_for(self, 192)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          amsgrad=self.hyperparameters['amsgrad'],
@@ -58,7 +62,11 @@ class WaveNetTCNFBMModelClassifier(PredictiveModel):
         return transform_trajectories_to_categorical_vector(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+        X = transform_trajectories_into_displacements(self, trajectories) if self.simulator.STRING_LABEL == 'andi' else transform_trajectories_into_displacements_with_time(self, trajectories)
+
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+        return X
 
     @property
     def type_name(self):

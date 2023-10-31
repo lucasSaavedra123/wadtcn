@@ -57,7 +57,7 @@ class TwoStateImmobilizedDiffusion(Model):
         n = trajectory_length
         T = trajectory_time
         delta_t = T/n
-        SIMULATION_NUMBER_OF_SUBSTEPS = 100
+        SIMULATION_NUMBER_OF_SUBSTEPS = 50
         I = SIMULATION_NUMBER_OF_SUBSTEPS * trajectory_length
 
         M1 = 0

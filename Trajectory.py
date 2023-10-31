@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import chi2
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
+import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 
 #Example about how to read trajectories from .mat
@@ -40,6 +41,78 @@ for data in dataset:
         if not trajectory.is_immobile(1.8):
             trajectory.save()
 """
+
+
+def turning_angles(length, x, y, steps_lag=1, normalized=False):
+    if length/steps_lag <= 2:
+        return []
+
+    X = np.zeros((length,2))
+    X[:,0] = x
+    X[:,1] = y
+
+    U_t = X[:length-steps_lag]
+    U_t_plus_delta = X[np.arange(0, length-steps_lag)+steps_lag]
+
+    V_t = U_t_plus_delta - U_t
+    V_t_plus_delta = V_t[np.arange(0,len(V_t)-steps_lag)+steps_lag]
+    V_t = V_t[:len(V_t)-steps_lag]
+
+    A = np.sum((V_t_plus_delta * V_t), axis=1)
+    B = np.linalg.norm(V_t, axis=1) * np.linalg.norm(V_t_plus_delta, axis=1)
+
+    #Some B values could be 0. These are removed
+    values_to_keep = np.where(B != 0)
+    A = A[values_to_keep]
+    B = B[values_to_keep]
+
+    angles = np.clip(A/B, -1, 1)
+
+    if not normalized:
+        angles = np.rad2deg(np.arccos(angles))
+
+    return angles.tolist()
+
+"""
+This method is a Array-Oriented Python implementation of a similar algorithm proposed in the referenced
+paper to how direction change in time.
+
+Taylor, R. W., Holler, C., Mahmoodabadi, R. G., Küppers, M., Dastjerdi, H. M., Zaburdaev, V., . . . Sandoghdar, V. (2020). 
+High-Precision Protein-Tracking With Interferometric Scattering Microscopy. 
+Frontiers in Cell and Developmental Biology, 8. 
+https://doi.org/10.3389/fcell.2020.590158
+"""
+def directional_correlation(length, x, y, steps_lag=1, window_size=9):
+    assert window_size % 2 == 1, 'Window size has to be odd'
+    angles = turning_angles(length, x, y, steps_lag=steps_lag, normalized=True)
+    convolution_result = np.convolve(angles, np.ones(window_size), mode='same')/window_size
+    return convolution_result[window_size//2:-window_size//2]
+
+def directional_correlation_segmentation(length, x, y, steps_lag=1, window_size=9, pen=1, jump=1, min_size=3, return_break_points=False):
+    result = []
+    signal = directional_correlation(length, x, y, window_size=window_size, steps_lag=steps_lag)
+
+    break_points = rpt.Pelt(
+        model='l2',
+        jump=jump,
+        min_size=min_size,
+        ).fit_predict(
+            signal,
+            pen=pen
+            )
+
+    initial_index = 0
+    for break_point in break_points:
+        result.append(np.mean(signal[initial_index:break_point]))
+        initial_index = break_point
+
+    assert len(result) == len(break_points)
+
+    if return_break_points:
+        return result, break_points
+    else:
+        return result
+
 
 class Trajectory(Document):
     x = ListField(required=True)
@@ -356,7 +429,9 @@ class Trajectory(Document):
                     x = self.get_noisy_x()[initial_index:final_index],
                     y = self.get_noisy_y()[initial_index:final_index],
                     t = self.get_time()[initial_index:final_index],
-                    noisy=True
+                    noisy=True,
+                    info=self.info,
+                    exponent=self.anomalous_exponent
                 )
 
     def confinement_states(self,v_th=11,window_size=3, return_intervals=False):
@@ -457,58 +532,32 @@ class Trajectory(Document):
         return t_vec, msd, popt[0], popt[1], goodness_of_fit
 
     def turning_angles(self,steps_lag=1, normalized=False):
-        if self.length/steps_lag <= 2:
-            return []
+        return turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            steps_lag=steps_lag,
+            normalized=normalized
+        )
 
-        X = np.zeros((self.length,2))
-        X[:,0] = self.get_noisy_x()
-        X[:,1] = self.get_noisy_y()
-
-        U_t = X[:self.length-steps_lag]
-        U_t_plus_delta = X[np.arange(0,self.length-steps_lag)+steps_lag]
-
-        V_t = U_t_plus_delta - U_t
-        V_t_plus_delta = V_t[np.arange(0,len(V_t)-steps_lag)+steps_lag]
-        V_t = V_t[:len(V_t)-steps_lag]
-
-        A = np.sum((V_t_plus_delta * V_t), axis=1)
-        B = np.linalg.norm(V_t, axis=1) * np.linalg.norm(V_t_plus_delta, axis=1)
-
-        #Some B values could be 0. These are removed
-        values_to_keep = np.where(B != 0)
-        A = A[values_to_keep]
-        B = B[values_to_keep]
-
-        angles = np.clip(A/B, -1, 1)
-
-        if not normalized:
-            angles = np.rad2deg(np.arccos(angles))
-
-        return angles.tolist()
-    
-    """
-    This method is a Array-Oriented Python implementation of a similar algorithm proposed in the referenced
-    paper to how direction change in time.
-
-    Taylor, R. W., Holler, C., Mahmoodabadi, R. G., Küppers, M., Dastjerdi, H. M., Zaburdaev, V., . . . Sandoghdar, V. (2020). 
-    High-Precision Protein-Tracking With Interferometric Scattering Microscopy. 
-    Frontiers in Cell and Developmental Biology, 8. 
-    https://doi.org/10.3389/fcell.2020.590158
-    """
     def directional_correlation(self, steps_lag=1, window_size=9):
-        angles = self.turning_angles(steps_lag=steps_lag, normalized=True)
-        angles = [angles[0]] + angles + [angles[-1]]
-        return np.convolve(angles, np.ones(window_size), mode='same')/window_size
+        return directional_correlation(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            steps_lag=steps_lag,
+            window_size=window_size
+        )
 
-    def directional_correlation_segmentation(self, steps_lag=1, window_size=9, threshold=0.5):
-        assert 0 < threshold < 1
-
-        def label_angles(x):
-            if x < -threshold:
-                return -1
-            elif -threshold <= x < threshold:
-                return 0
-            else:
-                return 1
-
-        return np.vectorize(label_angles)(self.directional_correlation(window_size=window_size, steps_lag=steps_lag))
+    def directional_correlation_segmentation(self, steps_lag=1, window_size=9, pen=1, jump=1, min_size=3, return_break_points=False):
+        return directional_correlation_segmentation(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            steps_lag=steps_lag,
+            window_size=window_size,
+            pen=pen,
+            jump=jump,
+            min_size=min_size,
+            return_break_points=return_break_points
+        )

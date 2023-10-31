@@ -86,25 +86,37 @@ class WavenetTCNWithLSTMHurstExponentPredicter(PredictiveModel):
         return transform_trajectories_to_hurst_exponent(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+        X = transform_trajectories_into_displacements(self, trajectories) if self.simulator.STRING_LABEL == 'andi' else transform_trajectories_into_displacements_with_time(self, trajectories)
+
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+        return X
 
     def build_network(self):
-        inputs = Input(shape=(self.trajectory_length-1, 2))
-        filters = 64
-        dilation_depth = 8
-        initializer = 'he_normal'
+        if self.wadnet_tcn_encoder is None:
+            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 3
+            inputs = Input(shape=(self.trajectory_length-1, number_of_features))
+            filters = 64
+            dilation_depth = 8
+            initializer = 'he_normal'
 
-        x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
+            x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
-        x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
+            x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
 
-        x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
-        x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
+            x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
+            x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
 
-        x = Dense(units=128, activation='selu')(x)
-        output_network = Dense(units=1, activation='sigmoid')(x)
+            x = Dense(units=128, activation='selu')(x)
+            output_network = Dense(units=1, activation='sigmoid')(x)
 
-        self.architecture = Model(inputs=inputs, outputs=output_network)
+            self.architecture = Model(inputs=inputs, outputs=output_network)
+
+        else:
+            inputs = Input(shape=(64))
+            x = Dense(units=128, activation='selu')(inputs)
+            output_network = Dense(units=1, activation='sigmoid')(x)
+            self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
             lr=self.hyperparameters['lr'],

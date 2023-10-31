@@ -166,3 +166,4 @@ test*.py
 *.jpg
 *.mat
 *.txt
+*.csv

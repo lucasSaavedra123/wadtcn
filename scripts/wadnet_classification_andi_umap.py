@@ -50,7 +50,7 @@ for reference_length in reference_lengths:
         length_encoder.set_weights(reference_encoder.get_weights())
 
         print("Simulating Trajectories...")
-        trajectories = simulator_reference().simulate_trajectories_by_model(12500, length, 12500, ALL_MODELS if simulator_reference == CustomDataSimulation else ANDI_MODELS)
+        trajectories = simulator_reference().simulate_trajectories_by_model(12500, length, length, ALL_MODELS if simulator_reference == CustomDataSimulation else ANDI_MODELS)
         trajectories_transformed = length_classifier.transform_trajectories_to_input(trajectories)
         trajectories_labels = np.argmax(length_classifier.transform_trajectories_to_output(trajectories),axis=1)
         print("Encoding Trajectories...")
@@ -68,7 +68,7 @@ for reference_length in reference_lengths:
         plt.tight_layout()
         plt.xticks([])
         plt.yticks([])
-        plt.savefig(f"{reference_length}_{length}_{simulator_reference.STRING_LABEL}.png")
+        plt.savefig(f"{reference_length}_{length}_{simulator_reference.STRING_LABEL}.png", dpi=500)
         plt.clf()
 
 DatabaseHandler.disconnect()

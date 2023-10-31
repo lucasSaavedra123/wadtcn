@@ -4,7 +4,7 @@ import io
 import numpy as np
 
 from Trajectory import Trajectory
-from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD
+from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME
 from andi_datasets.datasets_theory  import datasets_theory
 from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Functio
 from andi_datasets.datasets_challenge import challenge_phenom_dataset
@@ -38,13 +38,13 @@ def normalize(trajs, variance=None):
 class Model():
     STRING_LABELS = ['ctrw', 'fbm', 'od', 'lw', 'attm', 'sbm', 'bm']
     MODEL_COLORS = {
-        'ctrw': 'orangered',
-        'fbm': 'firebrick',
-        'od': 'dodgerblue',
-        'lw': 'green',
-        'id': 'red',
-        'attm': 'grey',
-        'sbm': 'purple',
+        'ctrw': '#ff8000',
+        'fbm': '#a00000',
+        'od': '#8c7c37',
+        'lw': '#00c000',
+        'id': '#ac07e3',
+        'attm': 'red',
+        'sbm': '#0f99b2',
         'bm': 'cyan'
     }
 
@@ -77,16 +77,14 @@ class Model():
                 noisy=True
             )
         else:
-            step_by_step = trajectory_time / trajectory_length
+            new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
+            new_trajectory_length = max(int(new_trajectory_time/EXPERIMENT_TIME_FRAME_BY_FRAME), trajectory_length)
+            simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * EXPERIMENT_TIME_FRAME_BY_FRAME)
 
-            new_length = int(trajectory_length * np.random.uniform(1,2))
-
-            simulation_result = self.custom_simulate_rawly(new_length, new_length * step_by_step)
-
-            current_length = new_length
+            current_length = new_trajectory_length
 
             while current_length > trajectory_length:
-                index_to_delete = np.random.choice(list(range(0, current_length)))
+                index_to_delete = np.random.choice(list(range(1, current_length-1)))
 
                 simulation_result['x'] = np.delete(simulation_result['x'], index_to_delete)
                 simulation_result['y'] = np.delete(simulation_result['y'], index_to_delete)
@@ -116,6 +114,7 @@ class Model():
             check_one = False #(min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
             check_two = False #(min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)
             check_three = ('switching' in simulation_result['info'] and not simulation_result['info']['switching'])
+
             resimulate = any([check_one, check_two, check_three])
 
             if resimulate:

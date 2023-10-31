@@ -6,9 +6,9 @@ from DatabaseHandler import DatabaseHandler
 from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheoreticalModelClassifier
 from DataSimulation import CustomDataSimulation
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
-from TheoreticalModels import ALL_MODELS, Model
+from TheoreticalModels import ALL_MODELS, SBM_MODELS, FBM_MODELS
 from Trajectory import Trajectory
-from collections import Counter
+from collections import Counter, defaultdict
 
 
 """
@@ -117,76 +117,95 @@ def show_classification_results(tl_range, exp_label, net_name):
     plt.show()
 """
 
-
 DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
-
-all_trajectories = Trajectory.objects()
-
-number_of_trayectories = len(all_trajectories)
-
-filtered_trajectories = [trajectory for trajectory in all_trajectories if not trajectory.is_immobile(IMMOBILE_THRESHOLD)]
-
-number_of_immobile_trajectories = number_of_trayectories - len(filtered_trajectories)
-
-print(f"There are {number_of_trayectories} trajectories and {number_of_immobile_trajectories} are immobile ({100 * round(number_of_immobile_trajectories/number_of_trayectories, 2)}%).")
-
+all_trajectories = [trajectory for trajectory in Trajectory.objects() if 'prediction' in trajectory.info]
 DatabaseHandler.disconnect()
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
+for label in ['BTX', 'mAb']:
+    for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+        filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
 
-already_trained_networks = WaveNetTCNTheoreticalModelClassifier.objects(simulator_identifier=CustomDataSimulation.STRING_LABEL, trained=True, hyperparameters=WaveNetTCNTheoreticalModelClassifier.selected_hyperparameters())
+        predictions = [trajectory.info['prediction']['classified_model'] for trajectory in filtered_trajectories]
+        classification_accuracies = [trajectory.info['prediction']['model_classification_accuracy'] for trajectory in filtered_trajectories]
 
-network_and_length = {}
+        number_of_tracks = len(predictions)
 
-classification_accuracies = []
+        model_strings = [class_model.STRING_LABEL for class_model in ALL_MODELS]
+        count = np.zeros((len(model_strings))).tolist()
+        pc = 1 - np.percentile(classification_accuracies, 5)
 
-for network in already_trained_networks:
-    network.enable_database_persistance()
-    network.load_as_file()
-    network_and_length[network.trajectory_length] = network
+        counter = Counter(predictions)
 
-DatabaseHandler.disconnect()
+        for model_string in model_strings:
+            count[model_strings.index(model_string)] = counter[model_string]
 
-predictions = []
+        errors = [[], []]
 
-number_of_tracks = 0
+        for i in range(len(count)):
+            error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * (number_of_tracks - count[i])/number_of_tracks) 
+            errors[0].append(error_yi[0])
+            errors[1].append(error_yi[1])
 
-for trajectory in tqdm.tqdm(filtered_trajectories):
-    if trajectory.length in network_and_length:
-        prediction = network_and_length[trajectory.length].predict([trajectory])
-        classification_accuracies.append(np.mean(network_and_length[trajectory.length].history_training_info['val_categorical_accuracy'][-2:]))
-        trajectory.info['model_prediction'] = ALL_MODELS[prediction[0]].STRING_LABEL
-        predictions.append(trajectory.info['model_prediction'])
-        number_of_tracks+=1
-        #trajectory.save()
+        count = [(100 * x) / number_of_tracks for x in count]
 
-print(f"{number_of_tracks} trajectories were analyzed from {len(filtered_trajectories)} ({100 * round(number_of_tracks/len(filtered_trajectories), 2)}).")
+        with open(f"model_classification_{label}_{experimental_condition}.txt", 'w') as a_file:
+            for model_string in model_strings:
+                index = model_strings.index(model_string)
+                a_file.write(f"{count[index]},{count[index] + errors[1][index]},{count[index] - errors[0][index]},")
 
-model_strings = [class_model.STRING_LABEL for class_model in ALL_MODELS]
-count = np.zeros((len(model_strings))).tolist()
-pc = 1 - np.percentile(classification_accuracies, 5)
+for label in ['BTX', 'mAb']:
+    for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+        filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
+        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if trajectory.info['prediction']['classified_model'] not in ['id', 'od']]
 
-counter = Counter(predictions)
+        predictions = [trajectory.info['prediction']['hurst_exponent'] for trajectory in filtered_trajectories]
 
-for model_string in model_strings:
-    count[model_strings.index(model_string)] = counter[model_string]
+        with open(f"hurst_exponent_{label}_{experimental_condition}.txt", 'w') as a_file:
+            for prediction in predictions:
+                a_file.write(f"{prediction}\n")
 
-errors = [[], []]
-aux = 0
+for label in ['BTX', 'mAb']:
+    for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+        filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
+        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if trajectory.info['prediction']['classified_model'] == 'fbm']
 
-for i in range(len(count)):
-    error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * np.sum(count[:i] + count[i+1:])/number_of_tracks) 
-    errors[0].append(error_yi[0])
-    errors[1].append(error_yi[1])
+        predictions = [trajectory.info['prediction']['diffusion_coefficient'] for trajectory in filtered_trajectories]
 
-count = [(100 * x) / number_of_tracks for x in count]
+        with open(f"diffusion_coefficient_{label}_{experimental_condition}.txt", 'w') as a_file:
+            for prediction in predictions:
+                a_file.write(f"{prediction}\n")
 
-colors = [Model.Model.MODEL_COLORS[model_string] for model_string in model_strings]
+for theoretical_model in ['fbm', 'sbm']:
+    reference_models = SBM_MODELS if theoretical_model == 'sbm' else FBM_MODELS
+    for label in ['BTX', 'mAb']:
+        for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+            filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
+            filtered_trajectories = [trajectory for trajectory in filtered_trajectories if trajectory.info['prediction']['classified_model'] == theoretical_model]
 
-plt.bar(x=[(aux + i) for i in range(len(ALL_MODELS))], height=count, width=0.6, align='center', color=colors, yerr=errors)
-handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in colors]
-plt.legend(handles, model_strings, bbox_to_anchor=(1.04,1), borderaxespad=0, fontsize=14)
+            predictions = [trajectory.info['prediction']['sub_classified_model'] for trajectory in filtered_trajectories]
+            classification_accuracies = [trajectory.info['prediction']['sub_model_classification_accuracy'] for trajectory in filtered_trajectories]
 
-#plt.rcParams['lines.color'] = 'b'
-#plt.rcParams['lines.linewidth'] = 3
-plt.show()
+            number_of_tracks = len(predictions)
+
+            model_strings = [class_model.STRING_LABEL for class_model in reference_models]
+            count = np.zeros((len(model_strings))).tolist()
+            pc = 1 - np.percentile(classification_accuracies, 5)
+
+            counter = Counter(predictions)
+
+            for model_string in model_strings:
+                count[model_strings.index(model_string)] = counter[model_string]
+
+            errors = [[], []]
+
+            for i in range(len(count)):
+                error_yi = (100 * pc * count[i]/number_of_tracks, 100 * pc * (number_of_tracks - count[i])/number_of_tracks) 
+                errors[0].append(error_yi[0])
+                errors[1].append(error_yi[1])
+
+            count = [(100 * x) / number_of_tracks for x in count]
+
+            with open(f"sub_{theoretical_model}_model_classification_{label}_{experimental_condition}.txt", 'w') as a_file:
+                for model_string in model_strings:
+                    index = model_strings.index(model_string)
+                    a_file.write(f"{count[index]},{count[index] + errors[1][index]},{count[index] - errors[0][index]},")

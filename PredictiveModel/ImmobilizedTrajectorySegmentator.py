@@ -12,7 +12,7 @@ import seaborn as sns
 from CONSTANTS import *
 
 from .PredictiveModel import PredictiveModel
-from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_states
+from .model_utils import build_segmentator_for, transform_trajectories_into_raw_trajectories, transform_trajectories_into_displacements_with_time, transform_trajectories_into_states, build_wavenet_tcn_segmenter_from_encoder_for
 
 class ImmobilizedTrajectorySegmentator(PredictiveModel):
     @property
@@ -23,12 +23,21 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
     def number_of_categories(self):
         return None
 
-    #These will be updated after hyperparameter search
     def default_hyperparameters(self):
         return {
             'lr': 0.001,
             'epochs': 100,
-            'batch_size': 16,
+            'batch_size': 32,
+            'amsgrad': False,
+            'epsilon': 1e-6,
+        }
+
+    @classmethod
+    def selected_hyperparameters(self):
+        return {
+            'lr': 0.001,
+            'epochs': 100,
+            'batch_size': 32,
             'amsgrad': False,
             'epsilon': 1e-6,
         }
@@ -43,7 +52,10 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         }
 
     def build_network(self):
-        build_segmentator_for(self)
+        if self.wadnet_tcn_encoder is None:
+            build_segmentator_for(self, with_wadnet=True, number_of_features=3, filters=64, input_size=self.trajectory_length-1, with_skip_connections=True)
+        else:
+            build_wavenet_tcn_segmenter_from_encoder_for(self, 320)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
@@ -51,17 +63,25 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
-    def predict(self, trajectories):
+    def predict(self, trajectories, apply_threshold=True):
         X = self.transform_trajectories_to_input(trajectories)
         Y_predicted = self.architecture.predict(X)
-        Y_predicted = (Y_predicted > 0.5).astype(int)
+
+        if apply_threshold:
+            Y_predicted = (Y_predicted > self.selected_threshold).astype(int)
+
         return Y_predicted
 
     def transform_trajectories_to_output(self, trajectories):
         return transform_trajectories_into_states(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_displacements_with_time(self, trajectories)
+
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+
+        return X
 
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -86,6 +106,10 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
+
+    @property
+    def selected_threshold(self):
+        return 0.5
 
     @property
     def type_name(self):
