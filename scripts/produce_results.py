@@ -98,3 +98,15 @@ for theoretical_model in ['fbm', 'sbm']:
                 for model_string in model_strings:
                     index = model_strings.index(model_string)
                     a_file.write(f"{count[index]},{count[index] + errors[1][index]},{count[index] - errors[0][index]},")
+
+for label in ['BTX', 'mAb']:
+    for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+        for theoretical_model in ['lw', 'ctrw', 'fbm', 'sbm', 'attm']:
+            filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
+            filtered_trajectories = [trajectory for trajectory in filtered_trajectories if trajectory.info['prediction']['classified_model'] == theoretical_model]
+
+            predictions = [trajectory.info['prediction']['hurst_exponent'] * 2 for trajectory in filtered_trajectories]
+
+            with open(f"anomalous_exponents_{label}_{experimental_condition}_{theoretical_model}.txt", 'w') as a_file:
+                for prediction in predictions:
+                    a_file.write(f"{prediction}\n")
