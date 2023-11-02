@@ -2,7 +2,7 @@ import numpy as np
 from TheoreticalModels.Model import Model
 from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
 from scipy.special import erfcinv
-from CONSTANTS import EXPERIMENT_PIXEL_SIZE
+from CONSTANTS import EXPERIMENT_PIXEL_SIZE, IGNORE_MULTI_MODEL_CLASSIFICATION
 
 class ScaledBrownianMotion(Model):
     STRING_LABEL = 'sbm'
@@ -13,17 +13,19 @@ class ScaledBrownianMotion(Model):
 
     @classmethod
     def create_random_instance(cls):
-        selected_diffusion = np.random.choice(
-            ['subdiffusive', 'brownian', 'superdiffusive'])
-        if selected_diffusion == 'superdiffusive':
-            selected_range = cls.SUP_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE
-        elif selected_diffusion == 'subdiffusive':
-            selected_range = cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE
-        elif selected_diffusion == 'brownian':
-            selected_range = cls.NOT_EXACT_BROWNIAN_ANOMALOUS_EXPONENT_RANGE
+        if not IGNORE_MULTI_MODEL_CLASSIFICATION:
+            selected_diffusion = np.random.choice(
+                ['subdiffusive', 'brownian', 'superdiffusive'])
+            if selected_diffusion == 'superdiffusive':
+                selected_range = cls.SUP_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE
+            elif selected_diffusion == 'subdiffusive':
+                selected_range = cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE
+            elif selected_diffusion == 'brownian':
+                selected_range = cls.NOT_EXACT_BROWNIAN_ANOMALOUS_EXPONENT_RANGE
 
-        selected_anomalous_exponent = np.random.uniform(selected_range[0], selected_range[1])
-        #selected_anomalous_exponent = np.random.uniform(cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[0], cls.SUP_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[1])
+            selected_anomalous_exponent = np.random.uniform(selected_range[0], selected_range[1])
+        else:
+            selected_anomalous_exponent = np.random.uniform(cls.SUB_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[0], cls.SUP_DIFFUSIVE_ANOMALOUS_EXPONENT_RANGE[1])
 
         return cls(anomalous_exponent=selected_anomalous_exponent)
 

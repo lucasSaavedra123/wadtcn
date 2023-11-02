@@ -411,7 +411,7 @@ class TrackGenerator(Sequence):
         return self.batches
 
 #Ploters
-def plot_bias(ground_truth, predicted, symbol=None):
+def plot_bias(ground_truth, predicted, symbol=None, a_range=None):
     assert symbol in ['alpha', 'd']
 
     difference = predicted - ground_truth
@@ -419,10 +419,17 @@ def plot_bias(ground_truth, predicted, symbol=None):
 
     sns.kdeplot(difference, color='blue', fill=True)
     plt.rcParams.update({'font.size': 15})
-    plt.ylabel('Frequency', fontsize=15)
-    plt.xlabel(x_label, fontsize=15)
+    plt.ylabel('', fontsize=30)
+    plt.xlabel(x_label, fontsize=30)
 
-    plt.grid()
+    plt.yticks([])
+    
+    if a_range is not None:
+        plt.xticks([a_range[0],0,a_range[1]], fontsize=30)
+        plt.xlim(a_range)
+
+    plt.grid(color='black')
+    plt.tight_layout()
     plt.show()
 
 def plot_predicted_and_ground_truth_distribution(ground_truth, predicted):
