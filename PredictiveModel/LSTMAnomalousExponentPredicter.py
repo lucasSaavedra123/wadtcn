@@ -1,3 +1,4 @@
+from os.path import join
 import numpy as np
 from keras.models import load_model
 
@@ -90,4 +91,4 @@ class LSTMAnomalousExponentPredicter(PredictiveModel):
         raise Exception("RANDI is not persisted in MongoDB")
 
     def load_as_file(self):
-        self.architecture = load_model(f'{str(self)}.h5')
+        self.architecture = load_model(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))

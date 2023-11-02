@@ -70,7 +70,6 @@ for length in tqdm.tqdm(lengths):
         else:
             raise msg
 
-
 #Overall performance across different lengths
 for length in tqdm.tqdm(lengths):
     trajectories = AndiDataSimulation().simulate_trajectories_by_model(12500, length, length, ANDI_MODELS)
@@ -189,7 +188,7 @@ for info in zip([
             all_info[info[0]]['ground_truth'].append(ground_truth[i])    
 
 for arquitecture_name in all_info:
-    plot_bias(np.array(all_info[arquitecture_name]['ground_truth']), np.array(all_info[arquitecture_name]['predictions']), symbol='alpha')
+    plot_bias(np.array(all_info[arquitecture_name]['ground_truth']), np.array(all_info[arquitecture_name]['predictions']), symbol='alpha', a_range=[-1,1], file_name=f"{arquitecture_name}.png")
 
 for arquitecture_name in all_info:
     result = np.histogram2d(all_info[arquitecture_name]['ground_truth'], all_info[arquitecture_name]['predictions'], bins=50, range=[[0,2], [0,2]])
