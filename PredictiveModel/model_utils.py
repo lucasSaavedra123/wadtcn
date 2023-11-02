@@ -433,6 +433,7 @@ def plot_bias(ground_truth, predicted, symbol=None, a_range=None, file_name=None
 
     if file_name is not None:
         plt.savefig(file_name, dpi=300)
+        plt.clf()
     else:
         plt.show()
 

@@ -166,10 +166,10 @@ for trajectory_id in range(12500):
     
     trajectories_by_length[selected_length].append(trajectory)
 
-for info in zip([
+for info in zip(
     ('mae_wadtcn', 'mae_lstm', 'mae_original'),
     ('wadtcn', LSTMAnomalousExponentPredicter, 'original')    
-]):
+):
     for length in trajectories_by_length:
         trajectories = trajectories_by_length[length]
         if info[1] == LSTMAnomalousExponentPredicter:            
