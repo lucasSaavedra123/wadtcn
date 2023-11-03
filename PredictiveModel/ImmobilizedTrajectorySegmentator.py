@@ -101,7 +101,7 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         color_map = sns.color_palette(palette="Blues", n_colors=7)
         sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
 
-        plt.title(f'Confusion Matrix')
+        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, predicted, average="micro"),2)})')
         plt.rcParams.update({'font.size': 15})
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
