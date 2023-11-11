@@ -3,9 +3,8 @@ import matplotlib.pyplot as plt
 
 from TheoreticalModels.TwoStateObstructedDiffusion import TwoStateObstructedDiffusion
 from TheoreticalModels.TwoStateImmobilizedDiffusion import TwoStateImmobilizedDiffusion
-from TheoreticalModels import Model
 
-"""
+
 trajectory_info = TwoStateObstructedDiffusion.create_random_instance().custom_simulate_rawly(250, 250 * 0.01)
 
 x = trajectory_info['x_noisy']
@@ -26,7 +25,7 @@ plt.xlabel('X')
 plt.ylabel('Y')
 ax.set_box_aspect(1)
 plt.savefig('od_example.jpg', dpi=500)
-"""
+
 trajectory_info = TwoStateImmobilizedDiffusion.create_random_instance().custom_simulate_rawly(250, 250 * 0.01)
 
 x = trajectory_info['x_noisy']
