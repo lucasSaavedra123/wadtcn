@@ -1,3 +1,5 @@
+from os.path import join
+
 import pickle
 from threading import Thread, Event
 from queue import Queue, Full
@@ -14,7 +16,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, f1_score, mean_absolute_error
 import matplotlib.patches as mpatches
 
-from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
+from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH, NETWORKS_DIRECTORY
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
@@ -370,7 +372,7 @@ class PredictiveModel(Document):
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
             else:
-                self.architecture.save_weights(f'{str(self)}.h5')
+                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
         else:
             print(f"As architecture is not defined, {self} architecture will not be persisted")
 
@@ -382,7 +384,7 @@ class PredictiveModel(Document):
             if weights is not None:
                 self.architecture.set_weights(weights)
         else:
-            self.architecture.load_weights(f'{str(self)}.h5')
+            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
 
     def save(self):
         self.save_as_file()

@@ -6,3 +6,6 @@ EXPERIMENT_HEIGHT = 10000 #Experiments were done with images of 10000nm of heigh
 EXPERIMENT_WIDTH = 10000 #Experiments were done with images of 10000nm of width
 EXPERIMENT_TIME_FRAME_BY_FRAME = 10e-3 #10 miliseconds (100 Frames per Second)
 IMMOBILE_THRESHOLD = 1.8
+
+IGNORE_MULTI_MODEL_CLASSIFICATION = False
+NETWORKS_DIRECTORY = './networks'
