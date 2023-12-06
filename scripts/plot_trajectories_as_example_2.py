@@ -26,10 +26,10 @@ plt.ylabel('Y')
 ax.set_box_aspect(1)
 plt.savefig('od_example.jpg', dpi=500)
 
-trajectory_info = TwoStateImmobilizedDiffusion.create_random_instance().custom_simulate_rawly(250, 250 * 0.01)
+trajectory_info = TwoStateImmobilizedDiffusion.create_random_instance().custom_simulate_rawly(200, 200 * 0.01)
 
-x = trajectory_info['x_noisy']
-y = trajectory_info['y_noisy']
+x = trajectory_info['x']
+y = trajectory_info['y']
 
 _, ax = plt.subplots()
 
