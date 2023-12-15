@@ -1,3 +1,5 @@
+from os.path import join
+
 import pickle
 from threading import Thread, Event
 from queue import Queue, Full
@@ -11,10 +13,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from sklearn.metrics import confusion_matrix, f1_score
+from sklearn.metrics import confusion_matrix, f1_score, mean_absolute_error
 import matplotlib.patches as mpatches
 
-from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH
+from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH, NETWORKS_DIRECTORY
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation
 from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
@@ -353,7 +355,7 @@ class PredictiveModel(Document):
                 plt.show()
 
     def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{self.simulator.STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
+        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}_{'_'.join([model.STRING_LABEL for model in self.models_involved_in_predictive_model])}"
 
     def prepare_dataset(self, set_size):
         trajectories = self.simulator().simulate_trajectories_by_model(set_size, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -370,7 +372,7 @@ class PredictiveModel(Document):
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
             else:
-                self.architecture.save_weights(f'{str(self)}.h5')
+                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
         else:
             print(f"As architecture is not defined, {self} architecture will not be persisted")
 
@@ -382,7 +384,7 @@ class PredictiveModel(Document):
             if weights is not None:
                 self.architecture.set_weights(weights)
         else:
-            self.architecture.load_weights(f'{str(self)}.h5')
+            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
 
     def save(self):
         self.save_as_file()
@@ -478,6 +480,15 @@ class PredictiveModel(Document):
         ground_truth = np.argmax(self.transform_trajectories_to_output(trajectories), axis=-1)
         Y_predicted = self.predict(trajectories)
         return f1_score(ground_truth, Y_predicted, average="micro")
+
+    def mae_score(self, trajectories=None):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories)
+        Y_predicted = self.predict(trajectories).flatten()
+
+        return mean_absolute_error(ground_truth, Y_predicted)
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True):
         if trajectories is None:

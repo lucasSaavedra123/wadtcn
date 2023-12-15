@@ -1,5 +1,7 @@
 from keras.layers import Dense, Input, GlobalAveragePooling1D
 from keras.models import Model
+from keras.layers import Dense, Input, LSTM, Bidirectional
+from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotion
@@ -11,9 +13,9 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
     def default_hyperparameters(self):
         return {
             'lr': 0.0001,
-            'batch_size': 8,
-            'amsgrad': False,
-            'epsilon': 1e-08,
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-07,
             'epochs': 100
         }
 
@@ -21,9 +23,9 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
     def selected_hyperparameters(self):
         return {
             'lr': 0.0001,
-            'batch_size': 8,
-            'amsgrad': False,
-            'epsilon': 1e-08,
+            'batch_size': 64,
+            'amsgrad': True,
+            'epsilon': 1e-07,
             'epochs': 100
         }
 
@@ -47,23 +49,37 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
         return transform_trajectories_to_diffusion_coefficient(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_squared_differences(self, trajectories, normalize=True)
+        X = transform_trajectories_into_displacements_with_time(self, trajectories, normalize=False)
+
+        if self.wadnet_tcn_encoder is not None:
+            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+
+        return X
 
     def build_network(self):
-        inputs = Input(shape=(self.trajectory_length-1, 1))
-        filters = 64
-        dilation_depth = 8
-        initializer = 'he_normal'
+        if self.wadnet_tcn_encoder is None:
+            inputs = Input(shape=(self.trajectory_length-1, 3))
+            filters = 64
+            dilation_depth = 8
+            initializer = 'he_normal'
 
-        x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
-        x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
-        x = GlobalAveragePooling1D()(x)
+            x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
 
-        x = Dense(units=256, activation='relu')(x)
-        x = Dense(units=128, activation='relu')(x)
-        output_network = Dense(units=1, activation='sigmoid')(x)
+            x = convolutional_block(self, x, filters, 3, [1,2,4], initializer)
 
-        self.architecture = Model(inputs=inputs, outputs=output_network)
+            x = Bidirectional(LSTM(units=filters, return_sequences=True, activation='tanh'))(x)
+            x = Bidirectional(LSTM(units=filters//2, activation='tanh'))(x)
+
+            x = Dense(units=128, activation='selu')(x)
+            output_network = Dense(units=1, activation='sigmoid')(x)
+
+            self.architecture = Model(inputs=inputs, outputs=output_network)
+
+        else:
+            inputs = Input(shape=(64))
+            x = Dense(units=128, activation='selu')(inputs)
+            output_network = Dense(units=1, activation='sigmoid')(x)
+            self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
             lr=self.hyperparameters['lr'],
@@ -99,4 +115,4 @@ class WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter(PredictiveModel):
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
         predicted = self.predict(trajectories).flatten()
 
-        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=[[0,1],[0,1]])
+        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, a_range=[[0,1], [0,1]])

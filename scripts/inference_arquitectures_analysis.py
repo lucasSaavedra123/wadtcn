@@ -5,7 +5,7 @@ import numpy as np
 from CONSTANTS import *
 from TheoreticalModels import *
 from DataSimulation import AndiDataSimulation
-from PredictiveModel.model_utils import transform_trajectories_to_anomalous_exponent, plot_predicted_and_ground_truth_histogram
+from PredictiveModel.model_utils import transform_trajectories_to_anomalous_exponent, plot_predicted_and_ground_truth_histogram, plot_bias
 from sklearn.metrics import mean_absolute_error
 from PredictiveModel.LSTMAnomalousExponentPredicter import LSTMAnomalousExponentPredicter
 from PredictiveModel.inference_utils import get_architectures_for_inference,  infer_with_concatenated_networks
@@ -13,6 +13,8 @@ from PredictiveModel.inference_utils import get_architectures_for_inference,  in
 from DatabaseHandler import DatabaseHandler
 from DataSimulation import AndiDataSimulation
 
+
+FROM_DB = False
 
 randi_lengths = [25,65,125,225,325,425,525,725,925]
 randi_classifiers = []
@@ -42,17 +44,18 @@ for length in tqdm.tqdm(randi_lengths):
     classifier.load_as_file()
     randi_classifiers.append(classifier)
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
+if FROM_DB:
+    DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_models')
 
 lengths = list(range(25,1000,25))
 
 length_to_custom_networks = {}
 length_to_original_networks = {}
 
-print("Loading networks from MongoDB...")
+print("Loading networks...")
 for length in tqdm.tqdm(lengths):
     try:
-        length_to_custom_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'wadtcn')
+        length_to_custom_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'wadtcn', from_db=FROM_DB)
     except AssertionError as msg:
         if str(msg) == 'Not trained yet':
             pass
@@ -60,7 +63,7 @@ for length in tqdm.tqdm(lengths):
             raise msg
 
     try:
-        length_to_original_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'original')
+        length_to_original_networks[length] = get_architectures_for_inference(length, AndiDataSimulation, 'original', from_db=FROM_DB)
     except AssertionError as msg:
         if str(msg) == 'Not trained yet':
             pass
@@ -152,22 +155,8 @@ pd.DataFrame(to_save_theoretical_model_and_mae).to_csv('model_inference_result.c
 trajectories_by_length = {}
 
 for trajectory_id in range(12500):
-    alpha = np.random.uniform(0.05,1.95)
-
-    if alpha < 0.95:
-        choice_models = SUB_DIFFUSIVE_MODELS
-    elif 0.95 <= alpha < 1.05:
-        choice_models = BROWNIAN_MODELS
-    else:
-        choice_models = SUP_DIFFUSIVE_MODELS
-
-    model = np.random.choice(choice_models)
+    model = np.random.choice(ANDI_MODELS)
     model_instance = model.create_random_instance()
-
-    if model == FractionalBrownianMotion:
-        model_instance.hurst_exponent = alpha/2
-    else:
-        model_instance.anomalous_exponent = alpha
 
     selected_length = np.random.choice(lengths)
     trajectory = model_instance.simulate_trajectory(selected_length, selected_length, from_andi=True)
@@ -179,7 +168,7 @@ for trajectory_id in range(12500):
 
 for info in zip(
     ('mae_wadtcn', 'mae_lstm', 'mae_original'),
-    ('wadtcn', LSTMAnomalousExponentPredicter, 'original')
+    ('wadtcn', LSTMAnomalousExponentPredicter, 'original')    
 ):
     for length in trajectories_by_length:
         trajectories = trajectories_by_length[length]
@@ -199,6 +188,12 @@ for info in zip(
             all_info[info[0]]['ground_truth'].append(ground_truth[i])    
 
 for arquitecture_name in all_info:
-    plot_predicted_and_ground_truth_histogram(all_info[arquitecture_name]['ground_truth'], all_info[arquitecture_name]['predictions'], range=[[0,2], [0,2]], title=arquitecture_name, save=True)
+    plot_bias(np.array(all_info[arquitecture_name]['ground_truth']), np.array(all_info[arquitecture_name]['predictions']), symbol='alpha', a_range=[-1,1], file_name=f"{arquitecture_name}.png")
 
-DatabaseHandler.disconnect()
+for arquitecture_name in all_info:
+    result = np.histogram2d(all_info[arquitecture_name]['ground_truth'], all_info[arquitecture_name]['predictions'], bins=50, range=[[0,2], [0,2]])
+    dataframe = pd.DataFrame(np.flipud(result[0]), result[2][1:51][::-1], columns=result[1][1:51])
+    dataframe.to_csv(f"{arquitecture_name}.csv")
+
+if FROM_DB:
+    DatabaseHandler.disconnect()

@@ -10,7 +10,7 @@ from PredictiveModel.OriginalHurstExponentPredicter import OriginalHurstExponent
 from PredictiveModel.OriginalTheoreticalModelClassifier import OriginalTheoreticalModelClassifier
 from TheoreticalModels import ALL_SUB_MODELS
 
-def get_architectures_for_inference(length, simulator, architecture_label):
+def get_architectures_for_inference(length, simulator, architecture_label, from_db=True):
     networks = {}
 
     if architecture_label == 'wadtcn':
@@ -38,30 +38,40 @@ def get_architectures_for_inference(length, simulator, architecture_label):
         if network_class == network_class_h_predicter:
 
             for class_model in ALL_SUB_MODELS:
-                already_trained_networks = network_class.objects(simulator_identifier=simulator.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters(class_model.STRING_LABEL))
+                if from_db:
+                    already_trained_networks = network_class.objects(simulator_identifier=simulator.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters(class_model.STRING_LABEL))
 
-                networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length and network.extra_parameters['model'] == class_model.STRING_LABEL]
+                    networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length and network.extra_parameters['model'] == class_model.STRING_LABEL]
 
-                assert len(networks_of_length) != 0, 'Not trained yet'
-                assert len(networks_of_length) == 1
-                classifier = networks_of_length[0]
-                classifier.enable_database_persistance()
+                    assert len(networks_of_length) != 0, 'Not trained yet'
+                    assert len(networks_of_length) == 1
+                    classifier = networks_of_length[0]
+
+                    classifier.enable_database_persistance()
+                else:
+                    classifier = network_class(length, length, simulator=simulator, model=class_model.STRING_LABEL)
+                    classifier.disable_database_persistance()
+
                 classifier.load_as_file()
-                classifier.disable_database_persistance()
 
                 networks[f'inference_{class_model.STRING_LABEL}'] = classifier
 
         else:
-            already_trained_networks = network_class.objects(simulator_identifier=simulator.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters())
+            if from_db:
+                already_trained_networks = network_class.objects(simulator_identifier=simulator.STRING_LABEL, trained=True, hyperparameters=network_class.selected_hyperparameters())
 
-            networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
+                networks_of_length = [network for network in already_trained_networks if network.trajectory_length == length]
 
-            assert len(networks_of_length) != 0, 'Not trained yet'
-            assert len(networks_of_length) == 1
-            classifier = networks_of_length[0]
-            classifier.enable_database_persistance()
+                assert len(networks_of_length) != 0, 'Not trained yet'
+                assert len(networks_of_length) == 1
+                classifier = networks_of_length[0]
+
+                classifier.enable_database_persistance()
+            else:
+                classifier = network_class(length, length, simulator=simulator)
+                classifier.disable_database_persistance()
+
             classifier.load_as_file()
-            classifier.disable_database_persistance()
 
             networks[f'classification_{class_to_string[network_class]}'] = classifier
 
