@@ -72,6 +72,7 @@ def add_custom_noise(track_length):
     return error_x * error_x_sign, error_y * error_y_sign
 
 def add_noise_and_offset(track_length, x, y):
+    """
     noise_x, noise_y = add_custom_noise(track_length)
     x_noisy = x + noise_x
     y_noisy = y + noise_y
@@ -95,11 +96,14 @@ def add_noise_and_offset(track_length, x, y):
             10000 - np.minimum(np.max(x), np.max(x_noisy))))
     offset_y = np.ones(shape=track_length) * np.random.uniform(low=0, high=(
             10000 - np.minimum(np.max(y), np.max(y_noisy))))
+
     x = x + offset_x
     y = y + offset_y
     x_noisy = x_noisy + offset_x
     y_noisy = y_noisy + offset_y
     return x, x_noisy, y, y_noisy
+    """
+    return x,x,y,y
 
 def simulate_track_time(track_length, track_time):
     #return np.linspace(0, track_time, track_length)
