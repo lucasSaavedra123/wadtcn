@@ -25,7 +25,7 @@ class BrownianMotion(Model):
 
         for i in range(trajectory_length):
             if trajectory_time is None:
-                delta_t = np.random(0.01e-3, 1e-3)
+                delta_t = np.random.uniform(0.01e-3, 1e-3)
             else:
                 delta_t = trajectory_time / trajectory_length
 

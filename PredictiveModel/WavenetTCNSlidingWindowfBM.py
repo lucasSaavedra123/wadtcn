@@ -11,6 +11,7 @@ from tensorflow import device, config
 from keras.callbacks import EarlyStopping, Callback
 from keras.layers import MultiHeadAttention
 
+from Trajectory import Trajectory
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotion
 from TheoreticalModels.BrownianMotion import BrownianMotion
 from .PredictiveModel import PredictiveModel
@@ -84,7 +85,20 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
             new_length = self.trajectory_length * np.random.randint(1,10)
             new_time = new_length * 0.01
             
-            new_trajectory = BrownianMotion(new_d).custom_simulate_rawly(new_length, None)
+            simulation_result = BrownianMotion(new_d).custom_simulate_rawly(new_length, None)
+
+            new_trajectory = Trajectory(
+                simulation_result['x'],
+                simulation_result['y'],
+                t=simulation_result['t'],
+                noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                exponent_type=simulation_result['exponent_type'],
+                exponent=simulation_result['exponent'],
+                model_category=self,
+                info=simulation_result['info']
+            )
+
             initial_index = np.random.randint(0, new_length-self.trajectory_length+1)
             new_trajectory = new_trajectory.build_noisy_subtrajectory_from_range(initial_index, initial_index+self.trajectory_length)          
             trajectories.append(new_trajectory)
