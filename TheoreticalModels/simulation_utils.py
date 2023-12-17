@@ -104,13 +104,13 @@ def add_noise_and_offset(track_length, x, y):
         x_noisy = x_noisy + offset_x
         y_noisy = y_noisy + offset_y
     elif NOISE_MODE == 1:
-        level = np.random.choice(np.linspace(-6,1,8).tolist()+[np.float('-inf')])
+        snr_level = np.random.choice([0.5,1,2,10]+[np.float('inf')])
 
-        x_noise = np.random.normal(0,1,size=track_length)
-        x_noisy = x + ((10**(level))*x_noise)
+        x_noise = np.random.normal(0,np.std(np.diff(x))/snr_level,size=track_length)
+        x_noisy = x + x_noise
 
-        y_noise = np.random.normal(0,1,size=track_length)
-        y_noisy = y + ((10**(level))*y_noise)
+        y_noise = np.random.normal(0,np.std(np.diff(y))/snr_level,size=track_length)
+        y_noisy = y + y_noise
 
     return x, x_noisy, y, y_noisy
 
