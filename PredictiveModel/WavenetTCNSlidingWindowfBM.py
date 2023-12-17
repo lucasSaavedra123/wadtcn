@@ -54,12 +54,13 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         results = []
 
         for trajectory in trajectories:
-            matrix = np.zeros((trajectory.length-self.trajectory_length+1, trajectory.length))
+            matrix = np.empty((trajectory.length-self.trajectory_length+1, trajectory.length))
+            matrix[:] = np.nan
             for index in range(0,trajectory.length-self.trajectory_length+1,1):
                 sub_trajectory = trajectory.build_noisy_subtrajectory_from_range(index, index+self.trajectory_length)
                 matrix[index,index:index+self.trajectory_length] = 10**self.architecture.predict(self.transform_trajectories_to_input([sub_trajectory]), verbose=0)
 
-            results.append(np.mean(matrix, axis=0).tolist())
+            results.append(np.nanmean(matrix, axis=0).tolist())
 
         return results
 
@@ -141,7 +142,7 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = self.predict(trajectories).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_bias(ground_truth, predicted, symbol='d')
 
@@ -149,7 +150,7 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, sample_from_ds=False)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = self.predict(trajectories).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_predicted_and_ground_truth_distribution(ground_truth, predicted)
 
@@ -157,6 +158,6 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, sample_from_ds=False)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = np.array(np.max(self.predict(trajectories),axis=1)).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_predicted_and_ground_truth_histogram(ground_truth, predicted)

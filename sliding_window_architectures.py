@@ -14,19 +14,25 @@ diffusion_coefficient_sliding_window.fit()
 diffusion_coefficient_sliding_window.save_as_file()
 #diffusion_coefficient_sliding_window.load_as_file()
 
-diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
+#diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 
+"""
 while True:
-    new_d = np.random.uniform(10**-3,10**0)
-    #new_trajectory = FractionalBrownianMotion(np.random.uniform(0,1), 10**np.random.choice(simulated_Ds)).simulate_trajectory(self.trajectory_length, self.trajectory_time, from_andi=False)
-    new_trajectory = BrownianMotion(new_d).simulate_trajectory(250, 250 * 0.01, from_andi=False) 
-    ts = [new_trajectory]
+    d_a = np.random.uniform(10**-3,10**-1)
+    a = BrownianMotion(d_a).simulate_trajectory(250, 250 * 0.01, from_andi=False)
+
+    d_b = np.random.uniform(10**-3,10**-1)
+    b = BrownianMotion(d_b).simulate_trajectory(250, 250 * 0.01, from_andi=False)
+    
+    print(d_a, d_b)
+
+    ts = [a.merge_trajectories(b)]
     value = diffusion_coefficient_sliding_window.predict(ts)
-    print(new_d)
+
     plt.plot(value[0])
     plt.ylim([10**-3, 10**0])
     plt.show()
-
+"""
 
 
 #diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
