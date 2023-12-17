@@ -21,17 +21,24 @@ class BrownianMotion(Model):
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
         x = np.random.normal(loc=0, scale=1, size=trajectory_length)
         y = np.random.normal(loc=0, scale=1, size=trajectory_length)
+        t = np.zeros(trajectory_length)
 
         for i in range(trajectory_length):
-            x[i] = x[i] * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
-            y[i] = y[i] * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
+            if trajectory_time is None:
+                delta_t = np.random(0.01e-3, 1e-3)
+            else:
+                delta_t = trajectory_time / trajectory_length
+
+            x[i] = x[i] * np.sqrt(2 * self.diffusion_coefficient * delta_t)
+            y[i] = y[i] * np.sqrt(2 * self.diffusion_coefficient * delta_t)
+            t[i] = delta_t
+
 
         x = np.cumsum(x)
         y = np.cumsum(y)
+        t = np.cumsum(t)
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
-
-        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,

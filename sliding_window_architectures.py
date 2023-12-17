@@ -14,7 +14,7 @@ diffusion_coefficient_sliding_window.fit()
 diffusion_coefficient_sliding_window.save_as_file()
 #diffusion_coefficient_sliding_window.load_as_file()
 
-#diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
+diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 
 """
 while True:
