@@ -76,14 +76,13 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
 
         return X
 
-    def simulate_trajectories(self, set_size, sample_from_ds=False):
+    def simulate_trajectories(self, set_size, sample_from_ds=False, same_length=True):
         trajectories = []
 
         while len(trajectories) != set_size:
-            new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.linspace(-3,3,1000))
+            new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.logspace(-3,3,1000))
 
             new_length = self.trajectory_length * np.random.randint(1,10)
-            new_time = new_length * 0.01
             
             simulation_result = BrownianMotion(new_d).custom_simulate_rawly(new_length, None)
 
@@ -99,8 +98,10 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
                 info=simulation_result['info']
             )
 
-            initial_index = np.random.randint(0, new_length-self.trajectory_length+1)
-            new_trajectory = new_trajectory.build_noisy_subtrajectory_from_range(initial_index, initial_index+self.trajectory_length)          
+            if same_length:
+                initial_index = np.random.randint(0, new_length-self.trajectory_length+1)
+                new_trajectory = new_trajectory.build_noisy_subtrajectory_from_range(initial_index, initial_index+self.trajectory_length)          
+            
             trajectories.append(new_trajectory)
 
         shuffle(trajectories)
