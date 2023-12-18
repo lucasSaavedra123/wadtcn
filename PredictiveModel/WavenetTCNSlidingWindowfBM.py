@@ -55,6 +55,7 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         results = []
 
         for trajectory in trajectories:
+
             matrix = np.empty((trajectory.length-self.trajectory_length+1, trajectory.length))
             matrix[:] = np.nan
             for index in range(0,trajectory.length-self.trajectory_length+1,1):
@@ -63,13 +64,20 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
 
             results.append(np.nanmean(matrix, axis=0).tolist())
 
+            """
+            results.append([])
+            for index in range(0, trajectory.length - self.trajectory_length):
+                sub_trajectory = trajectory.build_noisy_subtrajectory_from_range(index, index+self.trajectory_length)
+                prediction = 10**self.architecture.predict(self.transform_trajectories_to_input([sub_trajectory]), verbose=0)
+                results[-1].append(prediction[0][0])
+            """
         return results
 
     def transform_trajectories_to_output(self, trajectories):
         return transform_trajectories_to_diffusion_coefficient(self, trajectories, transformation=lambda x: np.log10(x))
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_displacements(self, trajectories, normalize=False)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=False, from_zero=True)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
@@ -80,10 +88,11 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = []
 
         while len(trajectories) != set_size:
-            new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.logspace(-3,3,1000))
+            #new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.linspace(-3,3,1000))
+            new_d = np.random.choice(np.logspace(-3,0,1000))
 
             new_length = self.trajectory_length * np.random.randint(1,10)
-            
+
             simulation_result = BrownianMotion(new_d).custom_simulate_rawly(new_length, None)
 
             new_trajectory = Trajectory(
@@ -114,7 +123,8 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            inputs = Input(shape=(self.trajectory_length-1, 2))
+            #inputs = Input(shape=(self.trajectory_length-1, 2))
+            inputs = Input(shape=(self.trajectory_length, 2))
             filters = 64
             dilation_depth = 8
             initializer = 'he_normal'

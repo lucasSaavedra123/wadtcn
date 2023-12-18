@@ -586,3 +586,12 @@ class Trajectory(Document):
             min_size=min_size,
             return_break_points=return_break_points
         )
+
+    @property
+    def signal_noise_ratio(self):
+        """
+        It selected only x axis
+        """
+        x_displacements = np.diff(self.get_x())
+        noise_x_displacements = self.get_noise_x()
+        return np.std(x_displacements)/np.std(noise_x_displacements)

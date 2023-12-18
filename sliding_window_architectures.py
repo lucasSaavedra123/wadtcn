@@ -5,35 +5,35 @@ import matplotlib.pyplot as plt
 from PredictiveModel.WavenetTCNSlidingWindowfBM import WavenetTCNSlidingWindowfBM
 from DataSimulation import CustomDataSimulation
 from TheoreticalModels.BrownianMotion import BrownianMotion
+from DatabaseHandler import DatabaseHandler
+from Trajectory import Trajectory
+
+DatabaseHandler.connect_over_network(None, None, '192.168.0.101', 'MINFLUX_DATA')
 
 LOAD_BOOLEAN = True
 
-diffusion_coefficient_sliding_window = WavenetTCNSlidingWindowfBM(25,25*0.01, simulator=CustomDataSimulation)
-diffusion_coefficient_sliding_window.enable_early_stopping()
-diffusion_coefficient_sliding_window.fit()
-diffusion_coefficient_sliding_window.save_as_file()
-#diffusion_coefficient_sliding_window.load_as_file()
+diffusion_coefficient_sliding_window = WavenetTCNSlidingWindowfBM(25,None, simulator=CustomDataSimulation)
+#diffusion_coefficient_sliding_window.enable_early_stopping()
+#diffusion_coefficient_sliding_window.fit()
+#diffusion_coefficient_sliding_window.save_as_file()
+diffusion_coefficient_sliding_window.load_as_file()
 
-diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
+#diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 
-"""
-while True:
-    d_a = np.random.uniform(10**-3,10**-1)
-    a = BrownianMotion(d_a).simulate_trajectory(250, 250 * 0.01, from_andi=False)
+for ts in Trajectory.objects():
+    #a = diffusion_coefficient_sliding_window.simulate_trajectories(1,True,False)[0]
+    #b = diffusion_coefficient_sliding_window.simulate_trajectories(1,True,False)[0]
 
-    d_b = np.random.uniform(10**-3,10**-1)
-    b = BrownianMotion(d_b).simulate_trajectory(250, 250 * 0.01, from_andi=False)
-    
-    print(d_a, d_b)
+    #ts = [a.merge_trajectories(b)]
+    value = diffusion_coefficient_sliding_window.predict([ts])
 
-    ts = [a.merge_trajectories(b)]
-    value = diffusion_coefficient_sliding_window.predict(ts)
+
 
     plt.plot(value[0])
-    plt.ylim([10**-3, 10**0])
+    plt.yscale('log')
     plt.show()
-"""
 
+DatabaseHandler.disconnect()
 
 #diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 
