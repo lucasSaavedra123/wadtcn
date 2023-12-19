@@ -6,6 +6,16 @@ from PredictiveModel.WavenetTCNSlidingWindowfBM import WavenetTCNSlidingWindowfB
 from DataSimulation import CustomDataSimulation
 from TheoreticalModels.BrownianMotion import BrownianMotion
 
+
+
+
+
+
+
+
+
+
+
 LOAD_BOOLEAN = True
 
 diffusion_coefficient_sliding_window = WavenetTCNSlidingWindowfBM(25,25*0.01, simulator=CustomDataSimulation)
