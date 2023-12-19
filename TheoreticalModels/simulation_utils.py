@@ -1,6 +1,8 @@
 import numpy as np
 import sys, os
 
+from  CONSTANTS import *
+
 """
 This method comes from paper:
 
@@ -72,38 +74,46 @@ def add_custom_noise(track_length):
     return error_x * error_x_sign, error_y * error_y_sign
 
 def add_noise_and_offset(track_length, x, y):
-    """
-    noise_x, noise_y = add_custom_noise(track_length)
-    x_noisy = x + noise_x
-    y_noisy = y + noise_y
-    if np.min(x_noisy) < np.min(x) and np.min(x_noisy) < 0:
-        min_noisy_x = np.absolute(np.min(x_noisy))
-        x_noisy = x_noisy + min_noisy_x  # Convert to positive
-        x = x + min_noisy_x
-    if np.min(x_noisy) > np.min(x) and np.min(x) < 0:
-        min_x = np.absolute(np.min(x))
-        x_noisy = x_noisy + min_x  # Convert to positive
-        x = x + min_x
-    if np.min(y_noisy) < np.min(y) and np.min(y_noisy) < 0:
-        min_noisy_y = np.absolute(np.min(y_noisy))
-        y_noisy = y_noisy + min_noisy_y  # Convert to positive
-        y = y + min_noisy_y
-    if np.min(y_noisy) > np.min(y) and np.min(y) < 0:
-        min_y = np.absolute(np.min(y))
-        y_noisy = y_noisy + min_y  # Convert to positive
-        y = y + min_y
-    offset_x = np.ones(shape=track_length) * np.random.uniform(low=0, high=(
-            10000 - np.minimum(np.max(x), np.max(x_noisy))))
-    offset_y = np.ones(shape=track_length) * np.random.uniform(low=0, high=(
-            10000 - np.minimum(np.max(y), np.max(y_noisy))))
+    if NOISE_MODE == 0:
+        noise_x, noise_y = add_custom_noise(track_length)
+        x_noisy = x + noise_x
+        y_noisy = y + noise_y
+        if np.min(x_noisy) < np.min(x) and np.min(x_noisy) < 0:
+            min_noisy_x = np.absolute(np.min(x_noisy))
+            x_noisy = x_noisy + min_noisy_x  # Convert to positive
+            x = x + min_noisy_x
+        if np.min(x_noisy) > np.min(x) and np.min(x) < 0:
+            min_x = np.absolute(np.min(x))
+            x_noisy = x_noisy + min_x  # Convert to positive
+            x = x + min_x
+        if np.min(y_noisy) < np.min(y) and np.min(y_noisy) < 0:
+            min_noisy_y = np.absolute(np.min(y_noisy))
+            y_noisy = y_noisy + min_noisy_y  # Convert to positive
+            y = y + min_noisy_y
+        if np.min(y_noisy) > np.min(y) and np.min(y) < 0:
+            min_y = np.absolute(np.min(y))
+            y_noisy = y_noisy + min_y  # Convert to positive
+            y = y + min_y
+        offset_x = np.ones(shape=track_length) * np.random.uniform(low=0, high=(
+                10000 - np.minimum(np.max(x), np.max(x_noisy))))
+        offset_y = np.ones(shape=track_length) * np.random.uniform(low=0, high=(
+                10000 - np.minimum(np.max(y), np.max(y_noisy))))
 
-    x = x + offset_x
-    y = y + offset_y
-    x_noisy = x_noisy + offset_x
-    y_noisy = y_noisy + offset_y
+        x = x + offset_x
+        y = y + offset_y
+        x_noisy = x_noisy + offset_x
+        y_noisy = y_noisy + offset_y
+    elif NOISE_MODE == 1:
+        snr_level = np.random.choice([0.5,1,2,10]+[np.float('inf')])
+
+        x_noise = np.random.normal(0,np.std(np.diff(x))/snr_level,size=track_length)
+        x_noisy = x + x_noise
+
+        y_noise = np.random.normal(0,np.std(np.diff(y))/snr_level,size=track_length)
+        y_noisy = y + y_noise
+
     return x, x_noisy, y, y_noisy
-    """
-    return x,x,y,y
+
 
 def simulate_track_time(track_length, track_time):
     #return np.linspace(0, track_time, track_length)

@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 from PredictiveModel.WavenetTCNSlidingWindowfBM import WavenetTCNSlidingWindowfBM
 from DataSimulation import CustomDataSimulation
 from TheoreticalModels.BrownianMotion import BrownianMotion
+from DatabaseHandler import DatabaseHandler
+from Trajectory import Trajectory
+
+DatabaseHandler.connect_over_network(None, None, '192.168.0.101', 'MINFLUX_DATA')
 
 
 
@@ -18,26 +22,28 @@ from TheoreticalModels.BrownianMotion import BrownianMotion
 
 LOAD_BOOLEAN = True
 
-diffusion_coefficient_sliding_window = WavenetTCNSlidingWindowfBM(25,25*0.01, simulator=CustomDataSimulation)
-diffusion_coefficient_sliding_window.enable_early_stopping()
-diffusion_coefficient_sliding_window.fit()
-diffusion_coefficient_sliding_window.save_as_file()
-#diffusion_coefficient_sliding_window.load_as_file()
+diffusion_coefficient_sliding_window = WavenetTCNSlidingWindowfBM(25,None, simulator=CustomDataSimulation)
+#diffusion_coefficient_sliding_window.enable_early_stopping()
+#diffusion_coefficient_sliding_window.fit()
+#diffusion_coefficient_sliding_window.save_as_file()
+diffusion_coefficient_sliding_window.load_as_file()
 
-diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
+#diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 
-while True:
-    new_d = np.random.uniform(10**-3,10**0)
-    #new_trajectory = FractionalBrownianMotion(np.random.uniform(0,1), 10**np.random.choice(simulated_Ds)).simulate_trajectory(self.trajectory_length, self.trajectory_time, from_andi=False)
-    new_trajectory = BrownianMotion(new_d).simulate_trajectory(250, 250 * 0.01, from_andi=False) 
-    ts = [new_trajectory]
-    value = diffusion_coefficient_sliding_window.predict(ts)
-    print(new_d)
+for ts in Trajectory.objects():
+    #a = diffusion_coefficient_sliding_window.simulate_trajectories(1,True,False)[0]
+    #b = diffusion_coefficient_sliding_window.simulate_trajectories(1,True,False)[0]
+
+    #ts = [a.merge_trajectories(b)]
+    value = diffusion_coefficient_sliding_window.predict([ts])
+
+
+
     plt.plot(value[0])
-    plt.ylim([10**-3, 10**0])
+    plt.yscale('log')
     plt.show()
 
-
+DatabaseHandler.disconnect()
 
 #diffusion_coefficient_sliding_window.plot_predicted_and_ground_truth_histogram()
 

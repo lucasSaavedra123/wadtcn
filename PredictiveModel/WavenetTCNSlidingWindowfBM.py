@@ -11,6 +11,7 @@ from tensorflow import device, config
 from keras.callbacks import EarlyStopping, Callback
 from keras.layers import MultiHeadAttention
 
+from Trajectory import Trajectory
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotion
 from TheoreticalModels.BrownianMotion import BrownianMotion
 from .PredictiveModel import PredictiveModel
@@ -54,38 +55,62 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         results = []
 
         for trajectory in trajectories:
-            matrix = np.zeros((trajectory.length-self.trajectory_length+1, trajectory.length))
+
+            matrix = np.empty((trajectory.length-self.trajectory_length+1, trajectory.length))
+            matrix[:] = np.nan
             for index in range(0,trajectory.length-self.trajectory_length+1,1):
                 sub_trajectory = trajectory.build_noisy_subtrajectory_from_range(index, index+self.trajectory_length)
                 matrix[index,index:index+self.trajectory_length] = 10**self.architecture.predict(self.transform_trajectories_to_input([sub_trajectory]), verbose=0)
 
-            results.append(np.mean(matrix, axis=0).tolist())
+            results.append(np.nanmean(matrix, axis=0).tolist())
 
+            """
+            results.append([])
+            for index in range(0, trajectory.length - self.trajectory_length):
+                sub_trajectory = trajectory.build_noisy_subtrajectory_from_range(index, index+self.trajectory_length)
+                prediction = 10**self.architecture.predict(self.transform_trajectories_to_input([sub_trajectory]), verbose=0)
+                results[-1].append(prediction[0][0])
+            """
         return results
 
     def transform_trajectories_to_output(self, trajectories):
         return transform_trajectories_to_diffusion_coefficient(self, trajectories, transformation=lambda x: np.log10(x))
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_displacements(self, trajectories, normalize=False)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=False, from_zero=True)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
 
         return X
 
-    def simulate_trajectories(self, set_size, sample_from_ds=False):
+    def simulate_trajectories(self, set_size, sample_from_ds=False, same_length=True):
         trajectories = []
 
         while len(trajectories) != set_size:
-            new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.linspace(-3,3,1000))
+            #new_d = np.random.uniform(10**-3,10**3) if sample_from_ds else 10**np.random.choice(np.linspace(-3,3,1000))
+            new_d = np.random.choice(np.logspace(-3,0,1000))
 
             new_length = self.trajectory_length * np.random.randint(1,10)
-            new_time = new_length * 0.01
+
+            simulation_result = BrownianMotion(new_d).custom_simulate_rawly(new_length, None)
+
+            new_trajectory = Trajectory(
+                simulation_result['x'],
+                simulation_result['y'],
+                t=simulation_result['t'],
+                noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                exponent_type=simulation_result['exponent_type'],
+                exponent=simulation_result['exponent'],
+                model_category=self,
+                info=simulation_result['info']
+            )
+
+            if same_length:
+                initial_index = np.random.randint(0, new_length-self.trajectory_length+1)
+                new_trajectory = new_trajectory.build_noisy_subtrajectory_from_range(initial_index, initial_index+self.trajectory_length)          
             
-            new_trajectory = BrownianMotion(new_d).simulate_trajectory(new_length, new_time, from_andi=False)
-            initial_index = np.random.randint(0, new_length-self.trajectory_length+1)
-            new_trajectory = new_trajectory.build_noisy_subtrajectory_from_range(initial_index, initial_index+self.trajectory_length)          
             trajectories.append(new_trajectory)
 
         shuffle(trajectories)
@@ -98,7 +123,8 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            inputs = Input(shape=(self.trajectory_length-1, 2))
+            #inputs = Input(shape=(self.trajectory_length-1, 2))
+            inputs = Input(shape=(self.trajectory_length, 2))
             filters = 64
             dilation_depth = 8
             initializer = 'he_normal'
@@ -141,7 +167,7 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = self.predict(trajectories).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_bias(ground_truth, predicted, symbol='d')
 
@@ -149,7 +175,7 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, sample_from_ds=False)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = self.predict(trajectories).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_predicted_and_ground_truth_distribution(ground_truth, predicted)
 
@@ -157,6 +183,6 @@ class WavenetTCNSlidingWindowfBM(PredictiveModel):
         trajectories = self.simulate_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, sample_from_ds=False)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = np.array(np.max(self.predict(trajectories),axis=1)).flatten()
+        predicted = self.architecture.predict(self.transform_trajectories_to_input(trajectories)).flatten()
 
         plot_predicted_and_ground_truth_histogram(ground_truth, predicted)

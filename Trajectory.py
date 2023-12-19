@@ -424,6 +424,31 @@ class Trajectory(Document):
         
         return trajectories
 
+    def merge_trajectories(self, trajectory):
+
+        x_1 = self.get_noisy_x()
+        y_1 = self.get_noisy_y()
+
+        x_2 = trajectory.get_noisy_x()
+        y_2 = trajectory.get_noisy_y()
+
+        displacement_x = x_1[-1] - x_2[0]
+        x_2 = x_2 + displacement_x
+        x_2 = x_2[1:]
+
+        displacement_y = y_1[-1] - y_2[0]
+        y_2 = y_2 + displacement_y
+        y_2 = y_2[1:]
+
+        return Trajectory(
+                    x = np.append(x_1,x_2),
+                    y = np.append(y_1,y_2),
+                    #t = self.get_time()[initial_index:final_index],
+                    noisy=True,
+                    info=self.info,
+                    exponent=self.anomalous_exponent
+                )
+
     def build_noisy_subtrajectory_from_range(self, initial_index, final_index):
         return Trajectory(
                     x = self.get_noisy_x()[initial_index:final_index],
@@ -561,3 +586,12 @@ class Trajectory(Document):
             min_size=min_size,
             return_break_points=return_break_points
         )
+
+    @property
+    def signal_noise_ratio(self):
+        """
+        It selected only x axis
+        """
+        x_displacements = np.diff(self.get_x())
+        noise_x_displacements = self.get_noise_x()
+        return np.std(x_displacements)/np.std(noise_x_displacements)
