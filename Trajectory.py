@@ -133,6 +133,48 @@ class Trajectory(Document):
     info = DictField(required=False)
 
     @classmethod
+    def transform_dataset_from_challenge_phenom_dataset_to_trajectories(cls, list_of_dataframes):
+        trajectories = []
+        for dataframe in list_of_dataframes:
+            for traj_idx in dataframe['traj_idx'].unique():
+                sub_frame = dataframe[dataframe['traj_idx'] == traj_idx].copy().sort_values('frame')
+                x, y = sub_frame['x'].tolist(), sub_frame['y'].tolist()
+                info = {
+                    'alpha': sub_frame['x'].tolist(),
+                    'D': sub_frame['D'].tolist(),
+                    'state': sub_frame['state'].tolist()
+                }
+                trajectories.append(Trajectory(x,y,noisy=True,info=info))
+        return trajectories
+
+    """
+    - trajs (array TxNx2): particles' position. N considers here the sum of all trajectories generated from the input dictionaries. 
+    - labels (array TxNx2): particles' labels (see ._multi_state for details on labels) 
+    """
+    @classmethod
+    def transform_dataset_from_create_dataset_to_trajectories(cls, trajs, labels):
+        _defaults_andi2_sigma = 0.12 #this comes from _defaults_andi2
+        trajectories = []
+        for traj_idx in range(trajs.shape[1]):
+            x, y = trajs[:,traj_idx,0].tolist(), trajs[:,traj_idx,1].tolist()
+
+            info = {
+                'alpha': labels[:,traj_idx,0].tolist(),
+                'D': labels[:,traj_idx,1].tolist(),
+                'state': labels[:,traj_idx,2].tolist(),
+            }
+
+            trajectories.append(
+                Trajectory(
+                    x,
+                    y,
+                    noise_x=np.random.randn(len(x))*_defaults_andi2_sigma,
+                    noise_y=np.random.randn(len(y))*_defaults_andi2_sigma,
+                    info=info
+                ))
+        return trajectories
+
+    @classmethod
     def from_mat_dataset(cls, dataset, label='no label', experimental_condition='no experimental condition', scale_factor=1000): # With 1000 we convert trajectories steps to nm
         trajectories = []
         number_of_tracks = len(dataset)
@@ -462,6 +504,8 @@ class Trajectory(Document):
             new_trajectory.info['dcr'] = self.info['dcr'][initial_index:final_index]
         if 'intensity' in self.info:
             new_trajectory.info['intensity'] = self.info['intensity'][initial_index:final_index]
+        if 'D' in self.info:
+            new_trajectory.info['D'] = self.info['D'][initial_index:final_index]
 
         return new_trajectory
 
