@@ -136,11 +136,11 @@ def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
 
     return Y
 
-def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectories, step_by_step=False, transform_function= lambda x: x):
-    Y = np.empty((len(trajectories), 1)) if not step_by_step else np.empty((len(trajectories), predictive_model.length))
+def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), 1))
 
     for index, trajectory in enumerate(trajectories):
-        Y[index, :] = transform_function(trajectory.info['diffusion_coefficient'])
+        Y[index, 0] = trajectory.info['diffusion_coefficient']
 
     return Y
 
