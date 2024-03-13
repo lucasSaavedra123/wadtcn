@@ -8,6 +8,8 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
+from andi_datasets.datasets_challenge import _defaults_andi2
+
 from scipy.spatial import ConvexHull
 import scipy.stats as st
 from collections import defaultdict
@@ -146,6 +148,27 @@ class Trajectory(Document):
             trayectory_y = raw_trajectory[:, 2] * scale_factor
 
             trajectories.append(Trajectory(trayectory_x, trayectory_y, t=trajectory_time, info={"label": label, "experimental_condition": experimental_condition}, noisy=True))
+
+        return trajectories
+
+    @classmethod
+    def from_datasets_phenom(cls, trajs, labels):
+        trajectories = []
+
+        for traj_index in range(trajs.shape[1]):
+            trajectories.append(
+                Trajectory(
+                    x=trajs[:,traj_index,0],
+                    y=trajs[:,traj_index,1],
+                    noise_x=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
+                    info={
+                        'alpha_t': labels[:,traj_index,0],
+                        'd_t': labels[:,traj_index,1],
+                        'state_t': labels[:,traj_index,2]
+                    }
+                )
+            )
 
         return trajectories
 
