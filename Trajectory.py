@@ -8,7 +8,7 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
-from scipy.spatial import ConvexHull
+
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -44,16 +44,13 @@ for data in dataset:
 
 
 def turning_angles(length, x, y, steps_lag=1, normalized=False):
-    #if length/steps_lag <= 1:
-    #    return []
+    if length/steps_lag <= 2:
+        return []
 
     X = np.zeros((length,2))
     X[:,0] = x
     X[:,1] = y
-    X = X[::steps_lag,:]
-    length = X.shape[0]
 
-    steps_lag = 1
     U_t = X[:length-steps_lag]
     U_t_plus_delta = X[np.arange(0, length-steps_lag)+steps_lag]
 
@@ -150,7 +147,7 @@ class Trajectory(Document):
     @classmethod
     def ensamble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, alpha=0.95):
         trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 1]
-        #print("len average ->", np.mean([t.length for t in trajectories]))
+
         ea_msd = np.zeros((len(trajectories), number_of_points_for_msd))
         mu_t = np.zeros((len(trajectories), number_of_points_for_msd))
 
@@ -354,39 +351,16 @@ class Trajectory(Document):
 
         plt.show()
 
-    def plot_confinement_states(
-        self,
-        v_th=11,
-        window_size=3,
-        transition_fix_threshold=9,
-        non_confinement_color='black',
-        confinement_color='green',
-        show=True,
-        alpha=1,
-        plot_confinement_convex_hull=False,
-        color_confinement_convex_hull='grey',
-        alpha_confinement_convex_hull=0.5
-    ):
+    def plot_confinement_states(self, v_th=11, window_size=3, show=True):
         x = self.get_noisy_x().tolist()
         y = self.get_noisy_y().tolist()
 
-        state_to_color = {1:confinement_color, 0:non_confinement_color}
-        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold))
+        state_to_color = {1:'green', 0:'black'}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size))
 
         for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
-            plt.plot([x1, x2], [y1, y2], states_as_color[i], alpha=alpha)
+            plt.plot([x1, x2], [y1, y2], states_as_color[i])
 
-        confinement_sub_trajectories = self.sub_trajectories_trajectories_from_confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold)[1]
-
-        if plot_confinement_convex_hull:
-            for trajectory in confinement_sub_trajectories:
-                points = np.zeros((trajectory.length, 2))
-                points[:,0] = trajectory.get_noisy_x()
-                points[:,1] = trajectory.get_noisy_y()
-                hull = ConvexHull(points)
-
-                plt.fill(points[hull.vertices, 0], points[hull.vertices, 1], color_confinement_convex_hull, alpha=alpha_confinement_convex_hull)
-        
         if show:
             plt.show()
 
@@ -418,8 +392,8 @@ class Trajectory(Document):
     def is_immobile(self, threshold):
         return self.normalized_ratio <= threshold
 
-    def sub_trajectories_trajectories_from_confinement_states(self, v_th=11, window_size=3, transition_fix_threshold=9, use_info=False):
-        confinement_states = self.confinement_states(return_intervals=False, v_th=v_th, transition_fix_threshold=transition_fix_threshold, window_size=window_size) if not use_info else self.info['analysis']['confinement-states']
+    def sub_trajectories_trajectories_from_confinement_states(self, v_th=11, window_size=3):
+        confinement_states = self.confinement_states(return_intervals=False, v_th=v_th, window_size=window_size)
 
         trajectories = {
             0: [],
@@ -450,22 +424,17 @@ class Trajectory(Document):
         
         return trajectories
 
-    def build_noisy_subtrajectory_from_range(self, initial_index, final_index, noisy=True):
-        new_trajectory = Trajectory(
+    def build_noisy_subtrajectory_from_range(self, initial_index, final_index):
+        return Trajectory(
                     x = self.get_noisy_x()[initial_index:final_index],
                     y = self.get_noisy_y()[initial_index:final_index],
                     t = self.get_time()[initial_index:final_index],
-                    noisy=noisy
+                    noisy=True,
+                    info=self.info,
+                    exponent=self.anomalous_exponent
                 )
-        
-        if 'dcr' in self.info:
-            new_trajectory.info['dcr'] = self.info['dcr'][initial_index:final_index]
-        if 'intensity' in self.info:
-            new_trajectory.info['intensity'] = self.info['intensity'][initial_index:final_index]
 
-        return new_trajectory
-
-    def confinement_states(self,v_th=11, window_size=3, transition_fix_threshold=9, return_intervals=False):
+    def confinement_states(self,v_th=11,window_size=3, return_intervals=False):
         """
         This method is the Array-Oriented Python implementation of the algorithm proposed in the referenced
         paper to identify periods of transient confinement within individual trajectories.
@@ -508,10 +477,6 @@ class Trajectory(Document):
             states[position_index] = np.sum(S[position_index, :] * V)
 
         states = (states > 0).astype(int)
-
-        #Spurious transitions are eliminated
-        for window_index in range(0,len(states), transition_fix_threshold):
-            states[window_index:window_index+transition_fix_threshold] = np.argmax(np.bincount(states[window_index:window_index+transition_fix_threshold]))
 
         if return_intervals:
             indices = np.nonzero(states[1:] != states[:-1])[0] + 1
