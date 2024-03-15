@@ -136,6 +136,23 @@ def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
 
     return Y
 
+def transform_trajectories_to_single_level_hurst_exponent(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+
+    for index, trajectory in enumerate(trajectories):
+        Y[index, :] = trajectory.info['alpha_t']
+        Y[index, :] /= 2
+
+    return Y
+
+def transform_trajectories_to_single_level_model(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 4))
+
+    for index, trajectory in enumerate(trajectories):
+        Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=4)
+
+    return Y
+
 def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectories):
     Y = np.empty((len(trajectories), 1))
 
