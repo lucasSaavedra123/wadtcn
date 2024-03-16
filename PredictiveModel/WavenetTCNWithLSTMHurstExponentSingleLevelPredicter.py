@@ -61,7 +61,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
         return transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories) if self.simulator.STRING_LABEL == 'andi' else transform_trajectories_into_displacements_with_time(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
@@ -69,7 +69,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 3
+            number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
             filters = 64
             dilation_depth = 8

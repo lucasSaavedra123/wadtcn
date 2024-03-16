@@ -69,7 +69,7 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 3
+            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
             filters = 64
             dilation_depth = 8
