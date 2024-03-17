@@ -161,6 +161,11 @@ def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectori
 
     return Y
 
+def basic_convolution_block(predictive_model, original_x, filters, kernel_size, dilation_rate, initializer):
+    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rate)(original_x)
+    x = BatchNormalization()(x)
+    return x
+
 def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
     x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
     x = BatchNormalization()(x)

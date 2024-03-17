@@ -1,5 +1,5 @@
 import numpy as np
-from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed
+from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed, MaxPooling1D, UpSampling1D
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
@@ -75,6 +75,9 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             dilation_depth = 8
             initializer = 'he_normal'
 
+
+
+
             x1_kernel = 4
             x2_kernel = 2
             x3_kernel = 3
@@ -84,20 +87,42 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             dilation_depth = 8
 
             x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
+            x1 = basic_convolution_block(self, x, filters, 3, 1, initializer)
+            x = MaxPooling1D(pool_size=2)(x)
 
+            x2 = basic_convolution_block(self, x, filters, 3, 2, initializer)
+            x = MaxPooling1D(pool_size=2)(x)
+
+            #x3 = basic_convolution_block(self, x, filters, 3, 4, initializer)
+            #x = MaxPooling1D(pool_size=2)(x)
+
+            #x4 = basic_convolution_block(self, x, filters, 3, 4, initializer)
+            #x = MaxPooling1D(pool_size=2)(x)
+
+            x = UpSampling1D(size=2)(x)
+            x = concatenate(inputs=[x, x2], axis=-1)
+
+            x = UpSampling1D(size=2)(x)
+            x = concatenate(inputs=[x, x1], axis=-1)
+
+            """
             x1 = convolutional_block(self, x, filters, x1_kernel, [1,2,4], initializer)
             x2 = convolutional_block(self, x, filters, x2_kernel, [1,2,4], initializer)
             x3 = convolutional_block(self, x, filters, x3_kernel, [1,2,4], initializer)
             x4 = convolutional_block(self, x, filters, x4_kernel, [1,4,8], initializer)
 
-            x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
-            x5 = BatchNormalization()(x5)
+            #x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
+            #x5 = BatchNormalization()(x5)
 
-            x = concatenate(inputs=[x1, x2, x3, x4, x5])
+            x = concatenate(inputs=[x1, x2, x3, x4])#, x5])
 
             #x = GlobalAveragePooling1D()(x)
             output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)#Dense(units=self.trajectory_length, activation='sigmoid')(x)
 
+            self.architecture = Model(inputs=inputs, outputs=output_network)
+            """
+
+            output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)#Dense(units=self.trajectory_length, activation='sigmoid')(x)
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         else:

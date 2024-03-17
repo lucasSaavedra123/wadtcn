@@ -21,7 +21,7 @@ import seaborn as sns
 
 def generate_trajectories(limit):
     EXPERIMENTS = np.arange(5).repeat(2)
-    NUM_FOVS = 30
+    NUM_FOVS = 1
 
     # We create a list of dictionaries with the properties of each experiment
     exp_dic = [None]*len(EXPERIMENTS)
@@ -71,7 +71,7 @@ def generate_trajectories(limit):
             fix_exp = exp_dic[idx]
 
             dic = _get_dic_andi2(i+1)
-            dic['T'] = 500
+            dic['T'] = 200
             dic['N'] = 100
 
             for key in fix_exp:
@@ -86,7 +86,9 @@ def generate_trajectories(limit):
 
     return t
 
-network = WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(500, 500, simulator=CustomDataSimulation)
+network = WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(200, 200, simulator=CustomDataSimulation)
+network.build_network()
+network.architecture.summary()
 #network = WavenetTCNWithLSTMModelSingleLevelPredicter(200, 200, simulator=CustomDataSimulation)
 
 t = generate_trajectories(100_000)
@@ -94,9 +96,6 @@ X_train, Y_train = network.transform_trajectories_to_input(t), network.transform
 
 t = generate_trajectories(12_500)
 X_val, Y_val = network.transform_trajectories_to_input(t), network.transform_trajectories_to_output(t)
-
-
-network.build_network()
 
 network.architecture.summary()
 network.architecture.fit(
