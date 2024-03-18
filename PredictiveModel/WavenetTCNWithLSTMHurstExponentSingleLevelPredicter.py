@@ -71,13 +71,9 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
         if self.wadnet_tcn_encoder is None:
             number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
-            filters = 64
+            filters = 128
             dilation_depth = 8
             initializer = 'he_normal'
-
-
-
-
             x1_kernel = 4
             x2_kernel = 2
             x3_kernel = 3
@@ -86,24 +82,35 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
 
             dilation_depth = 8
 
-            x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
+            x = WaveNetEncoder(filters // 2, dilation_depth, initializer=initializer)(inputs)
+
             x1 = basic_convolution_block(self, x, filters, 3, 1, initializer)
             x = MaxPooling1D(pool_size=2)(x)
 
-            x2 = basic_convolution_block(self, x, filters, 3, 2, initializer)
+            x2 = basic_convolution_block(self, x, filters * 2, 3, 2, initializer)
             x = MaxPooling1D(pool_size=2)(x)
 
-            #x3 = basic_convolution_block(self, x, filters, 3, 4, initializer)
-            #x = MaxPooling1D(pool_size=2)(x)
+            x3 = basic_convolution_block(self, x, filters * 4, 3, 2, initializer)
+            x = MaxPooling1D(pool_size=2)(x)
 
-            #x4 = basic_convolution_block(self, x, filters, 3, 4, initializer)
-            #x = MaxPooling1D(pool_size=2)(x)
+            x4 = basic_convolution_block(self, x, filters * 8, 3, 2, initializer)
+            x = MaxPooling1D(pool_size=2)(x)
 
+            x = concatenate(inputs=[x, x4], axis=-1)
+            x = basic_convolution_block(self, x, filters * 4, 3, 2, initializer)
             x = UpSampling1D(size=2)(x)
+
+            x = concatenate(inputs=[x, x3], axis=-1)
+            x = basic_convolution_block(self, x, filters * 2, 3, 2, initializer)
+            x = UpSampling1D(size=2)(x)
+
             x = concatenate(inputs=[x, x2], axis=-1)
-
+            x = basic_convolution_block(self, x, filters, 3, 2, initializer)
             x = UpSampling1D(size=2)(x)
+
             x = concatenate(inputs=[x, x1], axis=-1)
+            x = basic_convolution_block(self, x, 1, 3, 2, initializer)
+            x = UpSampling1D(size=2)(x)
 
             """
             x1 = convolutional_block(self, x, filters, x1_kernel, [1,2,4], initializer)

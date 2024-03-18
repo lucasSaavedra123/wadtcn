@@ -21,7 +21,7 @@ import seaborn as sns
 
 def generate_trajectories(limit):
     EXPERIMENTS = np.arange(5).repeat(2)
-    NUM_FOVS = 1
+    NUM_FOVS = 10
 
     # We create a list of dictionaries with the properties of each experiment
     exp_dic = [None]*len(EXPERIMENTS)
@@ -87,16 +87,22 @@ def generate_trajectories(limit):
     return t
 
 network = WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(200, 200, simulator=CustomDataSimulation)
-network.build_network()
-network.architecture.summary()
 #network = WavenetTCNWithLSTMModelSingleLevelPredicter(200, 200, simulator=CustomDataSimulation)
+
 
 t = generate_trajectories(100_000)
 X_train, Y_train = network.transform_trajectories_to_input(t), network.transform_trajectories_to_output(t)
-
+np.save("x_train.npy", X_train)
+np.save("y_train.npy", Y_train)
 t = generate_trajectories(12_500)
 X_val, Y_val = network.transform_trajectories_to_input(t), network.transform_trajectories_to_output(t)
+np.save("x_val.npy", X_val)
+np.save("y_val.npy", Y_val)
 
+#X_train, Y_train = np.load("x_train.npy"), np.load("y_train.npy")
+#X_val, Y_val = np.load("x_val.npy"), np.load("y_val.npy")
+
+network.build_network()
 network.architecture.summary()
 network.architecture.fit(
     X_train, Y_train,
@@ -108,18 +114,19 @@ network.architecture.fit(
 network.save_as_file()
 #network.load_as_file()
 
+"""
 result = network.predict(t)
 #result = np.argmax(result,axis=2)
 idxs = np.arange(0,len(t), 1)
 np.random.shuffle(idxs)
 
 for i in idxs:
-    ti = t[i]
+    ti = Y_val[i]
     plt.plot(ti.info['alpha_t'])
     plt.plot(result[i, :]*2)
     plt.ylim([0,2])
     plt.show()
-
+"""
 """
 result = network.predict(t)
 result = np.argmax(result,axis=2)
