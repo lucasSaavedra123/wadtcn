@@ -41,12 +41,25 @@ class HopDiffusion(Model):
 
     def __get_voronoi_centroids(self):
         centroids = []
+        """
         for polygon in self.__extract_polygons_from_voronoi():
             if polygon is not None:
                 centroid = polygon.centroid
                 centroids.append([centroid.x, centroid.y])
             else:
                 centroids.append([np.inf, np.inf])
+        return np.array(centroids)
+        """
+        voronoi_diagram = Voronoi(self.__voronoi_centroids)
+
+        for region in voronoi_diagram.regions:
+            if not -1 in region and region != []:
+                x = [voronoi_diagram.vertices[i][0] for i in region]
+                y = [voronoi_diagram.vertices[i][1] for i in region]
+                centroids.append([np.mean(x), np.mean(y)])
+            else:
+                centroids.append([np.inf, np.inf])
+
         return np.array(centroids)
 
     def __get_region_of_position(self,x,y):
@@ -57,6 +70,7 @@ class HopDiffusion(Model):
         return min_index
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
+        """
         cells_centroids = self.__get_voronoi_centroids()
         
         initial_position = cells_centroids[np.random.randint(cells_centroids.shape[0])]
@@ -64,6 +78,8 @@ class HopDiffusion(Model):
             initial_position = cells_centroids[np.random.randint(cells_centroids.shape[0])]
 
         x, y = [initial_position[0]], [initial_position[1]]
+        """
+        x, y = [np.random.uniform(0, self.roi)], [np.random.uniform(0, self.roi)]
         current_region = self.__get_region_of_position(x[0],y[0])
 
         switching = False
