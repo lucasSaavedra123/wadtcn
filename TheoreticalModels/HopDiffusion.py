@@ -9,14 +9,14 @@ from CONSTANTS import EXPERIMENT_WIDTH, EXPERIMENT_HEIGHT
 import matplotlib.pyplot as plt
 
 class HopDiffusion(Model):
-    STRING_LABEL = 'id'
-    D_RANGE = [0.001, 0.25] #um2/s
+    STRING_LABEL = 'hd'
+    D_RANGE = [0.001, 1] #um2/s
     P_HOP_RANGE = [0.1, 0.5]
 
     @classmethod
     def create_random_instance(cls):
         p_hop = np.random.uniform(low=cls.P_HOP_RANGE[0], high=cls.P_HOP_RANGE[1])
-        d = np.random.uniform(low=cls.D_RANGE[0], high=cls.D_RANGE[1])
+        d = np.random.choice(np.logspace(np.log10(cls.D_RANGE[0]), np.log10(cls.D_RANGE[1]), 1000))
         return cls(d, p_hop)
 
     def __init__(self, d, p_hop):
@@ -25,7 +25,7 @@ class HopDiffusion(Model):
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_hop = p_hop
         self.roi = (EXPERIMENT_HEIGHT+EXPERIMENT_WIDTH)/2
-        self.l = np.random.uniform(100,1000)#nm
+        self.l = np.random.uniform(10,1000)#nm
         self.__voronoi_centroids = np.random.uniform(0, self.roi, size=(int(self.roi/self.l)**2, 2))
 
     def __extract_polygons_from_voronoi(self):
@@ -78,11 +78,11 @@ class HopDiffusion(Model):
                 x.append(x_next_position)
                 y.append(y_next_position)
             else:
+                switching = True
                 if np.random.choice([True,False], p=[self.p_hop, 1-self.p_hop]):
                     x.append(x_next_position)
                     y.append(y_next_position)
                     current_region = next_region
-                    switching = True
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=True)
         t = simulate_track_time(trajectory_length, trajectory_time)
@@ -96,7 +96,7 @@ class HopDiffusion(Model):
             'exponent_type': None,
             'exponent': None,
             'info': {
-                #'switching': switching,
+                'switching': switching,
                 'p_hop': self.p_hop,
                 'd': self.d,
             }

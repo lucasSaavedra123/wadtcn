@@ -29,7 +29,7 @@ class FractionalBrownianMotion(Model):
         else:
             selected_hurst_exponent = np.random.uniform(cls.SUB_DIFFUSIVE_HURST_EXPONENT_RANGE[0], cls.SUP_DIFFUSIVE_HURST_EXPONENT_RANGE[1])
         
-        selected_diffusion_coefficient = np.random.uniform(cls.D_RANGE[0], cls.D_RANGE[1])
+        selected_diffusion_coefficient = np.random.choice(np.logspace(np.log10(cls.D_RANGE[0]), np.log10(cls.D_RANGE[1]), 1000))
 
         return cls(hurst_exponent=selected_hurst_exponent, diffusion_coefficient=selected_diffusion_coefficient)
 

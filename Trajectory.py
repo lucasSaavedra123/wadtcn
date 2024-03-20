@@ -337,19 +337,19 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, axis='xy'):
-        plt.title(self)
-        if axis == 'x':
-            plt.plot(self.get_x(), marker="X")
-            plt.plot(self.get_noisy_x(), marker="X")
-        elif axis == 'y':
-            plt.plot(self.get_y(), marker="X")
-            plt.plot(self.get_noisy_y(), marker="X")        
-        elif axis == 'xy':
-            plt.plot(self.get_x(), self.get_y(), marker="X")
-            plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X")
+    def plot(self, with_noise=True):
+        if self.model_category is None:
 
-        plt.show()
+            if self.noisy:
+                plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
+            else:
+                plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
+                if with_noise:
+                    plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+
+            plt.show()
+        else:
+            self.model_category.plot(self, with_noise=with_noise)
 
     def plot_confinement_states(self, v_th=11, window_size=3, show=True):
         x = self.get_noisy_x().tolist()

@@ -2,6 +2,7 @@ from contextlib import redirect_stdout
 import io
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from Trajectory import Trajectory
 from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME
@@ -77,9 +78,11 @@ class Model():
                 noisy=True
             )
         else:
-            new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
-            new_trajectory_length = max(int(new_trajectory_time/EXPERIMENT_TIME_FRAME_BY_FRAME), trajectory_length)
-            simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * EXPERIMENT_TIME_FRAME_BY_FRAME)
+            estimated_time_frame_by_frame = trajectory_time/trajectory_length
+            #new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
+            new_trajectory_time = trajectory_time * np.random.uniform(1,2) #-> FOR MINFLUX
+            new_trajectory_length = max(int(new_trajectory_time/estimated_time_frame_by_frame), trajectory_length)
+            simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * estimated_time_frame_by_frame)
 
             current_length = new_trajectory_length
 
@@ -192,3 +195,14 @@ class Model():
             'exponent': np.round(self.anomalous_exponent,2),
             'info': {}
         }
+
+    def plot(self, trajectory, with_noise=False):
+        plt.title(self)  
+        plt.plot(trajectory.get_x(), trajectory.get_y(), marker="X", color='black')
+        if with_noise:
+            plt.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y(), marker="X", color='red')
+
+        plt.xlim([np.min(trajectory.get_x()) * 0.95, np.max(trajectory.get_x()) * 1.05])
+        plt.ylim([np.min(trajectory.get_y()) * 0.95, np.max(trajectory.get_y()) * 1.05])
+
+        plt.show()

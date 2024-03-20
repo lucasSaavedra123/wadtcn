@@ -15,7 +15,7 @@ class BrownianMotion(Model):
 
     @classmethod
     def create_random_instance(cls):
-        diffusion_coefficient = np.random.uniform(low=cls.D_RANGE[0], high=cls.D_RANGE[1])
+        diffusion_coefficient = np.random.choice(np.logspace(np.log10(cls.D_RANGE[0]), np.log10(cls.D_RANGE[1]), 1000))
         return cls(diffusion_coefficient=diffusion_coefficient)
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
