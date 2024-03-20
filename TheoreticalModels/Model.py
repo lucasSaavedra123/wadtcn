@@ -84,21 +84,20 @@ class Model():
             new_trajectory_length = max(int(new_trajectory_time/estimated_time_frame_by_frame), trajectory_length)
             simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * estimated_time_frame_by_frame)
 
-            current_length = new_trajectory_length
+            positions_to_keep = [True] * (trajectory_length-2) + [False] * (new_trajectory_length - trajectory_length)
+            np.random.shuffle(positions_to_keep)
+            positions_to_keep = [True] + positions_to_keep + [True]
 
-            while current_length > trajectory_length:
-                index_to_delete = np.random.choice(list(range(1, current_length-1)))
+            assert len(positions_to_keep) == new_trajectory_length, f"{len(positions_to_keep)} != {new_trajectory_length}"
 
-                simulation_result['x'] = np.delete(simulation_result['x'], index_to_delete)
-                simulation_result['y'] = np.delete(simulation_result['y'], index_to_delete)
-                simulation_result['t'] = np.delete(simulation_result['t'], index_to_delete)
-                simulation_result['x_noisy'] = np.delete(simulation_result['x_noisy'], index_to_delete)
-                simulation_result['y_noisy'] = np.delete(simulation_result['y_noisy'], index_to_delete)
+            simulation_result['x'] = simulation_result['x'][positions_to_keep]
+            simulation_result['y'] = simulation_result['y'][positions_to_keep]
+            simulation_result['t'] = simulation_result['t'][positions_to_keep]
+            simulation_result['x_noisy'] = simulation_result['x_noisy'][positions_to_keep]
+            simulation_result['y_noisy'] = simulation_result['y_noisy'][positions_to_keep]
 
-                if 'state' in simulation_result['info']:
-                    simulation_result['info']['state'] = np.delete(simulation_result['info']['state'], index_to_delete)
-
-                current_length-=1
+            if 'state' in simulation_result['info']:
+                simulation_result['info']['state'] = simulation_result['info']['state'][positions_to_keep]
 
             trajectory = Trajectory(
                 simulation_result['x'],
@@ -112,7 +111,7 @@ class Model():
                 info=simulation_result['info']
             )
 
-            assert trajectory.length == trajectory_length
+            assert trajectory.length == trajectory_length, f"{trajectory.length} != {trajectory_length}"
 
             check_one = False #(min(simulation_result['x']) < 0 or min(simulation_result['x_noisy']) < 0 or max(simulation_result['x']) > EXPERIMENT_WIDTH or max(simulation_result['x_noisy']) > EXPERIMENT_WIDTH)
             check_two = False #(min(simulation_result['y']) < 0 or min(simulation_result['y_noisy']) < 0 or max(simulation_result['y']) > EXPERIMENT_HEIGHT or max(simulation_result['y_noisy']) > EXPERIMENT_HEIGHT)

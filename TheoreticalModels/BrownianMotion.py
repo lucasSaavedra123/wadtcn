@@ -19,12 +19,8 @@ class BrownianMotion(Model):
         return cls(diffusion_coefficient=diffusion_coefficient)
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
-        x = np.random.normal(loc=0, scale=1, size=trajectory_length)
-        y = np.random.normal(loc=0, scale=1, size=trajectory_length)
-
-        for i in range(trajectory_length):
-            x[i] = x[i] * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
-            y[i] = y[i] * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
+        x = np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
+        y = np.random.normal(loc=0, scale=1, size=trajectory_length)* np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
 
         x = np.cumsum(x)
         y = np.cumsum(y)
