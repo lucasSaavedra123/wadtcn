@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 class TrappingDiffusion(Model):
     STRING_LABEL = 'td'
     D_RANGE = [0.001, 1] #um2/s
-    P_UNTRAP_RANGE = [0.0001, 0.0005]
-    P_TRAP_RANGE = [0.0001, 0.0005]
+    P_UNTRAP_RANGE = [0.00001, 0.00005]
+    P_TRAP_RANGE = [0.00001, 0.00005]
 
     @classmethod
     def create_random_instance(cls):
