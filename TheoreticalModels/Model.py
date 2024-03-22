@@ -201,7 +201,4 @@ class Model():
         if with_noise:
             plt.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y(), marker="X", color='red')
 
-        plt.xlim([np.min(trajectory.get_x()) * 0.95, np.max(trajectory.get_x()) * 1.05])
-        plt.ylim([np.min(trajectory.get_y()) * 0.95, np.max(trajectory.get_y()) * 1.05])
-
         plt.show()

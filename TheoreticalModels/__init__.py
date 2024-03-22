@@ -7,6 +7,7 @@ from .TwoStateObstructedDiffusion import TwoStateObstructedDiffusion
 from .TwoStateImmobilizedDiffusion import TwoStateImmobilizedDiffusion
 from .HopDiffusion import HopDiffusion
 from .BrownianMotion import BrownianMotion
+from .TrappingDiffusion import TrappingDiffusion
 
 ANDI_MODELS = [
     AnnealedTransientTimeMotion,

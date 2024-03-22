@@ -85,8 +85,10 @@ class HopDiffusion(Model):
         switching = False
 
         while len(x) != trajectory_length:
-            x_next_position = x[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length))
-            y_next_position = y[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length))
+            displacement_x = np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length))
+            displacement_y = np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length))
+            x_next_position = x[-1] + displacement_x
+            y_next_position = y[-1] + displacement_y
 
             next_region = self.__get_region_of_position(x_next_position, y_next_position)
 
@@ -99,6 +101,20 @@ class HopDiffusion(Model):
                     x.append(x_next_position)
                     y.append(y_next_position)
                     current_region = next_region
+                else:
+                    #Bouns off
+                    new_displacements = [
+                        [displacement_x, -displacement_y],
+                        [-displacement_x, displacement_y],
+                        [-displacement_x, -displacement_y]
+                    ]
+
+                    new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
+                    if len(new_displacements) > 0:
+                        new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
+                        x.append(x[-1] + new_displacement[0])
+                        y.append(y[-1] + new_displacement[1])
+
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=True)
         t = simulate_track_time(trajectory_length, trajectory_time)
