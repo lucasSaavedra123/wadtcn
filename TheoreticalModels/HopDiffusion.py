@@ -79,7 +79,7 @@ class HopDiffusion(Model):
 
         x, y = [initial_position[0]], [initial_position[1]]
         """
-        x, y = [np.random.uniform(0, self.roi)], [np.random.uniform(0, self.roi)]
+        x, y = [self.roi/2], [self.roi/2]
         current_region = self.__get_region_of_position(x[0],y[0])
 
         switching = False
