@@ -1,6 +1,7 @@
 import numpy as np
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time, simulate_minflux_track_time
+from CONSTANTS import SIMULATE_FOR_MINFLUX
 
 from Trajectory import Trajectory
 
@@ -19,15 +20,19 @@ class BrownianMotion(Model):
         return cls(diffusion_coefficient=diffusion_coefficient)
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
-        x = np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
-        y = np.random.normal(loc=0, scale=1, size=trajectory_length)* np.sqrt(2 * self.diffusion_coefficient * (trajectory_time / trajectory_length))
 
-        x = np.cumsum(x)
-        y = np.cumsum(y)
+        if not SIMULATE_FOR_MINFLUX:
+            t = simulate_track_time(trajectory_length, trajectory_time)
+        else:
+            t = simulate_minflux_track_time(trajectory_length, trajectory_time)
+
+        x = np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.diffusion_coefficient * np.diff(t))
+        y = np.random.normal(loc=0, scale=1, size=trajectory_length-1)* np.sqrt(2 * self.diffusion_coefficient * np.diff(t))
+
+        x = np.append(0, np.cumsum(x))
+        y = np.append(0, np.cumsum(y))
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, x, y)
-
-        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,

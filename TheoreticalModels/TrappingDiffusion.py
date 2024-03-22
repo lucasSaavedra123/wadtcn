@@ -1,18 +1,18 @@
 import numpy as np
 
 from TheoreticalModels.Model import Model
-from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time
+from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time, simulate_minflux_track_time
 
 from shapely.geometry import Polygon, Point
 from scipy.spatial import Voronoi, voronoi_plot_2d
-from CONSTANTS import EXPERIMENT_WIDTH, EXPERIMENT_HEIGHT
+from CONSTANTS import EXPERIMENT_WIDTH, EXPERIMENT_HEIGHT, SIMULATE_FOR_MINFLUX
 import matplotlib.pyplot as plt
 
 class TrappingDiffusion(Model):
     STRING_LABEL = 'td'
     D_RANGE = [0.001, 1] #um2/s
-    P_UNTRAP_RANGE = [0.00001, 0.00005]
-    P_TRAP_RANGE = [0.00001, 0.00005]
+    P_UNTRAP_RANGE = [0.00005, 0.00005]
+    P_TRAP_RANGE = [0.00005, 0.00005]
 
     @classmethod
     def create_random_instance(cls):
@@ -44,23 +44,30 @@ class TrappingDiffusion(Model):
         current_state = np.random.choice(['TRAP', 'UNTRAP'])
         switching = False
 
+        if not SIMULATE_FOR_MINFLUX:
+            t = simulate_track_time(trajectory_length, trajectory_time)
+        else:
+            t = simulate_minflux_track_time(trajectory_length, trajectory_time)
+
         while len(x) != trajectory_length:
+            delta_t = t[len(x)] - t[len(x)-1]
             if current_state == 'TRAP':
                 x.append(x[-1])
                 y.append(y[-1])
             elif current_state == 'UNTRAP':
-                x.append(x[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length)))
-                y.append(y[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * (trajectory_time/trajectory_length)))
+                x.append(x[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t))
+                y.append(y[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t))
 
             if current_state == 'TRAP':
-                current_state = np.random.choice(['TRAP', 'UNTRAP'], p=[self.p_untrap, 1-self.p_untrap])
-                switching = True
+                new_state = np.random.choice(['UNTRAP', 'TRAP'], p=[self.p_untrap, 1-self.p_untrap])
             elif current_state == 'UNTRAP':
-                current_state = np.random.choice(['TRAP', 'UNTRAP'], p=[1-self.p_trap, self.p_trap])
+                new_state = np.random.choice(['TRAP', 'UNTRAP'], p=[self.p_trap, 1-self.p_trap])
+
+            if current_state != new_state:
                 switching = True
+                current_state = new_state
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=False)
-        t = simulate_track_time(trajectory_length, trajectory_time)
 
         return {
             'x': x,
@@ -83,8 +90,5 @@ class TrappingDiffusion(Model):
         plt.plot(trajectory.get_x(), trajectory.get_y(), marker="X", color='black')
         if with_noise:
             plt.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y(), marker="X", color='red')
-
-        plt.xlim([np.min(trajectory.get_x()) * 0.95, np.max(trajectory.get_x()) * 1.05])
-        plt.ylim([np.min(trajectory.get_y()) * 0.95, np.max(trajectory.get_y()) * 1.05])
 
         plt.show()

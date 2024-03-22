@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Trajectory import Trajectory
-from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME
+from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME, SIMULATE_FOR_MINFLUX
 from andi_datasets.datasets_theory  import datasets_theory
 from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Functio
 from andi_datasets.datasets_challenge import challenge_phenom_dataset
@@ -78,26 +78,28 @@ class Model():
                 noisy=True
             )
         else:
-            estimated_time_frame_by_frame = trajectory_time/trajectory_length
-            #new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
-            new_trajectory_time = trajectory_time * np.random.uniform(1,2) #-> FOR MINFLUX
-            new_trajectory_length = max(int(new_trajectory_time/estimated_time_frame_by_frame), trajectory_length)
-            simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * estimated_time_frame_by_frame)
+            if not SIMULATE_FOR_MINFLUX:
+                estimated_time_frame_by_frame = trajectory_time/trajectory_length
+                new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)
+                new_trajectory_length = max(int(new_trajectory_time/estimated_time_frame_by_frame), trajectory_length)
+                simulation_result = self.custom_simulate_rawly(new_trajectory_length, new_trajectory_length * estimated_time_frame_by_frame)
 
-            positions_to_keep = [True] * (trajectory_length-2) + [False] * (new_trajectory_length - trajectory_length)
-            np.random.shuffle(positions_to_keep)
-            positions_to_keep = [True] + positions_to_keep + [True]
+                positions_to_keep = [True] * (trajectory_length-2) + [False] * (new_trajectory_length - trajectory_length)
+                np.random.shuffle(positions_to_keep)
+                positions_to_keep = [True] + positions_to_keep + [True]
 
-            assert len(positions_to_keep) == new_trajectory_length, f"{len(positions_to_keep)} != {new_trajectory_length}"
+                assert len(positions_to_keep) == new_trajectory_length, f"{len(positions_to_keep)} != {new_trajectory_length}"
 
-            simulation_result['x'] = simulation_result['x'][positions_to_keep]
-            simulation_result['y'] = simulation_result['y'][positions_to_keep]
-            simulation_result['t'] = simulation_result['t'][positions_to_keep]
-            simulation_result['x_noisy'] = simulation_result['x_noisy'][positions_to_keep]
-            simulation_result['y_noisy'] = simulation_result['y_noisy'][positions_to_keep]
+                simulation_result['x'] = simulation_result['x'][positions_to_keep]
+                simulation_result['y'] = simulation_result['y'][positions_to_keep]
+                simulation_result['t'] = simulation_result['t'][positions_to_keep]
+                simulation_result['x_noisy'] = simulation_result['x_noisy'][positions_to_keep]
+                simulation_result['y_noisy'] = simulation_result['y_noisy'][positions_to_keep]
 
-            if 'state' in simulation_result['info']:
-                simulation_result['info']['state'] = simulation_result['info']['state'][positions_to_keep]
+                if 'state' in simulation_result['info']:
+                    simulation_result['info']['state'] = simulation_result['info']['state'][positions_to_keep]
+            else:
+                simulation_result = self.custom_simulate_rawly(trajectory_length, trajectory_time)
 
             trajectory = Trajectory(
                 simulation_result['x'],
