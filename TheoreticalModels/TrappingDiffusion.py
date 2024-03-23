@@ -3,8 +3,6 @@ import numpy as np
 from TheoreticalModels.Model import Model
 from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time, simulate_minflux_track_time
 
-from shapely.geometry import Polygon, Point
-from scipy.spatial import Voronoi, voronoi_plot_2d
 from CONSTANTS import EXPERIMENT_WIDTH, EXPERIMENT_HEIGHT, SIMULATE_FOR_MINFLUX
 import matplotlib.pyplot as plt
 
