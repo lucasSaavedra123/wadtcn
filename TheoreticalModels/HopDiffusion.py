@@ -1,4 +1,5 @@
 import numpy as np
+import fbm
 
 from TheoreticalModels.Model import Model
 from TheoreticalModels.simulation_utils import add_noise_and_offset, simulate_track_time, simulate_minflux_track_time
@@ -11,17 +12,21 @@ import matplotlib.pyplot as plt
 class HopDiffusion(Model):
     STRING_LABEL = 'hd'
     D_RANGE = [0.001, 1] #um2/s
-    P_HOP_RANGE = [0.05, 0.05]
+    P_HOP_RANGE = [0.05,0.05]
+    HURST_EXPONENT_RANGE = [0.1,0.9]
 
     @classmethod
     def create_random_instance(cls):
         p_hop = np.random.uniform(low=cls.P_HOP_RANGE[0], high=cls.P_HOP_RANGE[1])
         d = np.random.choice(np.logspace(np.log10(cls.D_RANGE[0]), np.log10(cls.D_RANGE[1]), 1000))
-        return cls(d, p_hop)
+        h = np.random.uniform(low=cls.HURST_EXPONENT_RANGE[0], high=cls.HURST_EXPONENT_RANGE[1])
+        return cls(d, p_hop, h)
 
-    def __init__(self, d, p_hop):
+    def __init__(self, d, p_hop, h):
         assert d > 0
         assert 0 <= p_hop <= 1
+        assert 0 < h < 1
+        self.h = h
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_hop = p_hop
         self.roi = (EXPERIMENT_HEIGHT+EXPERIMENT_WIDTH)/2
@@ -55,12 +60,14 @@ class HopDiffusion(Model):
         x, y = [self.roi/2], [self.roi/2]
         current_region = self.__get_region_of_position(x[0],y[0])
 
+        fbm_x = fbm.FBM(n=trajectory_length-1, hurst=self.h).fgn()
+        fbm_y = fbm.FBM(n=trajectory_length-1, hurst=self.h).fgn()
+
         does_it_bounce_off = False
 
         while len(x) != trajectory_length:
-            delta_t = t[len(x)] - t[len(x)-1]
-            displacement_x = np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t)
-            displacement_y = np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t)
+            displacement_x = fbm_x[len(x)-1] * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
+            displacement_y = fbm_y[len(x)-1] * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
             x_next_position = x[-1] + displacement_x
             y_next_position = y[-1] + displacement_y
 
@@ -109,7 +116,7 @@ class HopDiffusion(Model):
     def plot(self, trajectory, with_noise=False):
         fig = voronoi_plot_2d(Voronoi(self.__voronoi_centroids), show_points=False, show_vertices=False, line_colors='grey')
 
-        plt.suptitle(r"$P_{Hop}="+str(np.round(self.p_hop, 2))+r"$, $D="+str(np.round(self.d/1000000, 3))+r"\mu m^{2}/s$")
+        plt.suptitle(r"$H="+str(np.round(self.h, 2))+r"$, $P_{Hop}="+str(np.round(self.p_hop, 2))+r"$, $D="+str(np.round(self.d/1000000, 3))+r"\mu m^{2}/s$")
         plt.plot(trajectory.get_x(), trajectory.get_y(), marker="X", color='black')
         if with_noise:
             plt.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y(), marker="X", color='red')
