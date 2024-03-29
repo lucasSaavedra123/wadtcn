@@ -21,7 +21,7 @@ class HopDiffusion(Model):
 
     def __init__(self, d, p_hop):
         assert d > 0
-        assert 0 < p_hop < 1
+        assert 0 <= p_hop <= 1
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_hop = p_hop
         self.roi = (EXPERIMENT_HEIGHT+EXPERIMENT_WIDTH)/2
@@ -55,7 +55,6 @@ class HopDiffusion(Model):
         x, y = [self.roi/2], [self.roi/2]
         current_region = self.__get_region_of_position(x[0],y[0])
 
-        move_to_other_compartment = False
         does_it_bounce_off = False
 
         while len(x) != trajectory_length:
@@ -75,9 +74,7 @@ class HopDiffusion(Model):
                     x.append(x_next_position)
                     y.append(y_next_position)
                     current_region = next_region
-                    move_to_other_compartment = True
                 else:
-                    #Bouns off
                     does_it_bounce_off = True
                     new_displacements = [
                         [displacement_x, -displacement_y],
@@ -103,7 +100,7 @@ class HopDiffusion(Model):
             'exponent_type': None,
             'exponent': None,
             'info': {
-                'switching': move_to_other_compartment and does_it_bounce_off,
+                'switching': does_it_bounce_off,
                 'p_hop': self.p_hop,
                 'd': self.d,
             }

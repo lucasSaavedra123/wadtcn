@@ -21,12 +21,25 @@ class TrappingDiffusion(Model):
 
     def __init__(self, d, p_untrap, p_trap):
         assert d > 0
-        assert 0 < p_untrap < 1
-        assert 0 < p_trap < 1
+        assert 0 <= p_untrap <= 1
+        assert 0 <= p_trap <= 1
 
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_untrap = p_untrap
         self.p_trap = p_trap
+
+    def simulate_transition_array(self, length):
+        states = [np.random.choice(['TRAP', 'UNTRAP'])]
+
+        while len(states) != length:
+            if states[-1] == 'TRAP':
+                states.append(np.random.choice(['UNTRAP', 'TRAP'], p=[self.p_untrap, 1-self.p_untrap]))
+            elif states[-1] == 'UNTRAP':
+                states.append(np.random.choice(['TRAP', 'UNTRAP'], p=[self.p_trap, 1-self.p_trap]))
+
+        states = np.vectorize({'TRAP':0,'UNTRAP':1}.get)(states)
+
+        return states
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
         """
@@ -38,32 +51,16 @@ class TrappingDiffusion(Model):
 
         x, y = [initial_position[0]], [initial_position[1]]
         """
-        x, y = [np.random.uniform(0, EXPERIMENT_WIDTH)], [np.random.uniform(0, EXPERIMENT_HEIGHT)]
-        current_state = np.random.choice(['TRAP', 'UNTRAP'])
-        switching = False
-
         if not SIMULATE_FOR_MINFLUX:
             t = simulate_track_time(trajectory_length, trajectory_time)
         else:
             t = simulate_minflux_track_time(trajectory_length, trajectory_time)
 
-        while len(x) != trajectory_length:
-            delta_t = t[len(x)] - t[len(x)-1]
-            if current_state == 'TRAP':
-                x.append(x[-1])
-                y.append(y[-1])
-            elif current_state == 'UNTRAP':
-                x.append(x[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t))
-                y.append(y[-1] + np.random.normal(loc=0, scale=1) * np.sqrt(2 * self.d * delta_t))
+        states = self.simulate_transition_array(trajectory_length)
+        displacements_x =  np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.d * t) * states
+        displacements_y =  np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.d * t) * states
 
-            if current_state == 'TRAP':
-                new_state = np.random.choice(['UNTRAP', 'TRAP'], p=[self.p_untrap, 1-self.p_untrap])
-            elif current_state == 'UNTRAP':
-                new_state = np.random.choice(['TRAP', 'UNTRAP'], p=[self.p_trap, 1-self.p_trap])
-
-            if current_state != new_state:
-                switching = True
-                current_state = new_state
+        x, y = np.cumsum(displacements_x), np.cumsum(displacements_y)
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=False)
 
@@ -76,7 +73,7 @@ class TrappingDiffusion(Model):
             'exponent_type': None,
             'exponent': None,
             'info': {
-                'switching': switching,
+                'switching': len(np.unique(states)) == 2,
                 'p_untrap': self.p_untrap,
                 'p_trap': self.p_trap,
                 'd': self.d,
