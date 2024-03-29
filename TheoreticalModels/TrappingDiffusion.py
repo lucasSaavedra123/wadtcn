@@ -58,8 +58,8 @@ class TrappingDiffusion(Model):
         x,y = [np.random.uniform(EXPERIMENT_WIDTH)], [np.random.uniform(EXPERIMENT_HEIGHT)]
         
         states = self.simulate_transition_array(trajectory_length-1)
-        displacements_x =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * t[1:]) * states
-        displacements_y =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * t[1:]) * states
+        displacements_x =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * np.diff(t)) * states
+        displacements_y =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * np.diff(t)) * states
 
         x, y = np.cumsum(np.append(x, displacements_x)), np.cumsum(np.append(y, displacements_y))
 
