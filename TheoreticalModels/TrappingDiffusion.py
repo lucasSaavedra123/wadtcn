@@ -55,12 +55,13 @@ class TrappingDiffusion(Model):
             t = simulate_track_time(trajectory_length, trajectory_time)
         else:
             t = simulate_minflux_track_time(trajectory_length, trajectory_time)
+        x,y = [np.random.uniform(EXPERIMENT_WIDTH)], [np.random.uniform(EXPERIMENT_HEIGHT)]
+        
+        states = self.simulate_transition_array(trajectory_length-1)
+        displacements_x =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * t[1:]) * states
+        displacements_y =  np.random.normal(loc=0, scale=1, size=trajectory_length-1) * np.sqrt(2 * self.d * t[1:]) * states
 
-        states = self.simulate_transition_array(trajectory_length)
-        displacements_x =  np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.d * t) * states
-        displacements_y =  np.random.normal(loc=0, scale=1, size=trajectory_length) * np.sqrt(2 * self.d * t) * states
-
-        x, y = np.cumsum(displacements_x), np.cumsum(displacements_y)
+        x, y = np.cumsum(np.append(x, displacements_x)), np.cumsum(np.append(y, displacements_y))
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=False)
 
