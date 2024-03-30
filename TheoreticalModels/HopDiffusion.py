@@ -88,7 +88,6 @@ class HopDiffusion(Model):
                         x.append(x[-1] + new_displacement[0])
                         y.append(y[-1] + new_displacement[1])
 
-
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=True)
 
         return {
@@ -109,7 +108,7 @@ class HopDiffusion(Model):
     def plot(self, trajectory, with_noise=False):
         fig = voronoi_plot_2d(Voronoi(self.__voronoi_centroids), show_points=False, show_vertices=False, line_colors='grey')
 
-        plt.suptitle(r"$H="+str(np.round(self.h, 2))+r"$, $P_{Hop}="+str(np.round(self.p_hop, 2))+r"$, $D="+str(np.round(self.d/1000000, 3))+r"\mu m^{2}/s$")
+        plt.suptitle(r"$P_{Hop}="+str(np.round(self.p_hop, 2))+r"$, $D="+str(np.round(self.d/1000000, 3))+r"\mu m^{2}/s$")
         plt.plot(trajectory.get_x(), trajectory.get_y(), marker="X", color='black')
         if with_noise:
             plt.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y(), marker="X", color='red')
