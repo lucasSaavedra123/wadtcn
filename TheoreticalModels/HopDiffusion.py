@@ -13,20 +13,16 @@ class HopDiffusion(Model):
     STRING_LABEL = 'hd'
     D_RANGE = [0.001, 1] #um2/s
     P_HOP_RANGE = [0.05,0.05]
-    HURST_EXPONENT_RANGE = [0.1,0.9]
 
     @classmethod
     def create_random_instance(cls):
         p_hop = np.random.uniform(low=cls.P_HOP_RANGE[0], high=cls.P_HOP_RANGE[1])
         d = np.random.choice(np.logspace(np.log10(cls.D_RANGE[0]), np.log10(cls.D_RANGE[1]), 1000))
-        h = np.random.uniform(low=cls.HURST_EXPONENT_RANGE[0], high=cls.HURST_EXPONENT_RANGE[1])
-        return cls(d, p_hop, h)
+        return cls(d, p_hop)
 
-    def __init__(self, d, p_hop, h):
+    def __init__(self, d, p_hop):
         assert d > 0
         assert 0 <= p_hop <= 1
-        assert 0 < h < 1
-        self.h = h
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_hop = p_hop
         self.roi = (EXPERIMENT_HEIGHT+EXPERIMENT_WIDTH)/2
@@ -60,14 +56,11 @@ class HopDiffusion(Model):
         x, y = [self.roi/2], [self.roi/2]
         current_region = self.__get_region_of_position(x[0],y[0])
 
-        fbm_x = fbm.FBM(n=trajectory_length-1, hurst=self.h).fgn()
-        fbm_y = fbm.FBM(n=trajectory_length-1, hurst=self.h).fgn()
-
         does_it_bounce_off = False
 
         while len(x) != trajectory_length:
-            displacement_x = fbm_x[len(x)-1] * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
-            displacement_y = fbm_y[len(x)-1] * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
+            displacement_x = np.random.normal(0,1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
+            displacement_y = np.random.normal(0,1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
             x_next_position = x[-1] + displacement_x
             y_next_position = y[-1] + displacement_y
 
