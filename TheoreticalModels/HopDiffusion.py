@@ -26,7 +26,7 @@ class HopDiffusion(Model):
         self.d = d * 1000000 #um2/s -> nm2/s
         self.p_hop = p_hop
         self.roi = (EXPERIMENT_HEIGHT+EXPERIMENT_WIDTH)/2
-        self.l = np.random.uniform(10,100)#nm
+        self.l = np.random.uniform(10,250)#nm
         self.__voronoi_centroids = np.random.uniform(0, self.roi, size=(int(self.roi/self.l)**2, 2))
 
 
@@ -75,18 +75,23 @@ class HopDiffusion(Model):
                     y.append(y_next_position)
                     current_region = next_region
                 else:
-                    new_displacements = [
-                        [displacement_x, -displacement_y],
-                        [-displacement_x, displacement_y],
-                        [-displacement_x, -displacement_y]
-                    ]
+                    factor = 1
+                    stop = False
+                    while not stop:
+                        factor += 1
+                        new_displacements = [
+                            [displacement_x/factor, -displacement_y/factor],
+                            [-displacement_x/factor, displacement_y/factor],
+                            [-displacement_x/factor, -displacement_y/factor]
+                        ]
 
-                    new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
-                    if len(new_displacements) > 0:
-                        does_it_bounce_off = True
-                        new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
-                        x.append(x[-1] + new_displacement[0])
-                        y.append(y[-1] + new_displacement[1])
+                        new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
+                        if len(new_displacements) > 0:
+                            does_it_bounce_off = True
+                            new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
+                            x.append(x[-1] + new_displacement[0])
+                            y.append(y[-1] + new_displacement[1])
+                            stop=True
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=True)
 
