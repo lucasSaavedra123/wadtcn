@@ -111,7 +111,8 @@ def simulate_track_time(track_length, track_time):
     return np.arange(0,track_length,1) * delta
 
 def simulate_minflux_track_time(track_length, track_time):
-    lower, upper, scale = 0.0001, 0.0500, 0.0005
+    #lower, upper, scale = 0.0001, 0.0500, 0.0005
+    lower, upper, scale = 0.0001, 0.0100, 0.0003
     dt = scipy.stats.truncexpon(b=(upper-lower)/scale, loc=lower, scale=scale).rvs(track_length-1)
     return np.append(0, np.cumsum(dt))
 

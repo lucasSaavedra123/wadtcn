@@ -59,8 +59,8 @@ class HopDiffusion(Model):
         does_it_bounce_off = False
 
         while len(x) != trajectory_length:
-            displacement_x = np.random.normal(0,1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
-            displacement_y = np.random.normal(0,1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
+            displacement_x = np.random.normal(loc=0,scale=1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
+            displacement_y = np.random.normal(loc=0,scale=1) * np.sqrt(2 * self.d * t[len(x)] - t[len(x)-1])
             x_next_position = x[-1] + displacement_x
             y_next_position = y[-1] + displacement_y
 
