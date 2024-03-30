@@ -75,7 +75,6 @@ class HopDiffusion(Model):
                     y.append(y_next_position)
                     current_region = next_region
                 else:
-                    does_it_bounce_off = True
                     new_displacements = [
                         [displacement_x, -displacement_y],
                         [-displacement_x, displacement_y],
@@ -84,6 +83,7 @@ class HopDiffusion(Model):
 
                     new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
                     if len(new_displacements) > 0:
+                        does_it_bounce_off = True
                         new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
                         x.append(x[-1] + new_displacement[0])
                         y.append(y[-1] + new_displacement[1])
