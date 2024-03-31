@@ -84,17 +84,8 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[metric])
 
-    def predict(self, trajectories):
-        X = self.transform_trajectories_to_input(trajectories)
-        Y_predicted = self.architecture.predict(X)
-        Y_predicted = np.argmax(Y_predicted, axis=-1)
-        return Y_predicted
-
-    def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_categorical_vector(self, trajectories)
-
-    def transform_trajectories_to_input(self, trajectories):
-        return transform_trajectories_into_displacements(self, trajectories)
+    def predict(self, image_array):
+        return self.architecture.predict(image_array)
 
     @property
     def type_name(self):
@@ -109,7 +100,7 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         particle = dt.PointParticle(                                         
             intensity=100,
-            position=lambda: np.random.rand(2) * 128
+            position=lambda: np.random.rand(2) * IMAGE_SIZE
         )
 
         fluorescence_microscope = dt.Fluorescence(
@@ -117,7 +108,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             resolution=1e-6,     
             magnification=10,
             wavelength=680e-9,
-            output_region=(0, 0, 128, 128)
+            output_region=(0, 0, IMAGE_SIZE, IMAGE_SIZE)
         )
 
         offset = dt.Add(
