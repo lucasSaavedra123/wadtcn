@@ -136,25 +136,12 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         self.architecture.summary()
 
-        if self.early_stopping:
-            callbacks = [
-                EarlyStopping(
-                monitor="val_loss",
-                min_delta=1e-3,
-                patience=5,
-                verbose=1,
-                mode="min")
-            ]
-        else:
-            callbacks = []
-
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         with device(device_name):
             history_training_info = self.architecture.fit(
                 ImageGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 epochs=real_epochs,
-                callbacks=callbacks,
                 validation_data=ImageGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 shuffle=True
             ).history
