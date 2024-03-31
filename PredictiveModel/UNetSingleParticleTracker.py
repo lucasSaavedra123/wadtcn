@@ -106,24 +106,6 @@ class UNetSingleParticleTracker(PredictiveModel):
         else:
             real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
 
-        self.build_network()
-
-        self.architecture.summary()
-
-        if self.early_stopping:
-            callbacks = [
-                EarlyStopping(
-                monitor="val_loss",
-                min_delta=1e-3,
-                patience=5,
-                verbose=1,
-                mode="min")
-            ]
-        else:
-            callbacks = []
-
-        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
-
         particle = dt.PointParticle(                                         
             intensity=100,
             position=lambda: np.random.rand(2) * 128
@@ -148,14 +130,32 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         num_particles = lambda: np.random.randint(1, 11)
 
-        image_features = fluorescence_microscope(particle^num_particles) >> offset >> poisson_noise
+        self.image_features = fluorescence_microscope(particle^num_particles) >> offset >> poisson_noise
+
+        self.build_network()
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [
+                EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")
+            ]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                ImageGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], image_features),
+                ImageGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 epochs=real_epochs,
                 callbacks=callbacks,
-                validation_data=ImageGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], image_features),
+                validation_data=ImageGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 shuffle=True
             ).history
 
