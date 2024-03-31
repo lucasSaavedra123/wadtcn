@@ -1,10 +1,14 @@
 import numpy as np
+import logging
+logging.getLogger("tensorflow").setLevel(logging.ERROR)
 from tensorflow.keras.optimizers.legacy import Adam
 from keras.callbacks import EarlyStopping
 from tensorflow.keras.utils import Sequence
 from tensorflow import device, config
 from tensorflow.nn import weighted_cross_entropy_with_logits
 import deeptrack as dt
+import tensorflow
+
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
