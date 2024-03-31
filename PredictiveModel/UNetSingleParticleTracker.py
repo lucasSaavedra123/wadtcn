@@ -194,11 +194,14 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
+        train_set_size = 10_000
+        val_set_size = 1_000
+
         with device(device_name):
             history_training_info = self.architecture.fit(
-                ImageGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
+                ImageGenerator(train_set_size//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 epochs=real_epochs,
-                validation_data=ImageGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
+                validation_data=ImageGenerator(val_set_size//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
                 shuffle=True
             ).history
 
