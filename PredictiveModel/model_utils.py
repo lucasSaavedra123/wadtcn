@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import *
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import Sequence
 
-from CONSTANTS import CIRCLE_RADIUS
+from CONSTANTS import CIRCLE_RADIUS, IMAGE_SIZE
 
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -464,8 +464,8 @@ class ImageGenerator(Sequence):
         self.deeptrack_feature = deeptrack_feature
 
     def __getitem__(self, item):        
-        X = np.zeros((self.batch_size,128,128,1))
-        Y = np.zeros((self.batch_size,128,128,1))
+        X = np.zeros((self.batch_size,IMAGE_SIZE,IMAGE_SIZE,1))
+        Y = np.zeros((self.batch_size,IMAGE_SIZE,IMAGE_SIZE,1))
         
         for i in range(self.batch_size):
             self.deeptrack_feature.update()

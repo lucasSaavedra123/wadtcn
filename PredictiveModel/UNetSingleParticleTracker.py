@@ -167,7 +167,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             return inner
 
         poisson_noise = dt.Lambda(func_poisson_noise)
-        num_particles = lambda: np.random.randint(10, 25)
+        num_particles = lambda: np.random.randint(1, 20)
 
         def func_convert_to_uint8():
             def inner(image):
