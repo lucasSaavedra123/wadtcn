@@ -92,7 +92,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         return "unet_single_particle_tracker"
 
     def __str__(self):
-        f"{self.type_name}"
+        return f"{self.type_name}"
 
     def fit(self):
         if not self.trained:
