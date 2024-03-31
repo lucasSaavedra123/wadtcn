@@ -9,7 +9,7 @@ import tensorflow
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
-from .model_utils import transform_trajectories_into_displacements, transform_trajectories_to_categorical_vector, ImageGenerator, Unet
+from .model_utils import ImageGenerator, Unet
 
 
 class UNetSingleParticleTracker(PredictiveModel):
