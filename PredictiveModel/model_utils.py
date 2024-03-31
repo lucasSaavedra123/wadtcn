@@ -470,7 +470,7 @@ class ImageGenerator(Sequence):
         for i in range(self.batch_size):
             self.deeptrack_feature.update()
             image_of_particles =  self.deeptrack_feature.resolve()        
-            X[i] = image_of_particles
+            X[i] = image_of_particles/255
             Y[i] = get_target_image(image_of_particles)
 
         return X, Y

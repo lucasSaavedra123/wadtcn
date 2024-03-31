@@ -85,7 +85,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[metric])
 
     def predict(self, image_array):
-        return self.architecture.predict(image_array)[...,0]
+        return self.architecture.predict(image_array/255)[...,0]
 
     @property
     def type_name(self):
