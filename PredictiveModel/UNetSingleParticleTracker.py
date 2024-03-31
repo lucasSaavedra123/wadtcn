@@ -101,31 +101,92 @@ class UNetSingleParticleTracker(PredictiveModel):
         else:
             real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
 
-        particle = dt.PointParticle(                                         
-            intensity=100,
-            position=lambda: np.random.rand(2) * IMAGE_SIZE
+        _particle_dict = {
+            "particle_intensity": [500, 20,],  # Mean and standard deviation of the particle intensity
+            "intensity": lambda particle_intensity: particle_intensity[0]
+            + np.random.randn() * particle_intensity[1],
+            "intensity_variation": 0,  # Intensity variation of particle (in standard deviation)
+            "z": None, # Placeholder for z
+            "refractive_index": 1.45,  # Refractive index of the particle
+            "position_unit": "pixel",
+        }
+
+        _optics_dict = {
+            "NA": 1.46,  # Numerical aperture
+            "wavelength": 500e-9,  # Wavelength
+            "resolution": 100e-9,  # Camera resolution or effective resolution
+            "magnification": 1,
+            "refractive_index_medium": 1.33,
+            "output_region": [0, 0, 128, 128],
+        }
+
+        # Background offset
+        _background_dict = {
+            "background_mean": 100,  # Mean background intensity
+            "background_std": 0,  # Standard deviation of background intensity within a video
+        }
+
+        # Generate point particles
+        particle = dt.PointParticle(
+            position=lambda: np.random.rand(2) * IMAGE_SIZE,
+            **{k: v for k, v in _particle_dict.items() if k != 'z'},
         )
 
-        fluorescence_microscope = dt.Fluorescence(
-            NA=0.7,                
-            resolution=1e-6,     
-            magnification=10,
-            wavelength=680e-9,
-            output_region=(0, 0, IMAGE_SIZE, IMAGE_SIZE)
+        # Adding background offset
+        background = dt.Add(
+            value=_background_dict["background_mean"]
+            + np.random.randn() * _background_dict["background_std"]
         )
 
-        offset = dt.Add(
-            value=lambda: np.random.rand()*1
+        # Define optical setup
+        optics = dt.Fluorescence(**_optics_dict)
+
+        # Normalising image plane particle intensity
+        scale_factor = (
+            (
+                optics.magnification()
+                * optics.wavelength()
+                / (optics.NA() * optics.resolution())
+            )
+            ** 2
+        ) * (1 / np.pi)
+        scale_factor = 4 * np.sqrt(scale_factor) # Scaling to the peak value
+
+        # Poisson noise
+        def func_poisson_noise():
+            """
+            Applies poisson noise to an image.
+
+            This is a custom DeepTrack feature, and a helper function for `transform_to_video`
+            """
+            def inner(image):
+                image[image<0] = 0
+                rescale = 1
+                noisy_image = np.random.poisson(image * rescale) / rescale
+                return noisy_image
+            return inner
+
+        poisson_noise = dt.Lambda(func_poisson_noise)
+        num_particles = lambda: np.random.randint(10, 25)
+
+        def func_convert_to_uint8():
+            def inner(image):
+                image = image / image.max()
+                image = image * 255
+                image = image.astype(np.uint8)
+                return image
+
+            return inner
+
+        convert_to_uint8 = dt.Lambda(func_convert_to_uint8)
+
+        self.image_features = (
+            optics(particle ^ num_particles)
+            >> dt.Multiply(scale_factor)
+            >> background
+            >> poisson_noise
+            >> convert_to_uint8
         )
-
-        poisson_noise = dt.Poisson(
-            snr=lambda: np.random.rand()*7 + 3,
-            background=offset.value
-        )
-
-        num_particles = lambda: np.random.randint(1, 11)
-
-        self.image_features = fluorescence_microscope(particle^num_particles) >> offset >> poisson_noise
 
         self.build_network()
 
