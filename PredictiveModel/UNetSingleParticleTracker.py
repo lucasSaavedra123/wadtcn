@@ -13,6 +13,8 @@ from skimage.feature.peak import peak_local_max
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
 from .model_utils import ImageGenerator, Unet
+from utils import create_trajectories
+from Trajectory import Trajectory
 
 
 class UNetSingleParticleTracker(PredictiveModel):
@@ -95,8 +97,12 @@ class UNetSingleParticleTracker(PredictiveModel):
             pixel_size=100e-9,
             peak_local_max_min_distance = 3,
             peak_fitting_roi_radius = 5,
-            debug=False
+            spt_max_distance_tolerance = 1000e-9,
+            debug=False,
+            plot_trajectories=False,
+            extract_blured_movie=False
         ):
+
         unet_result = (self.architecture.predict(image_array/255)[...,0] > 0.5).astype(int)
 
         if not extract_trajectories:
@@ -105,11 +111,10 @@ class UNetSingleParticleTracker(PredictiveModel):
         predicted_movie = unet_result*255
         blured_movie = gaussian_filter(predicted_movie, gaussian_filter_sigma)
 
-        dataframe = {
-            'frame':[],
-            'x':[],
-            'y':[]
-        }
+        if extract_blured_movie:
+            return blured_movie
+
+        data = []
 
         #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
         for frame_index, blured_frame in enumerate(blured_movie):
@@ -147,10 +152,7 @@ class UNetSingleParticleTracker(PredictiveModel):
                 new_x = peak[1]-peak_fitting_roi_radius+PositionX
                 new_y = peak[0]-peak_fitting_roi_radius+PositionY
 
-                dataframe['frame'].append(frame_index)
-                dataframe['x'].append(new_x)
-                dataframe['y'].append(new_y)
-
+                data.append([frame_index, new_x, new_y])
                 raw_localizations.append([new_x, new_y])
 
             raw_localizations = np.array(raw_localizations)
@@ -161,12 +163,42 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.scatter(raw_localizations[:,0], raw_localizations[:,1])
                 plt.show()
 
+        tracked_data = np.column_stack((data, np.zeros((len(data),3))))
+        tracked_data[:,1:3] *= pixel_size
+        tracksCounter = 1
 
-        dataframe = pd.DataFrame(dataframe)
-        dataframe['x'] *= pixel_size
-        dataframe['y'] *= pixel_size
+        for fr in range(0, int(np.max(tracked_data[:,0]))):
+            [tracked_data,tracksCounter] = create_trajectories(tracked_data,fr,fr+1,spt_max_distance_tolerance,tracksCounter)
 
-        return dataframe
+        dataframe = pd.DataFrame({
+            'frame':tracked_data[:,0],
+            'x': tracked_data[:,1],
+            'y':tracked_data[:,2],
+            'track_id': tracked_data[:,4],
+        })
+
+        track_ids = np.unique(tracked_data[:,4])
+        trajectories = []
+
+        for track_id in track_ids:
+            track_dataframe = dataframe[dataframe['track_id'] == track_id].sort_values('frame')
+            
+            new_trajectory = Trajectory(
+                x=track_dataframe['x'].tolist(),
+                y=track_dataframe['y'].tolist(),
+                t=track_dataframe['frame'].tolist(),
+                noisy=True
+            )
+
+            if plot_trajectories:
+                plt.plot(new_trajectory.get_noisy_x(), new_trajectory.get_noisy_y(), marker='X')
+
+            trajectories.append(new_trajectory)
+
+        if plot_trajectories:
+            plt.show()
+
+        return trajectories
 
     @property
     def type_name(self):
