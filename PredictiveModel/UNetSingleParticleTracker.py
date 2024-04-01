@@ -5,7 +5,10 @@ from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow import device, config
 import deeptrack as dt
 import tensorflow
-
+import matplotlib.pyplot as plt
+import pandas as pd
+from scipy.ndimage import gaussian_filter
+from skimage.feature.peak import peak_local_max
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -84,8 +87,86 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[metric])
 
-    def predict(self, image_array):
-        return (self.architecture.predict(image_array/255)[...,0] > 0.5).astype(int)
+    def predict(
+            self,
+            image_array,
+            extract_trajectories=False,
+            gaussian_filter_sigma=2,
+            pixel_size=100e-9,
+            peak_local_max_min_distance = 3,
+            peak_fitting_roi_radius = 5,
+            debug=False
+        ):
+        unet_result = (self.architecture.predict(image_array/255)[...,0] > 0.5).astype(int)
+
+        if not extract_trajectories:
+            return unet_result
+        
+        predicted_movie = unet_result*255
+        blured_movie = gaussian_filter(predicted_movie, gaussian_filter_sigma)
+
+        dataframe = {
+            'frame':[],
+            'x':[],
+            'y':[]
+        }
+
+        #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
+        for frame_index, blured_frame in enumerate(blured_movie):
+            peaks = peak_local_max(blured_frame, peak_local_max_min_distance, threshold_abs = np.std(blured_frame)*2)
+
+            raw_localizations = []
+
+            if debug:
+                plt.title(f"Peaks from Frame Index: {frame_index}")
+                plt.imshow(blured_frame)
+                plt.scatter(peaks[:,1], peaks[:,0])
+                plt.show()
+
+            for peak in peaks:
+                ROI = blured_frame[
+                    peak[0]-peak_fitting_roi_radius:peak[0]+peak_fitting_roi_radius+1,
+                    peak[1]-peak_fitting_roi_radius:peak[1]+peak_fitting_roi_radius+1
+                ]
+
+                if 0 in ROI.shape:
+                    continue
+                
+                ROI_F = np.fft.fft2(ROI)
+
+                xangle = np.arctan(ROI_F[0,1].imag/ROI_F[0,1].real) - np.pi
+                if xangle > 0:
+                    xangle -= 2*np.pi
+                PositionX = abs(xangle)/(2*np.pi/(peak_fitting_roi_radius*2+1))
+
+                yangle = np.arctan(ROI_F[1,0].imag/ROI_F[1,0].real) - np.pi
+                if yangle > 0:
+                    yangle -= 2*np.pi
+                PositionY = abs(yangle)/(2*np.pi/(peak_fitting_roi_radius*2+1))
+
+                new_x = peak[1]-peak_fitting_roi_radius+PositionX
+                new_y = peak[0]-peak_fitting_roi_radius+PositionY
+
+                dataframe['frame'].append(frame_index)
+                dataframe['x'].append(new_x)
+                dataframe['y'].append(new_y)
+
+                raw_localizations.append([new_x, new_y])
+
+            raw_localizations = np.array(raw_localizations)
+
+            if debug:
+                plt.title(f"Localizations from Frame Index: {frame_index}")
+                plt.imshow(blured_frame)
+                plt.scatter(raw_localizations[:,0], raw_localizations[:,1])
+                plt.show()
+
+
+        dataframe = pd.DataFrame(dataframe)
+        dataframe['x'] *= pixel_size
+        dataframe['y'] *= pixel_size
+
+        return dataframe
 
     @property
     def type_name(self):
