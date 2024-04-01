@@ -20,7 +20,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             'batch_size': 32,
             'amsgrad': False,
             'epsilon': 1e-8,
-            'epochs': 100
+            'epochs': 10
         }
 
     def default_hyperparameters(self):
@@ -29,7 +29,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             'batch_size': 32,
             'amsgrad': False,
             'epsilon': 1e-8,
-            'epochs': 100
+            'epochs': 10
         }
 
     @classmethod
