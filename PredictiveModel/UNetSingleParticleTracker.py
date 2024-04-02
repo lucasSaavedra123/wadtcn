@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
 import math
-from mongoengine import IntField
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
