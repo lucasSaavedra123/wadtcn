@@ -16,7 +16,6 @@ from tensorflow.keras.callbacks import *
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import Sequence
 
-from CONSTANTS import CIRCLE_RADIUS, IMAGE_SIZE
 
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
@@ -441,7 +440,7 @@ class TrackGenerator(Sequence):
     def __len__(self):
         return self.batches
 
-def get_target_image(image_of_particles):
+def get_target_image(image_of_particles, circle_radius):
     target_image = np.zeros(image_of_particles.shape)
     X, Y = np.meshgrid(
         np.arange(0, image_of_particles.shape[0]), 
@@ -453,25 +452,28 @@ def get_target_image(image_of_particles):
             position = property["position"]
 
             distance_map = (X - position[1])**2 + (Y - position[0])**2
-            target_image[distance_map < CIRCLE_RADIUS**2] = 1
+            target_image[distance_map < circle_radius**2] = 1
     
     return target_image
 
 class ImageGenerator(Sequence):
-    def __init__(self, batches, batch_size, deeptrack_feature):
+    def __init__(self, batches, batch_size, image_width, image_height, circle_radius, deeptrack_feature):
         self.batches = batches
         self.batch_size = batch_size
+        self.image_width = image_width
+        self.image_height = image_height
+        self.circle_radius = circle_radius
         self.deeptrack_feature = deeptrack_feature
 
     def __getitem__(self, item):        
-        X = np.zeros((self.batch_size,IMAGE_SIZE,IMAGE_SIZE,1))
-        Y = np.zeros((self.batch_size,IMAGE_SIZE,IMAGE_SIZE,1))
-        
+        X = np.zeros((self.batch_size,self.image_width,self.image_height,1))
+        Y = np.zeros((self.batch_size,self.image_width,self.image_height,1))
+
         for i in range(self.batch_size):
             self.deeptrack_feature.update()
             image_of_particles =  self.deeptrack_feature.resolve()        
             X[i] = image_of_particles/255
-            Y[i] = get_target_image(image_of_particles)
+            Y[i] = get_target_image(image_of_particles, self.circle_radius)
 
         return X, Y
 

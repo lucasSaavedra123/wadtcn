@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
 import math
+from mongoengine import IntField
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -40,7 +41,7 @@ class UNetSingleParticleTracker(PredictiveModel):
     def default_hyperparameters_analysis(self):
         pass
 
-    def __init__(self, **kwargs):
+    def __init__(self, image_width, image_height, circle_radius, **kwargs):
         self.architecture = None
         self.hyperparameters_analysis = self.__class__.default_hyperparameters_analysis()
         self.db_persistance = False
@@ -59,6 +60,9 @@ class UNetSingleParticleTracker(PredictiveModel):
                 trajectory_time=None,
                 hyperparameters=hyperparameters,
                 simulator_identifier=None,
+                image_width = image_width,
+                image_height = image_height,
+                circle_radius = circle_radius,
                 **kwargs
             )
         else:
@@ -67,11 +71,14 @@ class UNetSingleParticleTracker(PredictiveModel):
                 trajectory_time=None,
                 hyperparameters=hyperparameters,
                 simulator_identifier=None,
+                image_width = image_width,
+                image_height = image_height,
+                circle_radius = circle_radius,
                 extra_parameters = kwargs
             )
 
     def build_network(self):
-        self.architecture = Unet((IMAGE_SIZE,IMAGE_SIZE,1))
+        self.architecture = Unet((self.extra_parameters['image_width'],self.extra_parameters['image_height'],1))
 
         loss = dt.losses.flatten(
             dt.losses.weighted_crossentropy((10, 1))
@@ -207,7 +214,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         return "unet_single_particle_tracker"
 
     def __str__(self):
-        return f"{self.type_name}"
+        return f"{self.type_name}_{self.extra_parameters['image_width']}x{self.extra_parameters['image_height']}_px_{self.extra_parameters['circle_radius']}_radius"
 
     def fit(self):
         if not self.trained:
@@ -232,7 +239,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             "resolution": 100e-9,  # Camera resolution or effective resolution
             "magnification": 1,
             "refractive_index_medium": 1.33,
-            "output_region": [0, 0, 128, 128],
+            "output_region": [0, 0, self.extra_parameters['image_width'], self.extra_parameters['image_height']],
         }
 
         # Background offset
@@ -243,7 +250,7 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         # Generate point particles
         particle = dt.PointParticle(
-            position=lambda: np.random.rand(2) * IMAGE_SIZE,
+            position=lambda: np.array([np.random.rand() * self.extra_parameters['image_width'], np.random.rand() * self.extra_parameters['image_height']]),
             **{k: v for k, v in _particle_dict.items() if k != 'z'},
         )
 
@@ -314,9 +321,23 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                ImageGenerator(train_set_size//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
+                ImageGenerator(
+                    train_set_size//self.hyperparameters['batch_size'],
+                    self.hyperparameters['batch_size'],
+                    self.extra_parameters['image_width'],
+                    self.extra_parameters['image_height'],
+                    self.extra_parameters['circle_radius'],
+                    self.image_features
+                ),
                 epochs=real_epochs,
-                validation_data=ImageGenerator(val_set_size//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.image_features),
+                validation_data=ImageGenerator(
+                    val_set_size//self.hyperparameters['batch_size'],
+                    self.hyperparameters['batch_size'],
+                    self.extra_parameters['image_width'],
+                    self.extra_parameters['image_height'],
+                    self.extra_parameters['circle_radius'],
+                    self.image_features
+                ),
                 shuffle=True
             ).history
 
