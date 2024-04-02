@@ -168,3 +168,4 @@ test*.py
 *.mat
 *.txt
 *.csv
+andi*
