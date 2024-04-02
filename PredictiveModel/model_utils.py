@@ -1,8 +1,6 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
-from tensorflow.keras import Sequential
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate
-from keras.activations import leaky_relu
 from keras.models import Model
 
 import matplotlib.pyplot as plt
@@ -11,9 +9,7 @@ import numpy as np
 
 from tensorflow.keras import models
 from tensorflow.keras.optimizers import *
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.callbacks import * 
-from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import Sequence
 
 
