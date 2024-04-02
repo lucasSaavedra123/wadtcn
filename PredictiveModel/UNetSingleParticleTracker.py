@@ -7,6 +7,7 @@ import deeptrack as dt
 import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
+import math
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -116,8 +117,28 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.show()
             
             cs = skimage.measure.regionprops(skimage.measure.label(mask))
+            raw_localizations = [list(c["Centroid"])[::-1] for c in cs if c.axis_major_length < 8]
 
-            raw_localizations = [list(c["Centroid"])[::-1] for c in cs]
+            for props in [ci for ci in cs if ci.axis_major_length >= 8]:
+                y0, x0 = props.centroid
+                orientation = props.orientation
+
+                x_bottom = x0 - math.sin(orientation) * 0.5 * props.axis_major_length
+                y_bottom = y0 - math.cos(orientation) * 0.5 * props.axis_major_length
+                x_top = x0 + math.sin(orientation) * 0.5 * props.axis_major_length
+                y_top = y0 + math.cos(orientation) * 0.5 * props.axis_major_length
+
+                x_offset = (x_top - x_bottom) / 4
+                y_offset = (y_top - y_bottom) / 4
+
+                new_x_1 = x_top-x_offset
+                new_x_2 = x_bottom+x_offset
+
+                new_y_1 = y_top-y_offset
+                new_y_2 = y_bottom+y_offset
+
+                raw_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
+
             data += [[frame_index]+p for p in raw_localizations]
             raw_localizations = np.array(raw_localizations)
 
