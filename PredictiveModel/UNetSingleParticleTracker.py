@@ -4,11 +4,9 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow import device, config
 import deeptrack as dt
-import tensorflow
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.ndimage import gaussian_filter
-from skimage.feature.peak import peak_local_max
+import skimage
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -93,78 +91,61 @@ class UNetSingleParticleTracker(PredictiveModel):
             self,
             image_array,
             extract_trajectories=False,
-            gaussian_filter_sigma=2,
+            extract_localizations=False,
             pixel_size=100e-9,
-            peak_local_max_min_distance = 3,
-            peak_fitting_roi_radius = 5,
+            classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
             debug=False,
             plot_trajectories=False,
-            extract_blured_movie=False
         ):
 
-        unet_result = (self.architecture.predict(image_array/255)[...,0] > 0.5).astype(int)
+        unet_result = (self.architecture.predict(image_array/255)[...,0] > classification_threshold).astype(int)
 
-        if not extract_trajectories:
+        if not extract_localizations:
             return unet_result
-        
-        predicted_movie = unet_result*255
-        blured_movie = gaussian_filter(predicted_movie, gaussian_filter_sigma)
-
-        if extract_blured_movie:
-            return blured_movie
 
         data = []
 
-        #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
-        for frame_index, blured_frame in enumerate(blured_movie):
-            peaks = peak_local_max(blured_frame, peak_local_max_min_distance, threshold_abs = np.std(blured_frame)*2)
-
+        #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
+        for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             raw_localizations = []
 
             if debug:
-                plt.title(f"Peaks from Frame Index: {frame_index}")
-                plt.imshow(blured_frame)
-                plt.scatter(peaks[:,1], peaks[:,0])
+                plt.title(f"Frame {frame_index}")
+                plt.imshow(frame)
                 plt.show()
+            
+            cs = skimage.measure.regionprops(skimage.measure.label(mask))
 
-            for peak in peaks:
-                ROI = blured_frame[
-                    peak[0]-peak_fitting_roi_radius:peak[0]+peak_fitting_roi_radius+1,
-                    peak[1]-peak_fitting_roi_radius:peak[1]+peak_fitting_roi_radius+1
-                ]
-
-                if 0 in ROI.shape:
-                    continue
-                
-                ROI_F = np.fft.fft2(ROI)
-
-                xangle = np.arctan(ROI_F[0,1].imag/ROI_F[0,1].real) - np.pi
-                if xangle > 0:
-                    xangle -= 2*np.pi
-                PositionX = abs(xangle)/(2*np.pi/(peak_fitting_roi_radius*2+1))
-
-                yangle = np.arctan(ROI_F[1,0].imag/ROI_F[1,0].real) - np.pi
-                if yangle > 0:
-                    yangle -= 2*np.pi
-                PositionY = abs(yangle)/(2*np.pi/(peak_fitting_roi_radius*2+1))
-
-                new_x = peak[1]-peak_fitting_roi_radius+PositionX
-                new_y = peak[0]-peak_fitting_roi_radius+PositionY
-
-                data.append([frame_index, new_x, new_y])
-                raw_localizations.append([new_x, new_y])
-
+            raw_localizations = [list(c["Centroid"])[::-1] for c in cs]
+            data += [[frame_index]+p for p in raw_localizations]
             raw_localizations = np.array(raw_localizations)
 
             if debug:
                 plt.title(f"Localizations from Frame Index: {frame_index}")
-                plt.imshow(blured_frame)
-                plt.scatter(raw_localizations[:,0], raw_localizations[:,1])
+                plt.imshow(frame)
+                plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
                 plt.show()
 
+        """
+        Localizations are multiplied by the pixel size.
+        The origin of the axis is positioned to the 
+        left-bottom corner of the movie.
+        """
+        data = np.array(data)
+        data[:,1:] *= pixel_size
+        data[:,2] *= -1
+        data[:,2] += image_array.shape[2] * pixel_size
+
+        if not extract_trajectories:
+            return pd.DataFrame({
+                'frame': data[:,0],
+                'x': data[:,1],
+                'y': data[:,2],
+            })
+
+        #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
         tracked_data = np.column_stack((data, np.zeros((len(data),3))))
-        tracked_data[:,1:3] *= pixel_size
         tracksCounter = 1
 
         for fr in range(0, int(np.max(tracked_data[:,0]))):
