@@ -169,3 +169,6 @@ test*.py
 *.txt
 *.csv
 andi*
+*.tiff
+*.h5
+*.json
