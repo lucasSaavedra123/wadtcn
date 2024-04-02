@@ -168,7 +168,3 @@ test*.py
 *.mat
 *.txt
 *.csv
-andi*
-*.tiff
-*.h5
-*.json

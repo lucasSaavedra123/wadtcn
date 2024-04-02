@@ -1,16 +1,12 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate
+from tensorflow.keras import Sequential
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D
 from keras.models import Model
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-
-from tensorflow.keras import models
-from tensorflow.keras.optimizers import *
-from tensorflow.keras.callbacks import * 
-from tensorflow.keras.utils import Sequence
 
 
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
@@ -140,23 +136,6 @@ def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
 
     return Y
 
-def transform_trajectories_to_single_level_hurst_exponent(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
-
-    for index, trajectory in enumerate(trajectories):
-        Y[index, :] = trajectory.info['alpha_t']
-        Y[index, :] /= 2
-
-    return Y
-
-def transform_trajectories_to_single_level_model(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 4))
-
-    for index, trajectory in enumerate(trajectories):
-        Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=4)
-
-    return Y
-
 def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectories):
     Y = np.empty((len(trajectories), 1))
 
@@ -164,11 +143,6 @@ def transform_trajectories_to_diffusion_coefficient(predictive_model, trajectori
         Y[index, 0] = trajectory.info['diffusion_coefficient']
 
     return Y
-
-def basic_convolution_block(predictive_model, original_x, filters, kernel_size, dilation_rate, initializer):
-    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rate)(original_x)
-    x = BatchNormalization()(x)
-    return x
 
 def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
     x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
@@ -435,91 +409,6 @@ class TrackGenerator(Sequence):
 
     def __len__(self):
         return self.batches
-
-def get_target_image(image_of_particles, circle_radius):
-    target_image = np.zeros(image_of_particles.shape)
-    X, Y = np.meshgrid(
-        np.arange(0, image_of_particles.shape[0]), 
-        np.arange(0, image_of_particles.shape[1])
-    )
-
-    for property in image_of_particles.properties:
-        if "position" in property:
-            position = property["position"]
-
-            distance_map = (X - position[1])**2 + (Y - position[0])**2
-            target_image[distance_map < circle_radius**2] = 1
-    
-    return target_image
-
-class ImageGenerator(Sequence):
-    def __init__(self, batches, batch_size, image_width, image_height, circle_radius, deeptrack_feature):
-        self.batches = batches
-        self.batch_size = batch_size
-        self.image_width = image_width
-        self.image_height = image_height
-        self.circle_radius = circle_radius
-        self.deeptrack_feature = deeptrack_feature
-
-    def __getitem__(self, item):        
-        X = np.zeros((self.batch_size,self.image_width,self.image_height,1))
-        Y = np.zeros((self.batch_size,self.image_width,self.image_height,1))
-
-        for i in range(self.batch_size):
-            self.deeptrack_feature.update()
-            image_of_particles =  self.deeptrack_feature.resolve()        
-            X[i] = image_of_particles/255
-            Y[i] = get_target_image(image_of_particles, self.circle_radius)
-
-        return X, Y
-
-    def __len__(self):
-        return self.batches
-
-"""
-This code functions were based from 
-https://github.com/Nguyendat-bit/U-net/tree/main
-which were used to repeat the buggy architecture coded from 
-https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
-"""
-def down_block(x, filters, use_maxpool = True):
-    x = Conv2D(filters, 3, padding= 'same')(x)
-    x = LeakyReLU()(x)
-    if use_maxpool == True:
-        return  MaxPooling2D(strides= (2,2))(x), x
-    else:
-        return x
-
-def up_block(x,y, filters):
-    x = Conv2D(filters, 3, padding= 'same')(x)
-    x = LeakyReLU()(x)
-    x = Conv2DTranspose(filters//2, (2,2), strides=2)(x)
-    x = Concatenate(axis = 3)([x,y])
-    return x
-    
-def Unet(input_size):
-    input = Input(shape = input_size)
-    x, temp1 = down_block(input, 16)
-    x, temp2 = down_block(x, 32)
-    x, temp3 = down_block(x, 64)
-    x = down_block(x, 128, use_maxpool= False)
-
-    x = up_block(x,temp3, 128)
-    x = up_block(x,temp2, 64)
-    x = up_block(x,temp1, 32)
-
-    x = Conv2D(16, 3, padding= 'same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2D(16, 3, padding= 'same')(x)
-    x = LeakyReLU()(x)
-
-    x = Conv2D(16, 3, padding= 'same')(x)
-    x = LeakyReLU()(x)
-    
-    output = Conv2D(1, 3, activation= 'sigmoid', padding='same')(x)
-    model = models.Model(input, output, name = 'unet')
-    return model
 
 #Ploters
 def plot_bias(ground_truth, predicted, symbol=None, a_range=None, file_name=None):
