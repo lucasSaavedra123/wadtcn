@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
 import math
+import trackpy
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -168,32 +169,23 @@ class UNetSingleParticleTracker(PredictiveModel):
         data[:,2] *= -1
         data[:,2] += image_array.shape[2] * pixel_size
 
+        dataset = pd.DataFrame({'frame': data[:,0],'x': data[:,1],'y': data[:,2]})
+
         if not extract_trajectories:
-            return pd.DataFrame({
-                'frame': data[:,0],
-                'x': data[:,1],
-                'y': data[:,2],
-            })
+            return dataset
 
-        #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
-        tracked_data = np.column_stack((data, np.zeros((len(data),3))))
-        tracksCounter = 1
+        grouped_dataset = dataset.groupby(dataset.frame)
+        tr_datasets = [grouped_dataset.get_group(frame_value).reset_index(drop=True) for frame_value in dataset['frame'].unique()]
+        tr = trackpy.link_df_iter(tr_datasets, spt_max_distance_tolerance, pos_columns=['x', 'y'], t_column='frame')
+        dataset = pd.concat(tr)
 
-        for fr in range(0, int(np.max(tracked_data[:,0]))):
-            [tracked_data,tracksCounter] = create_trajectories(tracked_data,fr,fr+1,spt_max_distance_tolerance,tracksCounter)
+        dataset = dataset.rename(columns={'particle': 'track_id'})
 
-        dataframe = pd.DataFrame({
-            'frame':tracked_data[:,0],
-            'x': tracked_data[:,1],
-            'y':tracked_data[:,2],
-            'track_id': tracked_data[:,4],
-        })
-
-        track_ids = np.unique(tracked_data[:,4])
+        track_ids = dataset['track_id'].unique()
         trajectories = []
 
         for track_id in track_ids:
-            track_dataframe = dataframe[dataframe['track_id'] == track_id].sort_values('frame')
+            track_dataframe = dataset[dataset['track_id'] == track_id].sort_values('frame')
             
             new_trajectory = Trajectory(
                 x=track_dataframe['x'].tolist(),
