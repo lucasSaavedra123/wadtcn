@@ -9,6 +9,7 @@ import pandas as pd
 import skimage
 import math
 import trackpy
+from slitflow.loc.fit import Gauss2D
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -98,8 +99,8 @@ class UNetSingleParticleTracker(PredictiveModel):
     def predict(
             self,
             image_array,
-            extract_trajectories=False,
-            extract_localizations=False,
+            extract_trajectories=True,
+            extract_localizations=True,
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
@@ -116,7 +117,8 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
-            raw_localizations = []
+            rough_localizations = []
+            #raw_localizations = []
 
             if debug:
                 plt.title(f"Frame {frame_index}")
@@ -128,7 +130,7 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.show()
 
             cs = skimage.measure.regionprops(skimage.measure.label(mask))
-            raw_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
@@ -148,10 +150,29 @@ class UNetSingleParticleTracker(PredictiveModel):
                 new_y_1 = y_top-y_offset
                 new_y_2 = y_bottom+y_offset
 
-                raw_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
+                rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
-            data += [[frame_index]+p for p in raw_localizations]
-            raw_localizations = np.array(raw_localizations)
+            rough_dataframe = pd.DataFrame({
+                'x': [p[0] for p in rough_localizations],
+                'y': [p[0] for p in rough_localizations]
+            })
+
+            """
+            IT NEEDS DEBUGGING
+            """
+            refined_localizations = Gauss2D().process(
+                (np.reshape(frame, (1, frame.shape[1],frame.shape[1])), rough_dataframe),
+                {
+                    'calc_cols':['x', 'y'],
+                    'use_cols': ['x', 'y'],
+                    'pitch': 1,
+                    'half_width': 5,
+                    'half_height': 5,
+                }
+            )
+
+            #data += [[frame_index]+p for p in raw_localizations]
+            #raw_localizations = np.array(raw_localizations)
 
             if debug:
                 plt.title(f"Localizations from Frame Index: {frame_index}")
