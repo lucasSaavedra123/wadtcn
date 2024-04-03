@@ -108,6 +108,9 @@ class UNetSingleParticleTracker(PredictiveModel):
             plot_trajectories=False,
         ):
 
+        import matplotlib
+        matplotlib.use('TkAgg')
+
         unet_result = (self.architecture.predict(image_array/255)[...,0] > classification_threshold).astype(int)
 
         if not extract_localizations:
@@ -118,7 +121,6 @@ class UNetSingleParticleTracker(PredictiveModel):
         #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             rough_localizations = []
-            #raw_localizations = []
 
             if debug:
                 plt.title(f"Frame {frame_index}")
@@ -152,30 +154,21 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
-            rough_dataframe = pd.DataFrame({
-                'x': [p[0] for p in rough_localizations],
-                'y': [p[0] for p in rough_localizations]
-            })
-
-            """
-            IT NEEDS DEBUGGING
-            """
-            refined_localizations = Gauss2D().process(
-                (np.reshape(frame, (1, frame.shape[1],frame.shape[1])), rough_dataframe),
-                {
-                    'calc_cols':['x', 'y'],
-                    'use_cols': ['x', 'y'],
-                    'pitch': 1,
-                    'half_width': 5,
-                    'half_height': 5,
-                }
-            )
-
-            #data += [[frame_index]+p for p in raw_localizations]
-            #raw_localizations = np.array(raw_localizations)
+            rough_localizations= np.array(rough_localizations)
 
             if debug:
-                plt.title(f"Localizations from Frame Index: {frame_index}")
+                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(rough_localizations[:,0], rough_localizations[:,1], marker='X', color='red')
+                plt.show()
+
+            #By now, rough localizations = refined localizations
+            raw_localizations = rough_localizations.tolist()
+            data += [[frame_index]+p for p in raw_localizations]
+            raw_localizations = np.array(raw_localizations)
+
+            if debug:
+                plt.title(f"Refined localizations from Frame Index: {frame_index}")
                 plt.imshow(frame)
                 plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
                 plt.show()
