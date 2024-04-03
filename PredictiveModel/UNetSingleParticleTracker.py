@@ -8,7 +8,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
 import math
-from mongoengine import IntField
+import trackpy
+from slitflow.loc.fit import Gauss2D
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -98,14 +99,17 @@ class UNetSingleParticleTracker(PredictiveModel):
     def predict(
             self,
             image_array,
-            extract_trajectories=False,
-            extract_localizations=False,
+            extract_trajectories=True,
+            extract_localizations=True,
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
             debug=False,
             plot_trajectories=False,
         ):
+
+        import matplotlib
+        matplotlib.use('TkAgg')
 
         unet_result = (self.architecture.predict(image_array/255)[...,0] > classification_threshold).astype(int)
 
@@ -116,7 +120,7 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
-            raw_localizations = []
+            rough_localizations = []
 
             if debug:
                 plt.title(f"Frame {frame_index}")
@@ -128,7 +132,7 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.show()
 
             cs = skimage.measure.regionprops(skimage.measure.label(mask))
-            raw_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
@@ -148,13 +152,23 @@ class UNetSingleParticleTracker(PredictiveModel):
                 new_y_1 = y_top-y_offset
                 new_y_2 = y_bottom+y_offset
 
-                raw_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
+                rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
+            rough_localizations= np.array(rough_localizations)
+
+            if debug:
+                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(rough_localizations[:,0], rough_localizations[:,1], marker='X', color='red')
+                plt.show()
+
+            #By now, rough localizations = refined localizations
+            raw_localizations = rough_localizations.tolist()
             data += [[frame_index]+p for p in raw_localizations]
             raw_localizations = np.array(raw_localizations)
 
             if debug:
-                plt.title(f"Localizations from Frame Index: {frame_index}")
+                plt.title(f"Refined localizations from Frame Index: {frame_index}")
                 plt.imshow(frame)
                 plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
                 plt.show()
@@ -169,32 +183,23 @@ class UNetSingleParticleTracker(PredictiveModel):
         data[:,2] *= -1
         data[:,2] += image_array.shape[2] * pixel_size
 
+        dataset = pd.DataFrame({'frame': data[:,0],'x': data[:,1],'y': data[:,2]})
+
         if not extract_trajectories:
-            return pd.DataFrame({
-                'frame': data[:,0],
-                'x': data[:,1],
-                'y': data[:,2],
-            })
+            return dataset
 
-        #Code From https://drive.google.com/drive/u/0/folders/1lOKvC_L2fb78--uwz3on4lBzDGVum8Mc
-        tracked_data = np.column_stack((data, np.zeros((len(data),3))))
-        tracksCounter = 1
+        grouped_dataset = dataset.groupby(dataset.frame)
+        tr_datasets = [grouped_dataset.get_group(frame_value).reset_index(drop=True) for frame_value in dataset['frame'].unique()]
+        tr = trackpy.link_df_iter(tr_datasets, spt_max_distance_tolerance, pos_columns=['x', 'y'], t_column='frame')
+        dataset = pd.concat(tr)
 
-        for fr in range(0, int(np.max(tracked_data[:,0]))):
-            [tracked_data,tracksCounter] = create_trajectories(tracked_data,fr,fr+1,spt_max_distance_tolerance,tracksCounter)
+        dataset = dataset.rename(columns={'particle': 'track_id'})
 
-        dataframe = pd.DataFrame({
-            'frame':tracked_data[:,0],
-            'x': tracked_data[:,1],
-            'y':tracked_data[:,2],
-            'track_id': tracked_data[:,4],
-        })
-
-        track_ids = np.unique(tracked_data[:,4])
+        track_ids = dataset['track_id'].unique()
         trajectories = []
 
         for track_id in track_ids:
-            track_dataframe = dataframe[dataframe['track_id'] == track_id].sort_values('frame')
+            track_dataframe = dataset[dataset['track_id'] == track_id].sort_values('frame')
             
             new_trajectory = Trajectory(
                 x=track_dataframe['x'].tolist(),
