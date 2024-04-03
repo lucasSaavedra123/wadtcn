@@ -3,7 +3,7 @@ import math
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
-from scipy.stats import chi2
+from scipy.stats import chi2, bootstrap
 from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 import ruptures as rpt
@@ -173,8 +173,9 @@ class Trajectory(Document):
         return trajectories
 
     @classmethod
-    def ensemble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, alpha=0.95):
-        trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 2]
+    def ensemble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, bin_width=None, alpha=0.95):
+        """
+        trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 1]
         #print("len average ->", np.mean([t.length for t in trajectories]))
         ea_msd = np.zeros((len(trajectories), number_of_points_for_msd))
         mu_t = np.zeros((len(trajectories), number_of_points_for_msd))
@@ -202,6 +203,34 @@ class Trajectory(Document):
         ]
 
         return ea_msd, intervals
+        """
+        #print("len average ->", np.mean([t.length for t in trajectories]))
+        ea_msd = defaultdict(lambda: [])
+
+        delta = np.min(np.diff(trajectories[0].get_time())) if bin_width is None else bin_width
+
+        for trajectory in trajectories:
+            positions = np.zeros((trajectory.length,2))
+            positions[:,0] = trajectory.get_noisy_x()
+            positions[:,1] = trajectory.get_noisy_y()
+
+            for index in range(1, trajectory.length):
+                interval = trajectory.get_time()[index] - trajectory.get_time()[0]
+                displacement = np.sum(np.abs((positions[index] - positions[0]) ** 2))
+                ea_msd[int(interval/delta)].append(displacement)
+
+        intervals = [[], []]
+
+        for i in ea_msd:
+            res = bootstrap(ea_msd[i], np.mean, n_resamples=len(trajectories), confidence_level=alpha, method='percentile')
+            ea_msd[i] = np.mean(ea_msd[i])
+            intervals[0].append(res.confidence_interval.low)
+            intervals[1].append(res.confidence_interval.high)
+
+        aux = np.array(sorted(list(zip(list(ea_msd.keys()), list(ea_msd.values()))), key=lambda x: x[0]))
+        t_vec, ea_msd = (aux[:,0] * delta) + delta, aux[:,1]
+
+        return t_vec, ea_msd, [np.array(intervals[0]), np.array(intervals[1])]
 
     def __init__(self, x, y=None, z=None, model_category=None, noise_x=None, noise_y=None, noise_z=None, noisy=False, t=None, exponent=None, exponent_type='anomalous', info={}, **kwargs):
 
