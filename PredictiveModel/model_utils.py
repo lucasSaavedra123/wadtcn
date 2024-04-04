@@ -511,7 +511,12 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
     elif input_dimension=='1d':
         x = Conv1DTranspose(filters//2, 2, strides=2)(x)
 
-    x = Concatenate(axis = 3)([x,y])
+    if input_dimension=='2d':
+        axis_dimension = 3
+    elif input_dimension=='1d':
+        axis_dimension = 2
+
+    x = Concatenate(axis = axis_dimension)([x,y])
     return x
     
 def Unet(input_size, input_dimension='2d', basic_kernel_size=3):
