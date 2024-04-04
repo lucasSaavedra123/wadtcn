@@ -547,13 +547,6 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3):
     x = LeakyReLU()(x)
 
     if input_dimension=='2d':
-        x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
-    elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
-
-    x = LeakyReLU()(x)
-    
-    if input_dimension=='2d':
         output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
     elif input_dimension=='1d':
         output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
