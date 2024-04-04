@@ -1,13 +1,7 @@
-import numpy as np
-from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed, MaxPooling1D, UpSampling1D
+from keras.layers import Dense, Input, Average
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
-from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
-from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
-from TheoreticalModels.LevyWalk import LevyWalk
-from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
-from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
@@ -71,7 +65,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
         if self.wadnet_tcn_encoder is None:
             number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
-            filters = 128
+            filters = 2
             dilation_depth = 8
             initializer = 'he_normal'
             x1_kernel = 4
@@ -83,30 +77,12 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             dilation_depth = 8
 
             x = WaveNetEncoder(filters // 2, dilation_depth, initializer=initializer)(inputs)
+            unet_1 = Unet((self.trajectory_length, 1), '1d', 2, unet_index=1)(x)
+            unet_2 = Unet((self.trajectory_length, 1), '1d', 3, unet_index=2)(x)
+            unet_3 = Unet((self.trajectory_length, 1), '1d', 4, unet_index=3)(x)
+            unet_4 = Unet((self.trajectory_length, 1), '1d', 9, unet_index=4)(x)
 
-            
-
-
-
-
-            """
-            x1 = convolutional_block(self, x, filters, x1_kernel, [1,2,4], initializer)
-            x2 = convolutional_block(self, x, filters, x2_kernel, [1,2,4], initializer)
-            x3 = convolutional_block(self, x, filters, x3_kernel, [1,2,4], initializer)
-            x4 = convolutional_block(self, x, filters, x4_kernel, [1,4,8], initializer)
-
-            #x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
-            #x5 = BatchNormalization()(x5)
-
-            x = concatenate(inputs=[x1, x2, x3, x4])#, x5])
-
-            #x = GlobalAveragePooling1D()(x)
-            output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)#Dense(units=self.trajectory_length, activation='sigmoid')(x)
-
-            self.architecture = Model(inputs=inputs, outputs=output_network)
-            """
-
-            output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)#Dense(units=self.trajectory_length, activation='sigmoid')(x)
+            output_network = Average()([unet_1, unet_2, unet_3, unet_4])
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         else:
