@@ -519,7 +519,7 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
     x = Concatenate(axis = axis_dimension)([x,y])
     return x
     
-def Unet(input_size, input_dimension='2d', basic_kernel_size=3):
+def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None):
     input = Input(shape = input_size)
     x, temp1 = down_block(input, 16, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
     x, temp2 = down_block(x, 32, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
@@ -556,7 +556,7 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3):
     elif input_dimension=='1d':
         output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
 
-    model = models.Model(input, output, name = 'unet')
+    model = models.Model(input, output, name = f'unet_{unet_index}' if unet_index is not None else 'unet')
     return model
 
 #Ploters
