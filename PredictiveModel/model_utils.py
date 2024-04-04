@@ -1,6 +1,6 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
 from keras.models import Model
 
 import matplotlib.pyplot as plt
@@ -482,42 +482,82 @@ https://github.com/Nguyendat-bit/U-net/tree/main
 which were used to repeat the buggy architecture coded from 
 https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
 """
-def down_block(x, filters, use_maxpool = True):
-    x = Conv2D(filters, 3, padding= 'same')(x)
+def down_block(x, filters, use_maxpool = True, input_dimension='2d', basic_kernel_size=3):
+    if input_dimension=='2d':
+        x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+
     x = LeakyReLU()(x)
     if use_maxpool == True:
-        return  MaxPooling2D(strides= (2,2))(x), x
+        if input_dimension=='2d':
+            pooling = MaxPooling2D(strides= (2,2))(x)
+        elif input_dimension=='1d':
+            pooling = MaxPooling1D(strides= 2)(x)
+        return  pooling, x
     else:
         return x
 
-def up_block(x,y, filters):
-    x = Conv2D(filters, 3, padding= 'same')(x)
+def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
+    if input_dimension=='2d':
+        x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+
     x = LeakyReLU()(x)
-    x = Conv2DTranspose(filters//2, (2,2), strides=2)(x)
+
+    if input_dimension=='2d':
+        x = Conv2DTranspose(filters//2, (2,2), strides=2)(x)
+    elif input_dimension=='1d':
+        x = Conv1DTranspose(filters//2, 2, strides=2)(x)
+
     x = Concatenate(axis = 3)([x,y])
     return x
     
-def Unet(input_size):
+def Unet(input_size, input_dimension='2d', basic_kernel_size=3):
     input = Input(shape = input_size)
-    x, temp1 = down_block(input, 16)
-    x, temp2 = down_block(x, 32)
-    x, temp3 = down_block(x, 64)
-    x = down_block(x, 128, use_maxpool= False)
+    x, temp1 = down_block(input, 16, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
+    x, temp2 = down_block(x, 32, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
+    x, temp3 = down_block(x, 64, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
+    x = down_block(x, 128, use_maxpool= False, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
 
-    x = up_block(x,temp3, 128)
-    x = up_block(x,temp2, 64)
-    x = up_block(x,temp1, 32)
+    x = up_block(x,temp3, 128, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
+    x = up_block(x,temp2, 64, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
+    x = up_block(x,temp1, 32, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
 
-    x = Conv2D(16, 3, padding= 'same')(x)
+    if input_dimension=='2d':
+        x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+
     x = LeakyReLU()(x)
 
-    x = Conv2D(16, 3, padding= 'same')(x)
+    if input_dimension=='2d':
+        x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+
     x = LeakyReLU()(x)
 
-    x = Conv2D(16, 3, padding= 'same')(x)
+    if input_dimension=='2d':
+        x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+
+    x = LeakyReLU()(x)
+
+    if input_dimension=='2d':
+        x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
+    elif input_dimension=='1d':
+        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+
     x = LeakyReLU()(x)
     
-    output = Conv2D(1, 3, activation= 'sigmoid', padding='same')(x)
+    if input_dimension=='2d':
+        output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
+    elif input_dimension=='1d':
+        output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
+
     model = models.Model(input, output, name = 'unet')
     return model
 

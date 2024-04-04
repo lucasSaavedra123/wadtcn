@@ -9,12 +9,10 @@ import pandas as pd
 import skimage
 import math
 import trackpy
-from slitflow.loc.fit import Gauss2D
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
 from .model_utils import ImageGenerator, Unet
-from utils import create_trajectories
 from Trajectory import Trajectory
 
 
