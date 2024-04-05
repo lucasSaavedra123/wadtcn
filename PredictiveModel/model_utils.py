@@ -489,6 +489,7 @@ def down_block(x, filters, use_maxpool = True, input_dimension='2d', basic_kerne
         x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
 
     x = LeakyReLU()(x)
+    x = BatchNormalization()(x)
     if use_maxpool == True:
         if input_dimension=='2d':
             pooling = MaxPooling2D(strides= (2,2))(x)
@@ -505,7 +506,7 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
         x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
 
     x = LeakyReLU()(x)
-
+    x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2DTranspose(filters//2, (2,2), strides=2)(x)
     elif input_dimension=='1d':
@@ -536,21 +537,21 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None)
         x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
 
     x = LeakyReLU()(x)
-
+    x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
         x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
 
     x = LeakyReLU()(x)
-
+    x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
         x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
 
     x = LeakyReLU()(x)
-
+    x = BatchNormalization()(x)
     if input_dimension=='2d':
         output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
     elif input_dimension=='1d':

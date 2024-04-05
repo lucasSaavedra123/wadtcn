@@ -1,6 +1,8 @@
 from keras.layers import Dense, Input, Average
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.losses import MeanSquaredError
+
 
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
@@ -11,28 +13,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        hyperparameters = {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
-        hyperparameters['epochs'] = 100
-
-        return hyperparameters
-
-    @classmethod
-    def selected_hyperparameters(self, model_label):
-        model_string_to_hyperparameters_dictionary = {
-            'fbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'fbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'fbm_sup': {'lr': 0.0001, 'batch_size': 8, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-07, 'epochs': 100},
-            'sbm_sup': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'lw': {'lr': 0.001, 'batch_size': 64, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'ctrw': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'attm': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 100},
-        }
-
-        hyperparameters = model_string_to_hyperparameters_dictionary[model_label]
-        hyperparameters['epochs'] = 100
-
+        hyperparameters = {'lr': 0.0002, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
         return hyperparameters
 
     @classmethod
@@ -90,7 +71,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             amsgrad=self.hyperparameters['amsgrad']
         )
 
-        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
+        self.architecture.compile(optimizer=optimizer, loss=MeanSquaredError(reduction='sum'), metrics=[MeanSquaredError(reduction='sum'), 'mae'])
 
     @property
     def type_name(self):
