@@ -71,7 +71,18 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             amsgrad=self.hyperparameters['amsgrad']
         )
 
-        self.architecture.compile(optimizer=optimizer, loss=MeanSquaredError(reduction='sum'), metrics=[MeanSquaredError(reduction='sum'), 'mae'])
+        from tensorflow import reduce_mean, square, reshape, abs
+        def custom_mse(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(square(y_true - y_pred))
+
+        def custom_mae(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(abs(y_true - y_pred))
+
+        self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
 
     @property
     def type_name(self):
