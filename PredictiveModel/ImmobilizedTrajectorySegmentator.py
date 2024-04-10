@@ -3,7 +3,7 @@ import pandas as pd
 
 from TheoreticalModels.TwoStateImmobilizedDiffusion import TwoStateImmobilizedDiffusion
 
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 
@@ -57,7 +57,7 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         else:
             build_wavenet_tcn_segmenter_from_encoder_for(self, 320)
 
-        optimizer = Adam(lr=self.hyperparameters['lr'],
+        optimizer = Adam(learning_rate=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
                          amsgrad=self.hyperparameters['amsgrad'])
 

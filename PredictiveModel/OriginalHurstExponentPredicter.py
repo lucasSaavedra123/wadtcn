@@ -1,7 +1,7 @@
 import numpy as np
 from keras.layers import Dense, Input, LSTM, Bidirectional
 from keras.models import Model
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 
 from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
 from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
@@ -111,7 +111,7 @@ class OriginalHurstExponentPredicter(PredictiveModel):
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-            lr=self.hyperparameters['lr'],
+            learning_rate=self.hyperparameters['lr'],
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )

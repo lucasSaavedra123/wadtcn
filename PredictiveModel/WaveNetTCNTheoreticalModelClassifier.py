@@ -1,5 +1,5 @@
 import numpy as np
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels import ANDI_MODELS, ALL_MODELS
@@ -45,7 +45,7 @@ class WaveNetTCNTheoreticalModelClassifier(PredictiveModel):
         else:
             build_wavenet_tcn_classifier_from_encoder_for(self, 320)
 
-        optimizer = Adam(lr=self.hyperparameters['lr'],
+        optimizer = Adam(learning_rate=self.hyperparameters['lr'],
                          amsgrad=self.hyperparameters['amsgrad'],
                          epsilon=self.hyperparameters['epsilon'])
 

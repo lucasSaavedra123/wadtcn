@@ -1,5 +1,5 @@
 import numpy as np
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 
 from .PredictiveModel import PredictiveModel
 from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionBrownian, FractionalBrownianMotionSuperDiffusive
@@ -127,7 +127,7 @@ class OriginalFBMModelClassifier(PredictiveModel):
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
-        optimizer = Adam(lr=self.hyperparameters['lr'],
+        optimizer = Adam(learning_rate=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
                          amsgrad=self.hyperparameters['amsgrad'])
 

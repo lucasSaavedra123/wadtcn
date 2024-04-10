@@ -4,7 +4,7 @@ import pandas as pd
 from TheoreticalModels.TwoStateObstructedDiffusion import TwoStateObstructedDiffusion
 
 
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 from tensorflow import device, config
 from keras.callbacks import EarlyStopping, Callback
@@ -57,7 +57,7 @@ class ObstructedTrajectorySegmentator(PredictiveModel):
     def build_network(self):
         build_segmentator_for(self)
 
-        optimizer = Adam(lr=self.hyperparameters['lr'],
+        optimizer = Adam(learning_rate=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
                          amsgrad=self.hyperparameters['amsgrad'])
 

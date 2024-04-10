@@ -1,5 +1,5 @@
 import numpy as np
-from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.optimizers import Adam
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, concatenate
 from keras.models import Model
 from keras.callbacks import EarlyStopping
@@ -106,7 +106,7 @@ class OriginalTheoreticalModelClassifier(PredictiveModel):
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-                        lr=self.hyperparameters['lr'],
+                        learning_rate=self.hyperparameters['lr'],
                         amsgrad=self.hyperparameters['amsgrad'],
                         epsilon=self.hyperparameters['epsilon']
                     )
