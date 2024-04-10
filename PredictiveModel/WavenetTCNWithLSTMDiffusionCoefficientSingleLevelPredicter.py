@@ -70,7 +70,7 @@ class WavenetTCNWithLSTMDiffusionCoefficientSingleLevelPredicter(PredictiveModel
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-            lr=self.hyperparameters['lr'],
+            learning_rate=self.hyperparameters['lr'],
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
