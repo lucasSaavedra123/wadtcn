@@ -21,6 +21,6 @@ dependencies:
       - ruptures==1.1.9
       - scikit-learn==1.4.2
       - seaborn==0.13.2
-      - tensorflow==2.16.1
+      - tensorflow==2.14.0
       - tensorflow-metal==1.1.0
       - tqdm==4.66.2
