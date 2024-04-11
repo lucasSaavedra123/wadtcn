@@ -3,7 +3,6 @@ import logging
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow import device, config
-import deeptrack as dt
 import matplotlib.pyplot as plt
 import pandas as pd
 import skimage
@@ -224,6 +223,8 @@ class UNetSingleParticleTracker(PredictiveModel):
         return f"{self.type_name}_{self.extra_parameters['image_width']}x{self.extra_parameters['image_height']}_px_{self.extra_parameters['circle_radius']}_radius"
 
     def fit(self):
+        import deeptrack as dt
+
         if not self.trained:
             self.build_network()
             real_epochs = self.hyperparameters['epochs']
