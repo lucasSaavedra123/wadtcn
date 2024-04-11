@@ -118,3 +118,21 @@ class WavenetTCNWithLSTMDiffusionCoefficientSingleLevelPredicter(PredictiveModel
 
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
+
+    def change_network_length_to(self, new_length):
+        self.trajectory_length = new_length
+        old_architecture = self.architecture
+        self.build_network()
+
+        for i, _ in enumerate(old_architecture.layers):
+            if i == 0:
+                continue
+            else:
+                if 'unet' in old_architecture.layers[i].name:
+                    for j, _ in enumerate(old_architecture.layers[i].layers):
+                        if j == 0 or old_architecture.layers[i].layers[j].name == 'LeakyReLU':
+                            continue
+                        else:
+                            self.architecture.layers[i].layers[j].set_weights(old_architecture.layers[i].layers[j].get_weights())
+                else:
+                    self.architecture.layers[i].set_weights(old_architecture.layers[i].get_weights())
