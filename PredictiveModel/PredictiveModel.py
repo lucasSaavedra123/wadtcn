@@ -372,7 +372,7 @@ class PredictiveModel(Document):
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
             else:
-                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.weights.h5"))
         else:
             print(f"As architecture is not defined, {self} architecture will not be persisted")
 
@@ -384,7 +384,7 @@ class PredictiveModel(Document):
             if weights is not None:
                 self.architecture.set_weights(weights)
         else:
-            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.weights.h5"))
 
     def save(self):
         self.save_as_file()
