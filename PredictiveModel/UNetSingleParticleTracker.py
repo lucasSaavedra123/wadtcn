@@ -8,6 +8,7 @@ import pandas as pd
 import skimage
 import math
 import trackpy
+import deeptrack as dt
 
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
@@ -223,8 +224,6 @@ class UNetSingleParticleTracker(PredictiveModel):
         return f"{self.type_name}_{self.extra_parameters['image_width']}x{self.extra_parameters['image_height']}_px_{self.extra_parameters['circle_radius']}_radius"
 
     def fit(self):
-        import deeptrack as dt
-
         if not self.trained:
             self.build_network()
             real_epochs = self.hyperparameters['epochs']
