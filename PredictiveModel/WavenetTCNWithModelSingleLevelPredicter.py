@@ -69,34 +69,23 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            number_of_features = 2 if self.simulator.STRING_LABEL == 'andi' else 2
+            number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
-            filters = 64
+            wavenet_filters = 16
             dilation_depth = 8
             initializer = 'he_normal'
 
-            x1_kernel = 4
-            x2_kernel = 2
-            x3_kernel = 3
-            x4_kernel = 10
-            x5_kernel = 20
+            x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+            unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1)(x)
+            unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2)(x)
+            unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3)(x)
+            unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4)(x)
 
-            dilation_depth = 8
-
-            x = WaveNetEncoder(filters, dilation_depth, initializer=initializer)(inputs)
-
-            x1 = convolutional_block(self, x, filters, x1_kernel, [1,2,4], initializer)
-            x2 = convolutional_block(self, x, filters, x2_kernel, [1,2,4], initializer)
-            x3 = convolutional_block(self, x, filters, x3_kernel, [1,2,4], initializer)
-            x4 = convolutional_block(self, x, filters, x4_kernel, [1,4,8], initializer)
-
-            x5 = Conv1D(filters=filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
-            x5 = BatchNormalization()(x5)
-
-            x = concatenate(inputs=[x1, x2, x3, x4, x5])
-
-            #x = GlobalAveragePooling1D()(x)
-            output_network = TimeDistributed(Dense(units=4, activation='softmax'))(x)#Dense(units=self.trajectory_length, activation='sigmoid')(x)
+            #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
+            
+            x = concatenate([unet_1, unet_2, unet_3, unet_4])
+            x = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
+            output_network = TimeDistributed(Dense(units=4, activation='softmax'))(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
 

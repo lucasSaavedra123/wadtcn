@@ -56,6 +56,8 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3)(x)
             unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4)(x)
 
+            #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
+            
             x = concatenate([unet_1, unet_2, unet_3, unet_4])
             output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
 
