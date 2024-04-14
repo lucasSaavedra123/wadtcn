@@ -1,4 +1,4 @@
-from keras.layers import Dense, Input, Average
+from keras.layers import Dense, Input, Average, Conv1D
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
@@ -9,7 +9,7 @@ from .model_utils import *
 from CONSTANTS import *
 
 
-class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
+class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
@@ -33,7 +33,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
+        return (np.log10(transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories))/3)+1
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -47,7 +47,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
             wavenet_filters = 16
-            dilation_depth = 8
+            dilation_depth = 1#8
             initializer = 'he_normal'
 
             x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
@@ -58,7 +58,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
 
             #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
             
-            x = concatenate([unet_1, unet_2, unet_3, unet_4])
+            x = concatenate([unet_1])#, unet_2, unet_3, unet_4])
             output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
@@ -70,7 +70,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-            lr=self.hyperparameters['lr'],
+            learning_rate=self.hyperparameters['lr'],
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
@@ -90,7 +90,7 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
 
     @property
     def type_name(self):
-        return 'wavenet_single_level_hurst_exponent'
+        return 'wavenet_single_level_diffusion_coefficient'
 
     def plot_bias(self):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
@@ -118,3 +118,21 @@ class WavenetTCNWithLSTMHurstExponentSingleLevelPredicter(PredictiveModel):
 
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
+
+    def change_network_length_to(self, new_length):
+        self.trajectory_length = new_length
+        old_architecture = self.architecture
+        self.build_network()
+
+        for i, _ in enumerate(old_architecture.layers):
+            if i == 0:
+                continue
+            else:
+                if 'unet' in old_architecture.layers[i].name:
+                    for j, _ in enumerate(old_architecture.layers[i].layers):
+                        if j == 0 or old_architecture.layers[i].layers[j].name == 'LeakyReLU':
+                            continue
+                        else:
+                            self.architecture.layers[i].layers[j].set_weights(old_architecture.layers[i].layers[j].get_weights())
+                else:
+                    self.architecture.layers[i].set_weights(old_architecture.layers[i].get_weights())

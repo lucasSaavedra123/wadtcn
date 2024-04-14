@@ -1,44 +1,19 @@
-import numpy as np
-from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed
+from keras.layers import Dense, Input, Average
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
+from tensorflow.keras.losses import MeanSquaredError
 
-from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
-from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
-from TheoreticalModels.LevyWalk import LevyWalk
-from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
-from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
+
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
 
 
-class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
+class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        hyperparameters = {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
-        hyperparameters['epochs'] = 100
-
-        return hyperparameters
-
-    @classmethod
-    def selected_hyperparameters(self, model_label):
-        model_string_to_hyperparameters_dictionary = {
-            'fbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'fbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'fbm_sup': {'lr': 0.0001, 'batch_size': 8, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-07, 'epochs': 100},
-            'sbm_sup': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'lw': {'lr': 0.001, 'batch_size': 64, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'ctrw': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'attm': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 100},
-        }
-
-        hyperparameters = model_string_to_hyperparameters_dictionary[model_label]
-        hyperparameters['epochs'] = 100
-
+        hyperparameters = {'lr': 0.0002, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
         return hyperparameters
 
     @classmethod
@@ -58,10 +33,10 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_single_level_model(self, trajectories)
+        return transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
@@ -72,7 +47,7 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
             number_of_features = 2
             inputs = Input(shape=(self.trajectory_length, number_of_features))
             wavenet_filters = 16
-            dilation_depth = 8
+            dilation_depth = 1#8
             initializer = 'he_normal'
 
             x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
@@ -83,9 +58,8 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
 
             #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
             
-            x = concatenate([unet_1, unet_2, unet_3, unet_4])
-            x = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
-            output_network = TimeDistributed(Dense(units=4, activation='softmax'))(x)
+            x = concatenate([unet_1])#, unet_2, unet_3, unet_4])
+            output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
 
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -101,11 +75,22 @@ class WavenetTCNWithLSTMModelSingleLevelPredicter(PredictiveModel):
             amsgrad=self.hyperparameters['amsgrad']
         )
 
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+        from tensorflow import reduce_mean, square, reshape, abs
+        def custom_mse(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(square(y_true - y_pred))
+
+        def custom_mae(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(abs(y_true - y_pred))
+
+        self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
 
     @property
     def type_name(self):
-        return 'wavenet_single_level_model'
+        return 'wavenet_single_level_hurst_exponent'
 
     def plot_bias(self):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)

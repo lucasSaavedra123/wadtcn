@@ -1,5 +1,6 @@
 from keras.layers import Dense, Input, Average, Conv1D, TimeDistributed
 from keras.models import Model
+from keras.losses import BinaryCrossentropy, BinaryCrossentropy, BinaryFocalCrossentropy 
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
 import tensorflow as tf
@@ -7,6 +8,7 @@ import tensorflow as tf
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+
 
 
 #https://medium.com/the-owl/weighted-binary-cross-entropy-losses-in-keras-e3553e28b8db
@@ -23,7 +25,7 @@ def weighted_binary_crossentropy(target, output, weights=[1,10]):
     bce += weights[0] * (1 - target) * tf.math.log(1 - output + epsilon_)
     return tf.reduce_mean(-bce,axis=-1)
 
-class WavenetTCNWithChangePointSingleLevelPredicter(PredictiveModel):
+class WavenetTCNChangePointSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
@@ -81,9 +83,9 @@ class WavenetTCNWithChangePointSingleLevelPredicter(PredictiveModel):
             #unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3)(x)
             #unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4)(x)
             
-            #x = concatenate([unet_1, unet_2, unet_3, unet_4])
-            output_network = Conv1D(1, 3, 1, padding='same', activation='softmax')(unet_2)#(x)
-            #output_network = TimeDistributed(Dense(units=2, activation='softmax'))(output_network)
+            x = concatenate([unet_2])
+            output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
+            #output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)
             self.architecture = Model(inputs=inputs, outputs=output_network)
 
         else:
@@ -111,13 +113,8 @@ class WavenetTCNWithChangePointSingleLevelPredicter(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
         """
-        optimizer = Adam(
-            lr=self.hyperparameters['lr'],
-            amsgrad=self.hyperparameters['amsgrad'],
-            epsilon=self.hyperparameters['epsilon']
-        )
 
-        self.architecture.compile(optimizer= optimizer, loss=weighted_binary_crossentropy, metrics=[weighted_binary_crossentropy])
+        self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True))#, metrics=[weighted_binary_crossentropy])
 
     @property
     def type_name(self):
