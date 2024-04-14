@@ -17,29 +17,11 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        hyperparameters = {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
-        hyperparameters['epochs'] = 100
-
-        return hyperparameters
+        return {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def selected_hyperparameters(self, model_label):
-        model_string_to_hyperparameters_dictionary = {
-            'fbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'fbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'fbm_sup': {'lr': 0.0001, 'batch_size': 8, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_sub': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-08, 'epochs': 100},
-            'sbm_brownian': {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-07, 'epochs': 100},
-            'sbm_sup': {'lr': 0.0001, 'batch_size': 64, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'lw': {'lr': 0.001, 'batch_size': 64, 'amsgrad': True, 'epsilon': 1e-06, 'epochs': 100},
-            'ctrw': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100},
-            'attm': {'lr': 0.0001, 'batch_size': 16, 'amsgrad': True, 'epsilon': 1e-08, 'epochs': 100},
-        }
-
-        hyperparameters = model_string_to_hyperparameters_dictionary[model_label]
-        hyperparameters['epochs'] = 100
-
-        return hyperparameters
+        return {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def default_hyperparameters_analysis(self):
