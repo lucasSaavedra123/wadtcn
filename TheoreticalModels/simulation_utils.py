@@ -2,6 +2,9 @@ import scipy
 import numpy as np
 import sys, os
 
+from CONSTANTS import SIMULATE_FOR_MINFLUX
+
+
 """
 This method comes from paper:
 
@@ -63,14 +66,19 @@ def generate_diffusion_coefficient_and_transit_time_pair(sigma, gamma, b, k):
     return d, t
 
 def add_custom_noise(track_length):
-    # New error formula
-    mean_error = 40
-    sigma_error = 10
-    error_x = np.random.normal(loc=mean_error / 2, scale=sigma_error / 2, size=track_length)
-    error_x_sign = np.random.choice([-1, 1], size=track_length)
-    error_y = np.random.normal(loc=mean_error / 2, scale=sigma_error / 2, size=track_length)
-    error_y_sign = np.random.choice([-1, 1], size=track_length)
-    return error_x * error_x_sign, error_y * error_y_sign
+    if SIMULATE_FOR_MINFLUX:
+        error_x = np.random.normal(loc=0, scale=10, size=track_length)
+        error_y = np.random.normal(loc=0, scale=10, size=track_length)
+        return error_x, error_y
+    else:
+        # New error formula
+        mean_error = 40
+        sigma_error = 10
+        error_x = np.random.normal(loc=mean_error / 2, scale=sigma_error / 2, size=track_length)
+        error_x_sign = np.random.choice([-1, 1], size=track_length)
+        error_y = np.random.normal(loc=mean_error / 2, scale=sigma_error / 2, size=track_length)
+        error_y_sign = np.random.choice([-1, 1], size=track_length)
+        return error_x * error_x_sign, error_y * error_y_sign
 
 def add_noise_and_offset(track_length, x, y, disable_offset=False):
     noise_x, noise_y = add_custom_noise(track_length)
