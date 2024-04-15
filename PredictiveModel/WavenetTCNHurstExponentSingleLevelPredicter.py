@@ -1,4 +1,4 @@
-from keras.layers import Dense, Input, Average
+from keras.layers import Dense, Input, Average, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
@@ -43,31 +43,24 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return X
 
     def build_network(self):
-        if self.wadnet_tcn_encoder is None:
-            number_of_features = 2
-            inputs = Input(shape=(self.trajectory_length, number_of_features))
-            wavenet_filters = 16
-            dilation_depth = 1#8
-            initializer = 'he_normal'
+        number_of_features = 2
+        inputs = Input(shape=(self.trajectory_length, number_of_features))
+        wavenet_filters = 16
+        dilation_depth = 8
+        initializer = 'he_normal'
 
-            x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
-            unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1)(x)
-            unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2)(x)
-            unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3)(x)
-            unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4)(x)
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+        unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1, skip_last_block=True)(x)
+        unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2, skip_last_block=True)(x)
+        unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3, skip_last_block=True)(x)
+        unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4, skip_last_block=True)(x)            
 
-            #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
-            
-            x = concatenate([unet_1])#, unet_2, unet_3, unet_4])
-            output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
+        x = concatenate([unet_1, unet_2, unet_3, unet_4])
 
-            self.architecture = Model(inputs=inputs, outputs=output_network)
+        #output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
+        output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)
 
-        else:
-            inputs = Input(shape=(64))
-            x = Dense(units=128, activation='selu')(inputs)
-            output_network = Dense(units=1, activation='sigmoid')(x)
-            self.architecture = Model(inputs=inputs, outputs=output_network)
+        self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
             lr=self.hyperparameters['lr'],
@@ -75,18 +68,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
             amsgrad=self.hyperparameters['amsgrad']
         )
 
-        from tensorflow import reduce_mean, square, reshape, abs
-        def custom_mse(y_true, y_pred):
-            y_true = reshape(y_true, [-1])
-            y_pred = reshape(y_pred, [-1])
-            return reduce_mean(square(y_true - y_pred))
-
-        def custom_mae(y_true, y_pred):
-            y_true = reshape(y_true, [-1])
-            y_pred = reshape(y_pred, [-1])
-            return reduce_mean(abs(y_true - y_pred))
-
-        self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
+        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
 
     @property
     def type_name(self):

@@ -528,7 +528,7 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
     x = Concatenate(axis = axis_dimension)([x,y])
     return x
     
-def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None):
+def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None, skip_last_block=False):
     input = Input(shape = input_size)
     x, temp1 = down_block(input, 16, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
     x, temp2 = down_block(x, 32, input_dimension=input_dimension, basic_kernel_size=basic_kernel_size)
@@ -560,11 +560,14 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
-    if input_dimension=='2d':
-        output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
-    elif input_dimension=='1d':
-        output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
 
+    if not skip_last_block:
+        if input_dimension=='2d':
+            output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
+        elif input_dimension=='1d':
+            output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
+    else:
+        output = x
     model = models.Model(input, output, name = f'unet_{unet_index}' if unet_index is not None else 'unet')
     return model
 

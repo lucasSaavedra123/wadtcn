@@ -17,11 +17,11 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def selected_hyperparameters(self, model_label):
-        return {'lr': 0.0001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -53,25 +53,24 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         number_of_features = 2
         inputs = Input(shape=(self.trajectory_length, number_of_features))
         wavenet_filters = 16
-        dilation_depth = 1#8
+        dilation_depth = 8
         initializer = 'he_normal'
 
         x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
-        unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1)(x)
-        unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2)(x)
-        unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3)(x)
-        unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4)(x)
+        unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1, skip_last_block=True)(x)
+        unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2, skip_last_block=True)(x)
+        unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3, skip_last_block=True)(x)
+        unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4, skip_last_block=True)(x)            
 
-        #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
-        
-        x = concatenate([unet_1, unet_2])#, unet_3, unet_4])
-        x = Conv1D(1, 3, 1, padding='same', activation='relu')(x)
+        x = concatenate([unet_1, unet_2, unet_3, unet_4])
+
+        #output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
         output_network = TimeDistributed(Dense(units=4, activation='softmax'))(x)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
-            lr=self.hyperparameters['lr'],
+            learning_rate=self.hyperparameters['lr'],
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
