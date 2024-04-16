@@ -75,23 +75,47 @@ class HopDiffusion(Model):
                     y.append(y_next_position)
                     current_region = next_region
                 else:
-                    factor = 1
-                    stop = False
-                    while not stop:
-                        factor += 1
+                    new_displacements = [
+                        [displacement_x, displacement_x],
+                        [displacement_x, -displacement_y],
+                        [-displacement_x, displacement_y],
+                        [-displacement_x, -displacement_y]
+                    ]
+
+                    new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
+
+                    if len(new_displacements) == 0:
+                        number_of_inside_cuts = 4
+                        inside_cuts_counter = 0
+
+                        x1 = np.array([x[-1], y[-1]])
+                        x2 = np.array([x[-1] + displacement_x, y[-1] + displacement_y])
+
+                        while inside_cuts_counter < number_of_inside_cuts:
+                            x_middle = x1+((x2-x1)/2)
+
+                            if self.__get_region_of_position(x_middle[0],x_middle[1]) == current_region:
+                                x1 = x_middle
+                                inside_cuts_counter += 1
+                            else:
+                                x2 = x_middle
+
+                        displacement_x = x[-1] - x1[0]
+                        displacement_y = y[-1] - x1[1]
+
                         new_displacements = [
-                            [displacement_x/factor, -displacement_y/factor],
-                            [-displacement_x/factor, displacement_y/factor],
-                            [-displacement_x/factor, -displacement_y/factor]
+                            [displacement_x, displacement_x],
+                            [displacement_x, -displacement_y],
+                            [-displacement_x, displacement_y],
+                            [-displacement_x, -displacement_y]
                         ]
 
                         new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
-                        if len(new_displacements) > 0:
-                            does_it_bounce_off = True
-                            new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
-                            x.append(x[-1] + new_displacement[0])
-                            y.append(y[-1] + new_displacement[1])
-                            stop=True
+                    
+                    does_it_bounce_off = True
+                    new_displacement = new_displacements[np.random.randint(0, len(new_displacements))]
+                    x.append(x[-1] + new_displacement[0])
+                    y.append(y[-1] + new_displacement[1])
 
         x, x_noisy, y, y_noisy = add_noise_and_offset(trajectory_length, np.array(x), np.array(y), disable_offset=True)
 
