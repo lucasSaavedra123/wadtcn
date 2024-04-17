@@ -85,7 +85,7 @@ class HopDiffusion(Model):
                     new_displacements = [p for p in new_displacements if self.__get_region_of_position(x[-1] + p[0],y[-1] + p[1]) == current_region]
 
                     if len(new_displacements) == 0:
-                        number_of_inside_cuts = 4
+                        number_of_inside_cuts = 2
                         inside_cuts_counter = 0
 
                         x1 = np.array([x[-1], y[-1]])
