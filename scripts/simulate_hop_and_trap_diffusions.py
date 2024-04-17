@@ -1,21 +1,40 @@
 from TheoreticalModels import HopDiffusion, TrappingDiffusion
 import numpy as np
-import tqdm
 import pandas as pd
 
-data = {
-    'x': [],
-    'y': [],
-    't': [],
-    'label': [],
-}
+import ray
 
-for i in tqdm.tqdm(list(range(150_000))):
-    a_class = np.random.choice([HopDiffusion, TrappingDiffusion])
+
+def batch_for_gen(generator, n=1):
+    return_to_list = []
+    
+    for element in generator:
+        if len(return_to_list) == n:
+            yield return_to_list
+            return_to_list = [element]
+        else:
+            return_to_list.append(element)
+    
+    yield return_to_list
+
+ray.init()
+
+@ray.remote
+def simulate_trajectory(index, a_class):
+    data = {
+        'x': [],
+        'y': [],
+        't': [],
+        'label': [],
+    }
+
     trajectory = a_class.create_random_instance().simulate_trajectory(np.random.randint(100,1000), None)
     data['x'] += trajectory.get_noisy_x().tolist()
     data['y'] += trajectory.get_noisy_y().tolist()
     data['t'] += trajectory.get_time().tolist()
     data['label'] += [a_class.STRING_LABEL] * trajectory.length
 
-    pd.DataFrame(data).to_csv('hd_td_data.csv')
+    pd.DataFrame(data).to_csv(f'./single_simulations/single_data_{index}.csv', index=False)
+
+for batch in batch_for_gen(range(150_000), n=1000):
+    ray.get([simulate_trajectory.remote(i, np.random.choice([HopDiffusion, TrappingDiffusion])) for i in batch])
