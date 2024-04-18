@@ -36,7 +36,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
     @property
     def models_involved_in_predictive_model(self):
-        return ['trap', 'confined', 'free']#, 'directed']
+        return ['trap', 'confined', 'free', 'directed']
 
     def predict(self, trajectories):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
