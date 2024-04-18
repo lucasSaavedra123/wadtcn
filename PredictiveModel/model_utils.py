@@ -158,10 +158,10 @@ def transform_trajectories_to_single_level_diffusion_coefficient(predictive_mode
     return Y
 
 def transform_trajectories_to_single_level_model(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 4))
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
 
     for index, trajectory in enumerate(trajectories):
-        Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=4)
+        Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
     return Y
 
