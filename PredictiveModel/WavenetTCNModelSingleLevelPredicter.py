@@ -11,6 +11,8 @@ from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian,
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+from keras.callbacks import EarlyStopping, Callback
+from tensorflow import device, config
 
 
 class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
@@ -107,3 +109,48 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
+
+    def prepare_dataset(self, set_size):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=True)
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+
+    def fit(self):
+        if not self.trained:
+            self.build_network()
+            real_epochs = self.hyperparameters['epochs']
+        else:
+            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        X_train, Y_train = self.prepare_dataset(100_000)
+        X_val, Y_val = self.prepare_dataset(12_500)
+
+        with device(device_name):
+            history_training_info = self.architecture.fit(
+                X_train, Y_train,
+                epochs=real_epochs,
+                callbacks=callbacks,
+                batch_size=self.hyperparameters['batch_size'],
+                validation_data=[X_val, Y_val],
+                shuffle=True
+            ).history
+
+        if self.trained:
+            for dict_key in history_training_info:
+                self.history_training_info[dict_key] += history_training_info[dict_key]
+        else:
+            self.history_training_info = history_training_info
+            self.trained = True
