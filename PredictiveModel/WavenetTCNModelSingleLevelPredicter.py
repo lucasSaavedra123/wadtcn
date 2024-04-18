@@ -110,8 +110,8 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
-    def prepare_dataset(self, set_size):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=True)
+    def prepare_dataset(self, set_size, file_label=''):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label=file_label)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -135,8 +135,8 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        X_train, Y_train = self.prepare_dataset(100_000)
-        X_val, Y_val = self.prepare_dataset(12_500)
+        X_train, Y_train = self.prepare_dataset(12_500, file_label='train')
+        X_val, Y_val = self.prepare_dataset(12_500, file_label='val')
 
         with device(device_name):
             history_training_info = self.architecture.fit(
