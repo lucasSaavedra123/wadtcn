@@ -116,7 +116,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 ))
         else:
             EXPERIMENTS = np.arange(5).repeat(2)
-            NUM_FOVS = 10
+            NUM_FOVS = 2
 
             # We create a list of dictionaries with the properties of each experiment
             exp_dic = [None]*len(EXPERIMENTS)
@@ -159,6 +159,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
             while len(trajectories) < number_of_trajectories:
                 idx = np.random.randint(0, len(EXPERIMENTS))
+                if idx < 4:
+                    continue
                 i = EXPERIMENTS[idx]
                 fix_exp = exp_dic[idx]
 
@@ -168,10 +170,13 @@ class Andi2ndDataSimulation(DataSimulation):
 
                 for key in fix_exp:
                     dic[key] = fix_exp[key]
+                
+                def include_trajectory(trajectory):
+                    return len(np.unique(trajectory.info['state_t'])) > 1
 
                 for _ in range(NUM_FOVS):
                     trajs, labels = datasets_phenom().create_dataset(dics = dic)
-                    trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if len(np.unique(ti.info['alpha_t'])) != 1 and 0 not in ti.info['alpha_t']] #We want a diverse number of characteristics
+                    trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)] #We want a diverse number of characteristics
 
             shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
