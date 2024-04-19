@@ -74,6 +74,19 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
+    def plot_single_level_prediction(self, limit=10):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(12_500, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+        result = self.predict(trajectories)
+        idxs = np.arange(0,len(trajectories), 1)
+        np.random.shuffle(idxs)
+
+        for i in idxs[:limit]:
+            ti = trajectories[i]
+            plt.plot(self.transform_trajectories_to_output([ti])[0,:], color='black')
+            plt.plot(result[i, :], color='red')
+            plt.ylim([0,1])
+            plt.show()
+
     def plot_bias(self):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
