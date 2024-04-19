@@ -1,19 +1,14 @@
 import numpy as np
-from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed
+from keras.layers import Dense, Input, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 from sklearn.metrics import confusion_matrix, f1_score
 
-from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
-from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
-from TheoreticalModels.LevyWalk import LevyWalk
-from TheoreticalModels.FractionalBrownianMotion import FractionalBrownianMotionBrownian, FractionalBrownianMotionSubDiffusive, FractionalBrownianMotionSuperDiffusive
-from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian, ScaledBrownianMotionSubDiffusive, ScaledBrownianMotionSuperDiffusive
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
 import pandas as pd
-from keras.callbacks import EarlyStopping, Callback
+from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 
 
@@ -84,33 +79,6 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     @property
     def type_name(self):
         return 'wavenet_single_level_model'
-
-    def plot_bias(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        predicted = self.predict(trajectories).flatten() * 2
-
-        plot_bias(ground_truth, predicted, symbol='alpha')
-
-    def plot_predicted_and_ground_truth_distribution(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        predicted = self.predict(trajectories).flatten() * 2
-
-        plot_predicted_and_ground_truth_distribution(ground_truth, predicted)
-
-    def plot_predicted_and_ground_truth_histogram(self):
-        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
-
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten() * 2
-        predicted = self.predict(trajectories).flatten() * 2
-
-        plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=[[0,2],[0,2]])
-
-    def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
