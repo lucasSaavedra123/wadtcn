@@ -175,7 +175,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         confusion_mat = np.round(confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis], 2) if normalized else confusion_mat
 
-        labels = [model.STRING_LABEL.upper() for model in self.models_involved_in_predictive_model]
+        labels = [state.upper() for state in self.models_involved_in_predictive_model]
 
         confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
         sns.set(font_scale=1.5)
