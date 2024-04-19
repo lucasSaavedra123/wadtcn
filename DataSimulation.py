@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2
-from andi_datasets.datasets_phenom import datasets_phenom
+from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 
 from Trajectory import Trajectory
 
@@ -94,6 +94,85 @@ class Andi2ndDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = True
 
+    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories):
+        assert 1 <= model_label <= 5
+        """
+        1: single state
+        2: N-state
+        3: immobilization
+        4: dimerization
+        5: confinement
+        """
+        custom_dic = {}
+        D_possible_values = np.logspace(np.log10(models_phenom().bound_D[0]), np.log10(models_phenom().bound_D[1]), num=1000)
+        ALPHA_possible_values = np.linspace(models_phenom().bound_alpha[0], models_phenom().bound_alpha[1], num=1000)
+
+        if model_label in [1,3]:
+            D = np.random.choice(D_possible_values)
+            ALPHA = np.random.choice(ALPHA_possible_values)
+            custom_dic.update(
+                {
+                    'Ds': [D, D*0.01], # mean and variance for D
+                    'alphas': np.array([ALPHA, 0.01])
+                }
+            )
+
+        if model_label in [2,4,5]:
+            fast_D = np.random.choice(D_possible_values)
+            slow_D = fast_D*np.random.rand()
+
+            alpha1 = np.random.choice(ALPHA_possible_values)
+            alpha2 = alpha1*np.random.rand()
+
+            custom_dic.update({
+                'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
+                'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
+            })
+        """
+        # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
+        if model_label in [3,4]:
+            custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
+                        'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
+
+        if model_label == 1:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[0],
+                        'dim': 2})
+
+        if model_label == 2:
+            p_1 = np.random.uniform(0.50,1.00)
+            p_2 = np.random.uniform(0.50,1.00)
+            custom_dic.update({'model': datasets_phenom().avail_models_name[1],
+                        'M': np.array([[p_1, 1-p_1],            # Transition Matrix
+                                    [1-p_2, p_2]]),
+                        'return_state_num': True              # To get the state numeration back, , hence labels.shape = TxNx4
+                    })
+        
+        if model_label == 3:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[2],
+                        'Nt': 300,            # Number of traps (density = 1 currently)
+                        'r': 0.4}             # Size of trap
+                    )
+        if model_label == 4:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[3],
+                        'r': 0.6,                 # Size of particles
+                        'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
+                    })
+
+        if model_label == 5:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[4],
+                        'r': 5,
+                        'Nc': 30,
+                        'trans': 0.1})
+        """
+        dic = _get_dic_andi2(model_label)
+        dic['T'] = trajectory_length
+        dic['N'] = number_of_trajectories
+
+        for key in custom_dic:
+            dic[key] = custom_dic[key]
+
+        return dic
+
     def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label=''):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
@@ -115,62 +194,14 @@ class Andi2ndDataSimulation(DataSimulation):
                     }
                 ))
         else:
-            EXPERIMENTS = np.arange(5).repeat(2)
-            NUM_FOVS = 2
-
-            # We create a list of dictionaries with the properties of each experiment
-            exp_dic = [None]*len(EXPERIMENTS)
-
-            ##### SINGLE STATE #####
-            exp_dic[0] = {'Ds': [1, 0.01], 'alphas' : [0.5, 0.01]}
-            exp_dic[1] = {'Ds': [0.1, 0.01], 'alphas' : [1.9, 0.01]}
-
-            ##### MULTI STATE #####
-            exp_dic[2] = {'Ds': np.array([[1, 0.01], [0.05, 0.01]]),
-                        'alphas' : np.array([[1.5, 0.01], [0.5, 0.01]]),
-                        'M': np.array([[0.99, 0.01],[0.01, 0.99]])
-                        }
-            exp_dic[3] = {'Ds': np.array([[1, 0.01], [0.5, 0.01], [0.01, 0.01]]),
-                        'alphas' : np.array([[1.5, 0.01], [0.5, 0.01], [0.75, 0.01]]),
-                        'M': np.array([[0.98, 0.01, 0.01],[0.01, 0.98, 0.01], [0.01, 0.01, 0.98]])
-                        }
-
-            ##### IMMOBILE TRAPS #####
-            exp_dic[4] = {'Ds': [1, 0.01], 'alphas' : [0.8, 0.01],
-                        'Pu': 0.01, 'Pb': 1,
-                        'Nt': 300, 'r': 0.6}
-            exp_dic[5] = {'Ds': [1, 0.01], 'alphas' : [1.5, 0.01],
-                        'Pu': 0.05, 'Pb': 1,
-                        'Nt': 150, 'r': 1}
-
-            ##### DIMERIZATION #####
-            exp_dic[6] = {'Ds': np.array([[1, 0.01], [1, 0.01]]), 'alphas' : np.array([[1.2, 0.01], [0.8, 0.01]]),
-                        'Pu': 0.01, 'Pb': 1,  'N': 100, 'r': 0.6}
-            exp_dic[7] = {'Ds': np.array([[1, 0.01], [3, 0.01]]), 'alphas' : np.array([[1.2, 0.01], [0.5, 0.01]]),
-                        'Pu': 0.01, 'Pb': 1,  'N': 80, 'r': 1}
-
-            ##### CONFINEMENT #####
-            exp_dic[8] = {'Ds': np.array([[1, 0.01], [1, 0.01]]), 'alphas' : np.array([[0.8, 0.01], [0.4, 0.01]]),
-                        'Nc': 30, 'trans': 0.1, 'r': 5}
-            exp_dic[9] = {'Ds': np.array([[1, 0.01], [0.1, 0.01]]), 'alphas' : np.array([[1, 0.01], [1, 0.01]]),
-                        'Nc': 30, 'trans': 0, 'r': 10}
+            NUM_FOVS = 10
 
             trajectories = []
 
             while len(trajectories) < number_of_trajectories:
-                idx = np.random.randint(0, len(EXPERIMENTS))
-                if idx < 4:
-                    continue
-                i = EXPERIMENTS[idx]
-                fix_exp = exp_dic[idx]
+                model_label = np.random.randint(2, 5)
+                dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 100)
 
-                dic = _get_dic_andi2(i+1)
-                dic['T'] = trajectory_length
-                dic['N'] = 100
-
-                for key in fix_exp:
-                    dic[key] = fix_exp[key]
-                
                 def include_trajectory(trajectory):
                     return len(np.unique(trajectory.info['state_t'])) > 1
 

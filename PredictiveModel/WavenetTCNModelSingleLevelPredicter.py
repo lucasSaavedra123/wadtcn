@@ -2,6 +2,7 @@ import numpy as np
 from keras.layers import Dense, Input, LSTM, Bidirectional, Flatten, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
+from sklearn.metrics import confusion_matrix, f1_score
 
 from TheoreticalModels.AnnealedTransientTimeMotion import AnnealedTransientTimeMotion
 from TheoreticalModels.ContinuousTimeRandomWalk import ContinuousTimeRandomWalk
@@ -11,6 +12,7 @@ from TheoreticalModels.ScaledBrownianMotion import ScaledBrownianMotionBrownian,
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+import pandas as pd
 from keras.callbacks import EarlyStopping, Callback
 from tensorflow import device, config
 
@@ -110,8 +112,8 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
-    def prepare_dataset(self, set_size, file_label=''):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label=file_label)
+    def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -135,8 +137,8 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        X_train, Y_train = self.prepare_dataset(12_500, file_label='train')
-        X_val, Y_val = self.prepare_dataset(12_500, file_label='val')
+        X_train, Y_train = self.prepare_dataset(12_500, file_label='train', get_from_cache=True)
+        X_val, Y_val = self.prepare_dataset(12_500, file_label='val', get_from_cache=True)
 
         with device(device_name):
             history_training_info = self.architecture.fit(
@@ -154,3 +156,34 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         else:
             self.history_training_info = history_training_info
             self.trained = True
+
+    def plot_confusion_matrix(self, trajectories=None, normalized=True):
+        if trajectories is None:
+            trajectories = self.simulator().simulate_phenomenological_trajectories(12_500, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+
+        result = self.predict(trajectories)
+        result = np.argmax(result,axis=2)
+
+        ground_truth = []
+        predicted = []
+
+        for i, ti in enumerate(trajectories):
+            ground_truth += ti.info['state_t']
+            predicted += result[i,:].tolist()
+
+        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
+
+        confusion_mat = np.round(confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis], 2) if normalized else confusion_mat
+
+        labels = [model.STRING_LABEL.upper() for model in self.models_involved_in_predictive_model]
+
+        confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
+        sns.set(font_scale=1.5)
+        color_map = sns.color_palette(palette="Blues", n_colors=7)
+        sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
+
+        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, predicted, average="micro"),2)})')
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel("Ground truth", fontsize=15)
+        plt.xlabel("Predicted label", fontsize=15)
+        plt.show()
