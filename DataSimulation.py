@@ -199,7 +199,7 @@ class Andi2ndDataSimulation(DataSimulation):
             trajectories = []
 
             while len(trajectories) < number_of_trajectories:
-                model_label = np.random.randint(2, 5)
+                model_label = np.random.randint(0, 5)
                 dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 100)
 
                 def include_trajectory(trajectory):
