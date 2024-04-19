@@ -32,7 +32,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return (transform_trajectories_to_single_level_hurst_exponent(self, trajectories)*2)-1
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=False)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
