@@ -13,7 +13,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        hyperparameters = {'lr': 0.0002, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        hyperparameters = {'lr': 0.0002, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
         return hyperparameters
 
     @classmethod
@@ -29,7 +29,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
+        return (transform_trajectories_to_single_level_hurst_exponent(self, trajectories)*2)-1
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
@@ -53,8 +53,8 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
 
         x = concatenate([unet_1, unet_2, unet_3, unet_4])
 
-        #output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
-        output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)
+        #output_network = Conv1D(1, 3, 1, padding='same', activation='tanh')(x)
+        output_network = TimeDistributed(Dense(units=1, activation='tanh'))(x)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -84,7 +84,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
             ti = trajectories[i]
             plt.plot(self.transform_trajectories_to_output([ti])[0,:], color='black')
             plt.plot(result[i, :], color='red')
-            plt.ylim([0,1])
+            plt.ylim([-1,1])
             plt.show()
 
     def plot_bias(self):
