@@ -25,10 +25,6 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
-    @property
-    def models_involved_in_predictive_model(self):
-        return [self.model_string_to_class_dictionary()[self.extra_parameters["model"]]['model']]
-
     def predict(self, trajectories):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
@@ -60,7 +56,7 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
 
         x = concatenate([unet_1, unet_2, unet_3, unet_4])
         #output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
-        output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)
+        output_network = TimeDistributed(Dense(units=1, activation='linear'))(x)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 

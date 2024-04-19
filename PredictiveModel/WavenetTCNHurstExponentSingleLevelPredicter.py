@@ -13,7 +13,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        hyperparameters = {'lr': 0.0002, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        hyperparameters = {'lr': 0.0002, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
         return hyperparameters
 
     @classmethod
@@ -29,10 +29,10 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
     def transform_trajectories_to_output(self, trajectories):
-        return (transform_trajectories_to_single_level_hurst_exponent(self, trajectories)*2)-1
+        return transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=False)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
@@ -54,7 +54,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         x = concatenate([unet_1, unet_2, unet_3, unet_4])
 
         #output_network = Conv1D(1, 3, 1, padding='same', activation='tanh')(x)
-        output_network = TimeDistributed(Dense(units=1, activation='tanh'))(x)
+        output_network = TimeDistributed(Dense(units=1, activation='sigmoid'))(x)
 
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -75,7 +75,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def plot_single_level_prediction(self, limit=10):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(12_500, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+        trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
         result = self.predict(trajectories)
         idxs = np.arange(0,len(trajectories), 1)
         np.random.shuffle(idxs)
@@ -132,8 +132,8 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        X_train, Y_train = self.prepare_dataset(12_500, file_label='train', get_from_cache=True)
-        X_val, Y_val = self.prepare_dataset(12_500, file_label='val', get_from_cache=True)
+        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
+        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
         with device(device_name):
             history_training_info = self.architecture.fit(

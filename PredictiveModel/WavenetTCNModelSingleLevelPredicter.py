@@ -105,8 +105,8 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        X_train, Y_train = self.prepare_dataset(12_500, file_label='train', get_from_cache=True)
-        X_val, Y_val = self.prepare_dataset(12_500, file_label='val', get_from_cache=True)
+        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
+        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
         with device(device_name):
             history_training_info = self.architecture.fit(
@@ -127,7 +127,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True):
         if trajectories is None:
-            trajectories = self.simulator().simulate_phenomenological_trajectories(12_500, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+            trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
 
         result = self.predict(trajectories)
         result = np.argmax(result,axis=2)
