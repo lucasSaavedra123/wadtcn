@@ -1,12 +1,12 @@
 from keras.layers import Dense, Input, Average, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
-from tensorflow.keras.losses import MeanSquaredError
-
 
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+from keras.callbacks import EarlyStopping
+from tensorflow import device, config
 
 
 class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
@@ -24,10 +24,6 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
             'batch_size': [8, 16, 32, 64],
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
-
-    @property
-    def models_involved_in_predictive_model(self):
-        return [self.model_string_to_class_dictionary()[self.extra_parameters["model"]]['model']]
 
     def predict(self, trajectories):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
@@ -74,6 +70,10 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
     def type_name(self):
         return 'wavenet_single_level_hurst_exponent'
 
+    def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+
     def plot_bias(self):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
@@ -97,6 +97,47 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         predicted = self.predict(trajectories).flatten() * 2
 
         plot_predicted_and_ground_truth_histogram(ground_truth, predicted, range=[[0,2],[0,2]])
+
+    def fit(self):
+        if not self.trained:
+            self.build_network()
+            real_epochs = self.hyperparameters['epochs']
+        else:
+            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        X_train, Y_train = self.prepare_dataset(12_500, file_label='train', get_from_cache=True)
+        X_val, Y_val = self.prepare_dataset(12_500, file_label='val', get_from_cache=True)
+
+        with device(device_name):
+            history_training_info = self.architecture.fit(
+                X_train, Y_train,
+                epochs=real_epochs,
+                callbacks=callbacks,
+                batch_size=self.hyperparameters['batch_size'],
+                validation_data=[X_val, Y_val],
+                shuffle=True
+            ).history
+
+        if self.trained:
+            for dict_key in history_training_info:
+                self.history_training_info[dict_key] += history_training_info[dict_key]
+        else:
+            self.history_training_info = history_training_info
+            self.trained = True
 
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
