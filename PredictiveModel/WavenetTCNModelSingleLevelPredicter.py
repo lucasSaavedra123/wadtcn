@@ -15,11 +15,11 @@ from tensorflow import device, config
 class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
-    def default_hyperparameters(self, **kwargs):
+    def default_hyperparameters(self):
         return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
-    def selected_hyperparameters(self, model_label):
+    def selected_hyperparameters(self):
         return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
