@@ -18,7 +18,7 @@ import matplotlib.patches as mpatches
 
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH, NETWORKS_DIRECTORY
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
-from DataSimulation import CustomDataSimulation, AndiDataSimulation
+from DataSimulation import CustomDataSimulation, AndiDataSimulation, Andi2ndDataSimulation
 from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
 
 class CustomCallback(Callback):
@@ -107,6 +107,7 @@ class PredictiveModel(Document):
                         classifiers = [classifier for classifier in cls.objects(trajectory_length=trajectory_length, trajectory_time=trajectory_time, simulator_identifier=kwargs['simulator'].STRING_LABEL, trained=True) if tool_include_classifier(network.hyperparameters, classifier.hyperparameters)]
 
                     if len(classifiers) == 0:
+                        K.clear_session()
                         network.hyperparameters['epochs'] = initial_epochs
                         print('{}) Evaluating params: {}'.format(combination_index, network.hyperparameters))
                         network.fit()
@@ -264,8 +265,10 @@ class PredictiveModel(Document):
                 self.simulator = CustomDataSimulation
             elif simulator_identifier == 'andi':
                 self.simulator = AndiDataSimulation
+            elif simulator_identifier == 'andi2':
+                self.simulator = Andi2ndDataSimulation
             else:
-                Exception(f'simulator_identifier not recognized. It was {simulator_identifier}')
+                raise Exception(f'simulator_identifier not recognized. It was {simulator_identifier}')
             
             del kwargs['simulator_identifier']
         else:
