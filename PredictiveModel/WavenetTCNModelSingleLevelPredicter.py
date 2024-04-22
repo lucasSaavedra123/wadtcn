@@ -136,7 +136,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         predicted = []
 
         for i, ti in enumerate(trajectories):
-            ground_truth += ti.info['state_t']
+            ground_truth += np.argmax(self.transform_trajectories_to_output([ti]), axis=2)[0].tolist()
             predicted += result[i,:].tolist()
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
@@ -155,3 +155,6 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
+
+    def __str__(self):
+        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"

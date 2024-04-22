@@ -2,11 +2,13 @@ from keras.layers import Dense, Input, Average, Conv1D, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
+from keras.callbacks import EarlyStopping
 
 
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+from tensorflow import device, config
 
 
 class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
@@ -128,3 +130,61 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
                             self.architecture.layers[i].layers[j].set_weights(old_architecture.layers[i].layers[j].get_weights())
                 else:
                     self.architecture.layers[i].set_weights(old_architecture.layers[i].get_weights())
+
+    def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+
+    def plot_single_level_prediction(self, limit=10):
+        trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+        result = self.predict(trajectories)
+        idxs = np.arange(0,len(trajectories), 1)
+        np.random.shuffle(idxs)
+
+        for i in idxs[:limit]:
+            ti = trajectories[i]
+            plt.plot(self.transform_trajectories_to_output([ti])[0,:], color='black')
+            plt.plot(result[i, :], color='red')
+            plt.ylim([-1,1])
+            plt.show()
+
+    def fit(self):
+        if not self.trained:
+            self.build_network()
+            real_epochs = self.hyperparameters['epochs']
+        else:
+            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
+
+        self.architecture.summary()
+
+        if self.early_stopping:
+            callbacks = [EarlyStopping(
+                monitor="val_loss",
+                min_delta=1e-3,
+                patience=5,
+                verbose=1,
+                mode="min")]
+        else:
+            callbacks = []
+
+        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+
+        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
+        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
+
+        with device(device_name):
+            history_training_info = self.architecture.fit(
+                X_train, Y_train,
+                epochs=real_epochs,
+                callbacks=callbacks,
+                batch_size=self.hyperparameters['batch_size'],
+                validation_data=[X_val, Y_val],
+                shuffle=True
+            ).history
+
+        if self.trained:
+            for dict_key in history_training_info:
+                self.history_training_info[dict_key] += history_training_info[dict_key]
+        else:
+            self.history_training_info = history_training_info
+            self.trained = True
