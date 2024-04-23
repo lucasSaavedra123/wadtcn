@@ -34,15 +34,20 @@ networks = [
 ]
 
 
-for network_index, network in enumerate(networks):
+for network_index, network in list(enumerate(networks))[2:]:
     #network.analyze_hyperparameters(L,L,initial_epochs=1,steps=1,simulator=Andi2ndDataSimulation)
     network = network(L, L, simulator=Andi2ndDataSimulation)
-    #network.hyperparameters['epochs'] = 10
-    #network.fit()
-    #network.save_as_file()
-    network.load_as_file()
-    #network.plot_single_level_prediction()
-    network.plot_confusion_matrix()
-    exit()
+    
+    try:
+        network.load_as_file()
+        if network_index == 0:
+            network.plot_confusion_matrix()
+        else:
+            network.plot_single_level_prediction()
+    except Exception as e:
+        print(e)
+        network.hyperparameters['epochs'] = 5
+        network.fit()
+        network.save_as_file()
 
 DatabaseHandler.disconnect()

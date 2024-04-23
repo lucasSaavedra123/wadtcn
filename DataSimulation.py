@@ -173,8 +173,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label=''):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
+    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', preference='state'):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_{preference}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = []
 
@@ -194,7 +194,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     }
                 ))
         else:
-            NUM_FOVS = 10
+            NUM_FOVS = 1
 
             trajectories = []
 
@@ -203,7 +203,13 @@ class Andi2ndDataSimulation(DataSimulation):
                 dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 2)
 
                 def include_trajectory(trajectory):
-                    return len(np.unique(trajectory.info['d_t'])) > 1 and len(np.unique(trajectory.info['alpha_t'])) > 1
+                    if preference == 'state':
+                        return len(np.unique(trajectory.info['state_t'])) > 1
+                    elif preference == 'd':
+                        return len(np.unique(trajectory.info['d_t'])) > 1
+                    elif preference == 'alpha':
+                        return len(np.unique(trajectory.info['alpha_t'])) > 1
+                    assert False
 
                 for _ in range(NUM_FOVS):
                     trajs, labels = datasets_phenom().create_dataset(dics = dic)

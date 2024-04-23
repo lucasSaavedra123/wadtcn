@@ -132,7 +132,7 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
                     self.architecture.layers[i].set_weights(old_architecture.layers[i].get_weights())
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, preference='d')
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def plot_single_level_prediction(self, limit=10):
