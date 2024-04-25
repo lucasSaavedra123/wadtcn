@@ -206,7 +206,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     if preference == 'state':
                         return len(np.unique(trajectory.info['state_t'])) > 1
                     elif preference == 'd':
-                        return len(np.unique(trajectory.info['d_t'])) > 1
+                        return len(np.unique(trajectory.info['d_t'])) > 1 and 0 not in np.unique(trajectory.info['d_t'])
                     elif preference == 'alpha':
                         return len(np.unique(trajectory.info['alpha_t'])) > 1
                     assert False

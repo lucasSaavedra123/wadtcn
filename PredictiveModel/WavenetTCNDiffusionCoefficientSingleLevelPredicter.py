@@ -9,6 +9,7 @@ from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
 from tensorflow import device, config
+import keras.backend as K
 
 
 class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
@@ -33,12 +34,13 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
     def transform_trajectories_to_output(self, trajectories):
         #Check this later to be between 0 and 1
         d = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
-        d[d==0] = np.finfo(float).eps
+        d[d==0] = 1e-12
         return np.log10(d)
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
-
+        #X = transform_trajectories_into_displacements(self, trajectories, expand_to_same_length=True)
+        
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)
         return X
@@ -56,10 +58,13 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
         unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3, skip_last_block=True)(x)
         unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4, skip_last_block=True)(x)            
 
+        def custom_sigmoid(x):
+            return (K.sigmoid(x)*18) - 12
+
         x = concatenate([unet_1, unet_2, unet_3, unet_4])
         #output_network = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
-        output_network = TimeDistributed(Dense(units=1, activation='linear'))(x)
-
+        output_network = TimeDistributed(Dense(units=1, activation=custom_sigmoid))(x)
+        #output_network = Average()([unet_1, unet_2, unet_3, unet_4])
         self.architecture = Model(inputs=inputs, outputs=output_network)
 
         optimizer = Adam(
@@ -81,7 +86,7 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
 
         self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
         """
-        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
+        self.architecture.compile(optimizer=optimizer, loss='mae', metrics=['mse', 'mae'])
     @property
     def type_name(self):
         return 'wavenet_single_level_diffusion_coefficient'
@@ -145,7 +150,7 @@ class WavenetTCNDiffusionCoefficientSingleLevelPredicter(PredictiveModel):
             ti = trajectories[i]
             plt.plot(self.transform_trajectories_to_output([ti])[0,:], color='black')
             plt.plot(result[i, :], color='red')
-            plt.ylim([-1,1])
+            #plt.ylim([-1,1])
             plt.show()
 
     def fit(self):
