@@ -12,6 +12,10 @@ from scipy.spatial import ConvexHull
 import scipy.stats as st
 import matplotlib.animation as animation
 from collections import defaultdict
+import moviepy.editor as mp
+from moviepy.video.fx.all import crop
+from moviepy.editor import *
+
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -377,24 +381,37 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, with_noise=True):
-        if self.model_category is None:
+    def plot(self, axis='xy'):
+        plt.title(self)
+        if axis == 'x':
+            plt.plot(self.get_x(), marker="X")
+            plt.plot(self.get_noisy_x(), marker="X")
+        elif axis == 'y':
+            plt.plot(self.get_y(), marker="X")
+            plt.plot(self.get_noisy_y(), marker="X")        
+        elif axis == 'xy':
+            plt.plot(self.get_x(), self.get_y(), marker="X")
+            plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X")
 
-            if self.noisy:
-                plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
-            else:
-                plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
-                if with_noise:
-                    plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
-        else:
-            self.model_category.plot(self, with_noise=with_noise)
+        plt.show()
 
-    def animate_plot(self):
+    def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
         fig, ax = plt.subplots()
 
         line = ax.plot(self.get_noisy_x()[0], self.get_noisy_y()[0])[0]
-        ax.set(xlim=[np.min(self.get_noisy_x()), np.max(self.get_noisy_x())], ylim=[np.min(self.get_noisy_y()), np.max(self.get_noisy_y())], xlabel='X', ylabel='Y')
 
+        if roi_size is None:
+            ax.set(xlim=[np.min(self.get_noisy_x()), np.max(self.get_noisy_x())], ylim=[np.min(self.get_noisy_y()), np.max(self.get_noisy_y())], xlabel='X', ylabel='Y')
+        else:
+            xlim = [np.min(self.get_noisy_x()), np.max(self.get_noisy_x())]
+            ylim = [np.min(self.get_noisy_y()), np.max(self.get_noisy_y())]
+            x_difference = xlim[1]-xlim[0]
+            y_difference = ylim[1]-ylim[0]
+            x_offset = (roi_size - x_difference)/2
+            y_offset = (roi_size - y_difference)/2
+            xlim = [xlim[0]-x_offset, xlim[1]+x_offset]
+            ylim = [ylim[0]-y_offset, ylim[1]+y_offset]
+            ax.set(xlim=xlim, ylim=ylim, xlabel='X', ylabel='Y')
         def update(frame):
             # for each frame, update the data stored on each artist.
             x_f = self.get_noisy_x()[:frame]
@@ -410,10 +427,17 @@ class Trajectory(Document):
             # update the line plot:
             line.set_xdata(x_f[:frame])
             line.set_ydata(y_f[:frame])
+            plt.tight_layout()
             return (line)
 
         ani = animation.FuncAnimation(fig=fig, func=update, frames=self.length, interval=1)
-        plt.show()
+
+        if not save_animation:
+            plt.show()
+        else:
+            ani.save(f'DELETE.gif', writer=animation.PillowWriter(fps=30), dpi=300)
+            clip = mp.VideoFileClip(f'DELETE.gif')
+            clip.write_videofile(f'./animations_plus/{title}.mp4')
 
     def plot_confinement_states(
         self,
@@ -716,3 +740,54 @@ class Trajectory(Document):
             min_size=min_size,
             return_break_points=return_break_points
         )
+
+    def mean_turning_angle(self):
+        """
+        This is meanDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(normalized_angles)
+
+    def correlated_turning_angle(self):
+        """
+        This is corrDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])==np.sign(normalized_angles[:-1]))
+
+    def directional_persistance(self):
+        """
+        This is AvgSignDp in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])>0)
