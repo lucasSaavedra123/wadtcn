@@ -1,5 +1,5 @@
 import math
-
+from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -381,23 +381,20 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, axis='xy'):
-        plt.title(self)
-        if axis == 'x':
-            plt.plot(self.get_x(), marker="X")
-            plt.plot(self.get_noisy_x(), marker="X")
-        elif axis == 'y':
-            plt.plot(self.get_y(), marker="X")
-            plt.plot(self.get_noisy_y(), marker="X")        
-        elif axis == 'xy':
-            plt.plot(self.get_x(), self.get_y(), marker="X")
-            plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X")
+    def plot(self, with_noise=True):
+        if self.model_category is None:
 
-        plt.show()
+            if self.noisy:
+                plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
+            else:
+                plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
+                if with_noise:
+                    plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+        else:
+            self.model_category.plot(self, with_noise=with_noise)
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
         fig, ax = plt.subplots()
-
         line = ax.plot(self.get_noisy_x()[0], self.get_noisy_y()[0])[0]
 
         if roi_size is None:
@@ -421,7 +418,7 @@ class Trajectory(Document):
                 time = (self.get_time() - self.get_time()[0])[frame]
                 time = np.round(time, 6)
                 ax.set_title(f'{time}s')
-
+            #voronoi_plot_2d(Voronoi(self.model_category.voronoi_centroids), show_points=False, show_vertices=False, line_colors='grey', ax=ax)
             # update the scatter plot:
             #data = np.stack([x, y]).T
             # update the line plot:
