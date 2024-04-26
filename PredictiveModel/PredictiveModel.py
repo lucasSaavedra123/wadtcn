@@ -341,7 +341,9 @@ class PredictiveModel(Document):
             'val_loss': 'Validation Loss',
             'val_mae': 'Validation MAE',
             'categorical_accuracy': 'Accuracy',
-            'val_categorical_accuracy': 'Validation Accuracy'
+            'val_categorical_accuracy': 'Validation Accuracy',
+            'mean_absolute_percentage_error': 'MAPE',
+            'val_mean_absolute_percentage_error': 'Validation MAPE',
         }
 
         for metric in self.history_training_info.keys():
