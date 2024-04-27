@@ -349,7 +349,7 @@ class PredictiveModel(Document):
         for metric in self.history_training_info.keys():
             epochs = range(1, len(self.history_training_info[metric])+1)
 
-            if 'val' not in metric:
+            if metric in TRANSLATION and 'val' not in metric:
                 plt.plot(epochs, self.history_training_info[metric])
                 plt.plot(epochs, self.history_training_info['val_'+metric])
                 plt.title(f"L={self.trajectory_length}, models={[model.STRING_LABEL for model in self.models_involved_in_predictive_model]}")
