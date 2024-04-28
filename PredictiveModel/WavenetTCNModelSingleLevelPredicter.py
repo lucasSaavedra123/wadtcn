@@ -3,7 +3,7 @@ from keras.layers import Dense, Input, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 
-from tensorflow.keras.losses import MeanAbsolutePercentageError
+from tensorflow.keras.losses import MeanSquaredLogarithmicError
 from sklearn.metrics import confusion_matrix, f1_score
 
 from .PredictiveModel import PredictiveModel
@@ -29,7 +29,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            'batch_size': [8, 16, 32, 64],
+            'batch_size': [8, 16, 32, 64, 128, 256, 512],
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
@@ -43,7 +43,9 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     def transform_trajectories_to_output(self, trajectories):
         Y1 = transform_trajectories_to_single_level_model(self, trajectories)
         Y2 = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
-        return Y1, Y2
+        Y3 = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
+        Y3[Y3==0] = 1e-12
+        return Y1, Y2, np.log10(Y3)
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -64,19 +66,30 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2, skip_last_block=True)(x)
         unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3, skip_last_block=True)(x)
         unet_4 = Unet((self.trajectory_length, wavenet_filters), '1d', 9, unet_index=4, skip_last_block=True)(x)            
+        unet_5 = Unet((self.trajectory_length, wavenet_filters), '1d', 13, unet_index=5, skip_last_block=True)(x)            
+        unet_6 = Unet((self.trajectory_length, wavenet_filters), '1d', 17, unet_index=6, skip_last_block=True)(x)            
 
-        x = concatenate([unet_1, unet_2, unet_3, unet_4])
+        x = concatenate([unet_1, unet_2, unet_3, unet_4, unet_5, unet_6])
 
-        model_classification = Conv1D(1, 3, 1, padding='same', activation='sigmoid')(x)
+        model_classification = Conv1D(16, 3, 1, padding='causal')(x)
+        model_classification = LeakyReLU()(model_classification)
         model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(model_classification)
 
-        def custom_sigmoid(x):
+        def custom_tanh_1(x):
             return (K.tanh(x)+1)/2
 
-        alpha_regression = Conv1D(1, 3, 1, padding='same', activation='linear')(x)
-        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_sigmoid, use_bias=False), name='alpha_regression_output')(alpha_regression)
+        alpha_regression = Conv1D(16, 3, 1, padding='causal')(x)
+        alpha_regression = LeakyReLU()(alpha_regression)
+        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
 
-        self.architecture = Model(inputs=inputs, outputs=[model_classification, alpha_regression])
+        def custom_tanh_2(x):
+            return ((K.tanh(x)+1)*18)-12
+
+        d_regression = Conv1D(16, 3, 1, padding='causal')(x)
+        d_regression = LeakyReLU()(d_regression)
+        d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
+
+        self.architecture = Model(inputs=inputs, outputs=[model_classification, alpha_regression, d_regression])
 
         optimizer = Adam(
             learning_rate=self.hyperparameters['lr'],
@@ -86,12 +99,14 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         loss_parameter = {
             'model_classification_output': 'categorical_crossentropy',
-            'alpha_output': 'mse'
+            'alpha_regression_output': 'mse',
+            'd_regression_output': 'mse'
         }
 
         metrics_parameter = {
             'model_classification_output': 'categorical_accuracy',
-            'alpha_output': 'mae'
+            'alpha_regression_output': 'mae',
+            'd_regression_output': 'mae'
         }
 
         self.architecture.compile(optimizer=optimizer, loss=loss_parameter, metrics=metrics_parameter)
@@ -101,7 +116,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, preference='state')
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -128,23 +143,32 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
-        np.save('xv.npy', X_val)
-        np.save('xt.npy', X_train)
-        np.save('yv0.npy', Y_val[0])
-        np.save('yt0.npy', Y_train[0])
-        np.save('yv1.npy', Y_val[1])
-        np.save('yt1.npy', Y_train[1])
+        Y1_train = Y_train[0]
+        Y2_train = Y_train[1]
+        Y3_train = Y_train[2]
+        Y1_val = Y_val[0]
+        Y2_val = Y_val[1]
+        Y3_val = Y_val[2]
 
-        #X_train, Y1_train, Y2_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy')
-        #X_val, Y1_val, Y2_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy')
+        #np.save('xv.npy', X_val)
+        #np.save('xt.npy', X_train)
+        #np.save('yv0.npy', Y_val[0])
+        #np.save('yt0.npy', Y_train[0])
+        #np.save('yv1.npy', Y_val[1])
+        #np.save('yt1.npy', Y_train[1])
+        #np.save('yv2.npy', Y_val[2])
+        #np.save('yt2.npy', Y_train[2])
+
+        #X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
+        #X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                X_train, [Y1_train, Y2_train],
+                X_train, [Y1_train, Y2_train, Y3_train],
                 epochs=real_epochs,
                 callbacks=callbacks,
                 batch_size=self.hyperparameters['batch_size'],
-                validation_data=[X_val, [Y1_val, Y2_val]],
+                validation_data=[X_val, [Y1_val, Y2_val, Y3_val]],
                 shuffle=True
             ).history
 
@@ -192,13 +216,13 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     def plot_single_level_prediction(self, limit=10):
         trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
         result = self.predict(trajectories)
-        result = result[1]#np.argmax(result,axis=2)
+        result = result[2]#np.argmax(result,axis=2)
         idxs = np.arange(0,len(trajectories), 1)
         np.random.shuffle(idxs)
 
         for i in idxs[:limit]:
             ti = trajectories[i]
-            plt.plot(np.array(ti.info['alpha_t'])/2, color='black')
+            plt.plot(np.array(ti.info['d_t']), color='black')
             plt.plot(result[i, :], color='red')
             #plt.ylim([-1,1])
             plt.show()

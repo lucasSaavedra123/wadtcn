@@ -172,3 +172,5 @@ andi*
 *.tiff
 *.h5
 *.json
+
+DockerData/*

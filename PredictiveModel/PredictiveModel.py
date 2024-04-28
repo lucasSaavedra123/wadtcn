@@ -352,7 +352,10 @@ class PredictiveModel(Document):
             if metric in TRANSLATION and 'val' not in metric:
                 plt.plot(epochs, self.history_training_info[metric])
                 plt.plot(epochs, self.history_training_info['val_'+metric])
-                plt.title(f"L={self.trajectory_length}, models={[model.STRING_LABEL for model in self.models_involved_in_predictive_model]}")
+                try:
+                    plt.title(f"L={self.trajectory_length}, models={[model.STRING_LABEL for model in self.models_involved_in_predictive_model]}")
+                except AttributeError:
+                    pass
                 plt.ylabel(TRANSLATION[metric])
                 plt.xlabel('Epoch')
                 plt.legend(['Train', 'Test'], loc='upper left')

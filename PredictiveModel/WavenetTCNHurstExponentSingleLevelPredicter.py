@@ -71,7 +71,7 @@ class WavenetTCNHurstExponentSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_hurst_exponent'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, preference='alpha')
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def plot_single_level_prediction(self, limit=10):

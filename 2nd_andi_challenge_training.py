@@ -33,8 +33,7 @@ networks = [
     WavenetTCNDiffusionCoefficientSingleLevelPredicter,
 ]
 
-
-for network_index, network in list(enumerate(networks))[2:]:
+for network_index, network in list(enumerate(networks)):
     #network.analyze_hyperparameters(L,L,initial_epochs=1,steps=1,simulator=Andi2ndDataSimulation)
     network = network(L, L, simulator=Andi2ndDataSimulation)
 
@@ -42,13 +41,14 @@ for network_index, network in list(enumerate(networks))[2:]:
         network.load_as_file()
     except Exception as e:
         print(e)
-        network.hyperparameters['epochs'] = 50
+        network.hyperparameters['epochs'] = 25
         network.fit()
         network.save_as_file()
         network.plot_training_history()
     if network_index == 0:
         network.plot_confusion_matrix()
+        network.plot_single_level_prediction()
     else:
         network.plot_single_level_prediction()
-
+    exit()
 DatabaseHandler.disconnect()

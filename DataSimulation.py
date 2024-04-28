@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
-
+import tqdm
 from Trajectory import Trajectory
 
 class DataSimulation():
@@ -173,8 +173,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', preference='state'):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_{preference}.cache'
+    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label=''):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = []
 
@@ -197,23 +197,24 @@ class Andi2ndDataSimulation(DataSimulation):
             NUM_FOVS = 1
 
             trajectories = []
+            with tqdm.tqdm(total=number_of_trajectories) as pbar:
+                while len(trajectories) < number_of_trajectories:
+                    model_label = np.random.randint(1, 5)
+                    retry = True
+                    while retry:
+                        dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 10)
 
-            while len(trajectories) < number_of_trajectories:
-                model_label = np.random.randint(0, 5)
-                dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 2)
+                        def include_trajectory(trajectory):
+                            return len(np.unique(trajectory.info['d_t'])) > 1
 
-                def include_trajectory(trajectory):
-                    if preference == 'state':
-                        return len(np.unique(trajectory.info['state_t'])) > 1
-                    elif preference == 'd':
-                        return len(np.unique(trajectory.info['d_t'])) > 1 and 0 not in np.unique(trajectory.info['d_t'])
-                    elif preference == 'alpha':
-                        return len(np.unique(trajectory.info['alpha_t'])) > 1
-                    assert False
-
-                for _ in range(NUM_FOVS):
-                    trajs, labels = datasets_phenom().create_dataset(dics = dic)
-                    trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)] #We want a diverse number of characteristics
+                        for _ in range(NUM_FOVS):
+                            trajs, labels = datasets_phenom().create_dataset(dics = dic)
+                            new_trajectories = [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)][:1]
+                            
+                            if len(new_trajectories) > 0:
+                                retry = False
+                                pbar.update(len(new_trajectories))
+                                trajectories += new_trajectories #We want a diverse number of characteristics
 
             shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
