@@ -94,7 +94,7 @@ class Andi2ndDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = True
 
-    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories):
+    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False):
         assert 1 <= model_label <= 5
         """
         1: single state
@@ -109,7 +109,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
-            ALPHA = np.random.choice(ALPHA_possible_values)
+            ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             custom_dic.update(
                 {
                     'Ds': [D, D*0.01], # mean and variance for D
@@ -121,7 +121,7 @@ class Andi2ndDataSimulation(DataSimulation):
             fast_D = np.random.choice(D_possible_values)
             slow_D = fast_D*np.random.rand()
 
-            alpha1 = np.random.choice(ALPHA_possible_values)
+            alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             alpha2 = alpha1*np.random.rand()
 
             custom_dic.update({
@@ -196,13 +196,24 @@ class Andi2ndDataSimulation(DataSimulation):
         else:
             NUM_FOVS = 1
 
+            parameter_simulation_setup = [
+                {'model': 1, 'force_directed': True},
+                {'model': 1, 'force_directed': False},
+                {'model': 2, 'force_directed': True},
+                {'model': 2, 'force_directed': False},
+                {'model': 3, 'force_directed': True},
+                {'model': 3, 'force_directed': False},
+                {'model': 4, 'force_directed': True},
+                {'model': 4, 'force_directed': False},
+            ]
+
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 while len(trajectories) < number_of_trajectories:
-                    model_label = np.random.randint(1, 5)
+                    simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(model_label+1, trajectory_length, 10)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'])
 
                         def include_trajectory(trajectory):
                             return len(np.unique(trajectory.info['d_t'])) > 1
