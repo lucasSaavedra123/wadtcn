@@ -18,18 +18,18 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 1}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 1}
 
     @classmethod
     def default_hyperparameters_analysis(self):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            'batch_size': [8, 16, 32, 64, 128, 256, 512],
+            'batch_size': [128, 256, 512, 1024],
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
