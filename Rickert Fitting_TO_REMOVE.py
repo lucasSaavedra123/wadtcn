@@ -49,7 +49,7 @@ for _ in tqdm.tqdm(list(range(100))):
 
     for _ in range(99):        
         x0=[np.random.uniform(100, 100000), np.random.uniform(100, 100000), np.random.uniform(1, 100), np.random.uniform(1, 1000)]
-        res_eq_9 = minimize(eq_9_obj, x0=x0, bounds=[(0, None), (0, None), (0, None), (0, None)], constraints=[{'type':'eq', 'fun': lambda t: - (t[1]/t[0]) + 5}])
+        res_eq_9 = minimize(eq_9_obj, x0=x0, bounds=[(0, None), (0, None), (0, None), (0, None)], constraints=[{'type':'eq', 'fun': lambda t: (t[1]/t[0]) - 5}])
         res_eq_9s.append(res_eq_9)
 
     res_eq_9 = min(res_eq_9s, key=lambda r: r.fun)
