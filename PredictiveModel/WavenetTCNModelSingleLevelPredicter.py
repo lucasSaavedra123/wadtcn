@@ -18,11 +18,11 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.001, 'batch_size': 16, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
+        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 100}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -83,7 +83,7 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
 
         def custom_tanh_2(x):
-            return ((K.tanh(x)+1)*18)-12
+            return ((K.tanh(x)+1)*9)-12
 
         d_regression = Conv1D(16, 3, 1, padding='causal')(x)
         d_regression = LeakyReLU()(d_regression)
@@ -140,15 +140,15 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
-        X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
-        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
+        #X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
+        #X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
-        Y1_train = Y_train[0]
-        Y2_train = Y_train[1]
-        Y3_train = Y_train[2]
-        Y1_val = Y_val[0]
-        Y2_val = Y_val[1]
-        Y3_val = Y_val[2]
+        #Y1_train = Y_train[0]
+        #Y2_train = Y_train[1]
+        #Y3_train = Y_train[2]
+        #Y1_val = Y_val[0]
+        #Y2_val = Y_val[1]
+        #Y3_val = Y_val[2]
 
         #np.save('xv.npy', X_val)
         #np.save('xt.npy', X_train)
@@ -158,9 +158,9 @@ class WavenetTCNModelSingleLevelPredicter(PredictiveModel):
         #np.save('yt1.npy', Y_train[1])
         #np.save('yv2.npy', Y_val[2])
         #np.save('yt2.npy', Y_train[2])
-
-        #X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
-        #X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
+        #exit()
+        X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
+        X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
 
         with device(device_name):
             history_training_info = self.architecture.fit(
