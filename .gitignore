@@ -160,6 +160,7 @@ cython_debug/
 #.idea/
 
 # Project files
+.DS_Store
 .vscode/
 *.h5
 *test.py
