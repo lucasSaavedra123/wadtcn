@@ -214,17 +214,17 @@ class Andi2ndDataSimulation(DataSimulation):
                     while retry:
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'])
 
-                        def include_trajectory(trajectory):
+                        def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1
 
                         for _ in range(NUM_FOVS):
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
                             new_trajectories = [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)][:1]
-                            
+
                             if len(new_trajectories) > 0:
                                 retry = False
                                 pbar.update(len(new_trajectories))
-                                trajectories += new_trajectories #We want a diverse number of characteristics
+                                trajectories += new_trajectories
 
             shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
