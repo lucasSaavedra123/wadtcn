@@ -76,13 +76,12 @@ class AndiDataSimulation(DataSimulation):
                     simulation_result['x'],
                     simulation_result['y'],
                     t=simulation_result['t'],
-                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                    noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                    noise_y=simulation_result['y_noisy']-simulation_result['y'],
                     exponent_type=simulation_result['exponent_type'],
                     exponent=simulation_result['exponent'],
                     model_category=self,
                     info=simulation_result['info'],
-                    noisy=True
                 )
             )
 
@@ -183,16 +182,15 @@ class Andi2ndDataSimulation(DataSimulation):
             for unique_id in dataframe['id'].unique():
                 t_dataframe = dataframe[dataframe['id'] == unique_id]
                 trajectories.append(Trajectory(
-                    x=t_dataframe['x'].tolist(),
-                    y=t_dataframe['y'].tolist(),
+                    x=t_dataframe['x_noisy'].tolist(),
+                    y=t_dataframe['y_noisy'].tolist(),
                     t=t_dataframe['t'].tolist(),
-                    noise_x=(t_dataframe['x_noisy'] - t_dataframe['x']).tolist(),
-                    noise_y=(t_dataframe['y_noisy'] - t_dataframe['y']).tolist(),
                     info={
                         'alpha_t': t_dataframe['alpha_t'].tolist(),
                         'd_t': t_dataframe['d_t'].tolist(),
                         'state_t': t_dataframe['state_t'].tolist()
-                    }
+                    },
+                    noisy=True
                 ))
         else:
             NUM_FOVS = 1
@@ -234,8 +232,8 @@ class Andi2ndDataSimulation(DataSimulation):
             if get_from_cache:
                 data = {
                     'id':[],
-                    'x':[],
-                    'y':[],
+                    #'x':[],
+                    #'y':[],
                     't':[],
                     'x_noisy':[],
                     'y_noisy':[],
@@ -246,8 +244,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
                 for i, t in enumerate(trajectories):
                     data['id'] += [i] * t.length
-                    data['x'] += t.get_x().tolist()
-                    data['y'] += t.get_y().tolist()
+                    #data['x'] += t.get_x().tolist()
+                    #data['y'] += t.get_y().tolist()
                     data['t'] += t.get_time().tolist()
                     data['x_noisy'] += t.get_noisy_x().tolist()
                     data['y_noisy'] += t.get_noisy_y().tolist()

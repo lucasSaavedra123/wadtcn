@@ -161,13 +161,19 @@ class Trajectory(Document):
         trajectories = []
 
         for traj_index in range(trajs.shape[1]):
+            selected_snr = np.random.uniform(0.1,5)
+
+            data_tmp = np.array([trajs[:,traj_index,0], trajs[:,traj_index,1]])
+
+            sigma = np.std(np.sum((data_tmp[:,0:-1] - data_tmp[:,1:]) ** 2, axis=0)) / selected_snr
+
             trajectories.append(
                 Trajectory(
                     x=trajs[:,traj_index,0],
                     y=trajs[:,traj_index,1],
                     t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
-                    noise_x=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
-                    noise_y=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
+                    noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#defaults_andi2().sigma_noise,
                     info={
                         'alpha_t': labels[:,traj_index,0],
                         'd_t': labels[:,traj_index,1],
