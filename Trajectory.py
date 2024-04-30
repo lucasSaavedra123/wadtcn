@@ -1,5 +1,5 @@
 import math
-
+from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -12,7 +12,12 @@ from andi_datasets.datasets_challenge import _defaults_andi2
 
 from scipy.spatial import ConvexHull
 import scipy.stats as st
+import matplotlib.animation as animation
 from collections import defaultdict
+import moviepy.editor as mp
+from moviepy.video.fx.all import crop
+from moviepy.editor import *
+
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -160,6 +165,7 @@ class Trajectory(Document):
                 Trajectory(
                     x=trajs[:,traj_index,0],
                     y=trajs[:,traj_index,1],
+                    t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
                     noise_x=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
                     noise_y=np.random.randn(trajs.shape[0])*_defaults_andi2().sigma_noise,
                     info={
@@ -399,19 +405,60 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, axis='xy'):
-        plt.title(self)
-        if axis == 'x':
-            plt.plot(self.get_x(), marker="X")
-            plt.plot(self.get_noisy_x(), marker="X")
-        elif axis == 'y':
-            plt.plot(self.get_y(), marker="X")
-            plt.plot(self.get_noisy_y(), marker="X")        
-        elif axis == 'xy':
-            plt.plot(self.get_x(), self.get_y(), marker="X")
-            plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X")
+    def plot(self, with_noise=True):
+        if self.model_category is None:
 
-        plt.show()
+            if self.noisy:
+                plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
+            else:
+                plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
+                if with_noise:
+                    plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+        else:
+            self.model_category.plot(self, with_noise=with_noise)
+
+    def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
+        fig, ax = plt.subplots()
+        line = ax.plot(self.get_noisy_x()[0], self.get_noisy_y()[0])[0]
+
+        if roi_size is None:
+            ax.set(xlim=[np.min(self.get_noisy_x()), np.max(self.get_noisy_x())], ylim=[np.min(self.get_noisy_y()), np.max(self.get_noisy_y())], xlabel='X', ylabel='Y')
+        else:
+            xlim = [np.min(self.get_noisy_x()), np.max(self.get_noisy_x())]
+            ylim = [np.min(self.get_noisy_y()), np.max(self.get_noisy_y())]
+            x_difference = xlim[1]-xlim[0]
+            y_difference = ylim[1]-ylim[0]
+            x_offset = (roi_size - x_difference)/2
+            y_offset = (roi_size - y_difference)/2
+            xlim = [xlim[0]-x_offset, xlim[1]+x_offset]
+            ylim = [ylim[0]-y_offset, ylim[1]+y_offset]
+            ax.set(xlim=xlim, ylim=ylim, xlabel='X', ylabel='Y')
+        def update(frame):
+            # for each frame, update the data stored on each artist.
+            x_f = self.get_noisy_x()[:frame]
+            y_f = self.get_noisy_y()[:frame]
+
+            if self.t is not None:
+                time = (self.get_time() - self.get_time()[0])[frame]
+                time = np.round(time, 6)
+                ax.set_title(f'{time}s')
+            #voronoi_plot_2d(Voronoi(self.model_category.voronoi_centroids), show_points=False, show_vertices=False, line_colors='grey', ax=ax)
+            # update the scatter plot:
+            #data = np.stack([x, y]).T
+            # update the line plot:
+            line.set_xdata(x_f[:frame])
+            line.set_ydata(y_f[:frame])
+            plt.tight_layout()
+            return (line)
+
+        ani = animation.FuncAnimation(fig=fig, func=update, frames=self.length, interval=1)
+
+        if not save_animation:
+            plt.show()
+        else:
+            ani.save(f'DELETE.gif', writer=animation.PillowWriter(fps=30), dpi=300)
+            clip = mp.VideoFileClip(f'DELETE.gif')
+            clip.write_videofile(f'./animations_plus/{title}.mp4')
 
     def plot_confinement_states(
         self,
@@ -517,10 +564,25 @@ class Trajectory(Document):
                     noisy=noisy
                 )
         
+        BTX_NOMENCLATURE = 'BTX680R'
+        CHOL_NOMENCLATURE = 'fPEG-Chol'
+
         if 'dcr' in self.info:
             new_trajectory.info['dcr'] = self.info['dcr'][initial_index:final_index]
         if 'intensity' in self.info:
             new_trajectory.info['intensity'] = self.info['intensity'][initial_index:final_index]
+        if 'dataset' in self.info:
+            new_trajectory.info['dataset'] = self.info['dataset']
+        if 'roi' in self.info:
+            new_trajectory.info['roi'] = self.info['roi']
+        if 'file' in self.info:
+            new_trajectory.info['file'] = self.info['file']
+        if 'classified_experimental_condition' in self.info:
+            new_trajectory.info['classified_experimental_condition'] = self.info['classified_experimental_condition']
+        if f'{BTX_NOMENCLATURE}_single_intersections' in self.info:
+            new_trajectory.info[f'{BTX_NOMENCLATURE}_single_intersections'] = self.info[f'{BTX_NOMENCLATURE}_single_intersections'][initial_index:final_index]
+        if f'{CHOL_NOMENCLATURE}_single_intersections' in self.info:
+            new_trajectory.info[f'{CHOL_NOMENCLATURE}_single_intersections'] = self.info[f'{CHOL_NOMENCLATURE}_single_intersections'][initial_index:final_index]
 
         return new_trajectory
 
@@ -699,3 +761,54 @@ class Trajectory(Document):
             min_size=min_size,
             return_break_points=return_break_points
         )
+
+    def mean_turning_angle(self):
+        """
+        This is meanDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(normalized_angles)
+
+    def correlated_turning_angle(self):
+        """
+        This is corrDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])==np.sign(normalized_angles[:-1]))
+
+    def directional_persistance(self):
+        """
+        This is AvgSignDp in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])>0)

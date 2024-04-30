@@ -185,6 +185,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 trajectories.append(Trajectory(
                     x=t_dataframe['x'].tolist(),
                     y=t_dataframe['y'].tolist(),
+                    t=t_dataframe['t'].tolist(),
                     noise_x=(t_dataframe['x_noisy'] - t_dataframe['x']).tolist(),
                     noise_y=(t_dataframe['y_noisy'] - t_dataframe['y']).tolist(),
                     info={
@@ -197,13 +198,13 @@ class Andi2ndDataSimulation(DataSimulation):
             NUM_FOVS = 1
 
             parameter_simulation_setup = [
-                {'model': 1, 'force_directed': True},
+                #{'model': 1, 'force_directed': True},
                 {'model': 1, 'force_directed': False},
-                {'model': 2, 'force_directed': True},
+                #{'model': 2, 'force_directed': True},
                 {'model': 2, 'force_directed': False},
-                {'model': 3, 'force_directed': True},
+                #{'model': 3, 'force_directed': True},
                 {'model': 3, 'force_directed': False},
-                {'model': 4, 'force_directed': True},
+                #{'model': 4, 'force_directed': True},
                 {'model': 4, 'force_directed': False},
             ]
 
@@ -235,6 +236,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     'id':[],
                     'x':[],
                     'y':[],
+                    't':[],
                     'x_noisy':[],
                     'y_noisy':[],
                     'd_t':[],
@@ -246,6 +248,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     data['id'] += [i] * t.length
                     data['x'] += t.get_x().tolist()
                     data['y'] += t.get_y().tolist()
+                    data['t'] += t.get_time().tolist()
                     data['x_noisy'] += t.get_noisy_x().tolist()
                     data['y_noisy'] += t.get_noisy_y().tolist()
                     data['d_t'] += list(t.info['d_t'])
