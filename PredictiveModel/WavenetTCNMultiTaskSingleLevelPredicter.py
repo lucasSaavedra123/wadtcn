@@ -29,7 +29,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return {
             'lr': [1e-2, 1e-3, 1e-4, 1e-5],
             'amsgrad': [False, True],
-            'batch_size': [128, 256, 512, 1024],
+            'batch_size': [32, 64, 128, 256, 512, 1024],
             'epsilon': [1e-6, 1e-7, 1e-8]
         }
 
@@ -154,6 +154,15 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
             Y1_val = Y_val[0]
             Y2_val = Y_val[1]
             Y3_val = Y_val[2]
+
+            np.save('xt.npy', X_train)
+            np.save('yt0.npy', Y1_train)
+            np.save('yt1.npy', Y2_train)
+            np.save('yt2.npy', Y3_train)
+            np.save('xv.npy', X_val)
+            np.save('yv0.npy', Y1_val)
+            np.save('yv1.npy', Y2_val)
+            np.save('yv2.npy', Y3_val)
 
             X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
             X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
