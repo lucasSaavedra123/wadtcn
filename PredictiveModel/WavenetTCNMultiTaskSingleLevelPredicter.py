@@ -18,11 +18,11 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 1}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.001, 'batch_size': 512, 'amsgrad': False, 'epsilon': 1e-06, 'epochs': 1}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -139,7 +139,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
             callbacks = []
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
-
+        """
         import os
         if os.path.exists('xt.npy'):
             X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
@@ -166,11 +166,20 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
             X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
             X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
+        """
+
+        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
+
+        Y1_val = Y_val[0]
+        Y2_val = Y_val[1]
+        Y3_val = Y_val[2]
+
+        ALL_PATHS = glob.glob('./2ndAndiTrajectories/*.csv')
 
         def custom_prepare_dataset(batch_size):
             trajectories = []
             
-            files_path = np.random.choice(glob.glob('./2ndAndiTrajectories/*.csv'), size=batch_size, replace=False)
+            files_path = np.random.choice(ALL_PATHS, size=batch_size, replace=False)
 
             for file_path in files_path:
                 t_dataframe = pd.read_csv(file_path)
@@ -190,7 +199,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                X_train, [Y1_train, Y2_train, Y3_train],#TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),#X_train, [Y1_train, Y2_train, Y3_train],
                 epochs=real_epochs,
                 callbacks=callbacks,
                 batch_size=self.hyperparameters['batch_size'],
