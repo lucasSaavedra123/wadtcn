@@ -257,7 +257,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
         for i in idxs[:limit]:
             ti = trajectories[i]
-            plt.plot(np.array(ti.info['d_t']), color='black')
+            plt.plot(np.array(np.log10(ti.info['d_t'])), color='black')
             plt.plot(result[i, :], color='red')
             #plt.ylim([-1,1])
             plt.show()
