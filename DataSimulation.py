@@ -7,7 +7,7 @@ from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 import tqdm
 from Trajectory import Trajectory
-
+import ray
 class DataSimulation():
     STRING_LABEL = 'default'
 
@@ -175,7 +175,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', from_challenge=False, ignore_boundary_effects=True):
+    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', from_challenge=False, ignore_boundary_effects=True, enable_parallelism=True):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = []
@@ -211,7 +211,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
-                while len(trajectories) < number_of_trajectories:
+                def generate_trayectory():
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
@@ -232,8 +232,19 @@ class Andi2ndDataSimulation(DataSimulation):
                             choice_index = np.random.randint(0, len(new_trajectories))
                             new_trajectories = [new_trajectories[choice_index]]
                             retry = False
-                            pbar.update(len(new_trajectories))
-                            trajectories += new_trajectories
+                        return new_trajectories
+ 
+                if enable_parallelism:
+                    @ray.remote
+                    def generate_trayectory_to_use():
+                        return generate_trayectory()
+                    ray.init()
+                    trajectories = ray.get([generate_trayectory_to_use.remote() for _ in range(number_of_trajectories)])
+                else:
+                    while len(trajectories) < number_of_trajectories:
+                        new_trajectories = generate_trayectory()
+                        trajectories += new_trajectories
+                        pbar.update(len(new_trajectories))
 
             shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
