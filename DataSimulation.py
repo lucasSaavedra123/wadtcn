@@ -175,7 +175,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', from_challenge=False, ignore_boundary_effects=True, enable_parallelism=True):
+    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', from_challenge=False, ignore_boundary_effects=True, enable_parallelism=False):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = []
