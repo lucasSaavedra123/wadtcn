@@ -1,9 +1,9 @@
-from random import shuffle
+from random import shuffle, choice
 from numpy.random import choice
 import numpy as np
 import pandas as pd
 import os
-from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2
+from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2, challenge_phenom_dataset
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 import tqdm
 from Trajectory import Trajectory
@@ -93,7 +93,7 @@ class Andi2ndDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = True
 
-    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False):
+    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False, ignore_boundary_effects=True):
         assert 1 <= model_label <= 5
         """
         1: single state
@@ -170,9 +170,12 @@ class Andi2ndDataSimulation(DataSimulation):
         for key in custom_dic:
             dic[key] = custom_dic[key]
 
+        if ignore_boundary_effects:
+            dic['L'] = 500
+
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label=''):
+    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', from_challenge=False, ignore_boundary_effects=True):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = []
@@ -212,19 +215,25 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'])
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1
+                        new_trajectories = []
+                        if not from_challenge:
+                            for _ in range(NUM_FOVS):
+                                trajs, labels = datasets_phenom().create_dataset(dics = dic)
+                                new_trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)]
+                        else:
+                            trajs, labels, _ = challenge_phenom_dataset(1, [dic], num_fovs=10, repeat_exp=False)
+                            new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
 
-                        for _ in range(NUM_FOVS):
-                            trajs, labels = datasets_phenom().create_dataset(dics = dic)
-                            new_trajectories = [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)][:1]
-
-                            if len(new_trajectories) > 0:
-                                retry = False
-                                pbar.update(len(new_trajectories))
-                                trajectories += new_trajectories
+                        if len(new_trajectories) > 0:
+                            choice_index = np.random.randint(0, len(new_trajectories))
+                            new_trajectories = [new_trajectories[choice_index]]
+                            retry = False
+                            pbar.update(len(new_trajectories))
+                            trajectories += new_trajectories
 
             shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]

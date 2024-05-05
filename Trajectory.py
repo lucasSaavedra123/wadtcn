@@ -182,6 +182,50 @@ class Trajectory(Document):
         return trajectories
 
     @classmethod
+    def from_challenge_phenom_dataset(cls, trajs, labels):
+        trajectories = []
+
+        for dataframe, current_labels in zip(trajs, labels):
+            for traj_idx in dataframe['traj_idx'].unique():
+                traj_dataframe = dataframe[dataframe['traj_idx'] == traj_idx]
+                traj_dataframe = traj_dataframe.sort_values('frame')
+
+                traj_labels = [l for l in current_labels if l[0] == traj_idx][0]
+                traj_labels = traj_labels[1:]
+
+                d = np.zeros(len(traj_dataframe))
+                a = np.zeros(len(traj_dataframe))
+                s = np.zeros(len(traj_dataframe))
+
+                from_c = 0
+                for label_index in range(0, int(len(traj_labels)/4)):
+                    d_i = traj_labels[(label_index*4)]
+                    a_i = traj_labels[(label_index*4)+1]
+                    s_i = traj_labels[(label_index*4)+2]
+                    c_i = traj_labels[(label_index*4)+3]
+
+                    d[from_c:c_i] = d_i
+                    a[from_c:c_i] = a_i
+                    s[from_c:c_i] = s_i
+                    from_c += c_i
+
+                trajectories.append(
+                    Trajectory(
+                        x=traj_dataframe['x'].tolist(),
+                        y=traj_dataframe['y'].tolist(),
+                        t=(traj_dataframe['frame'] * 0.1).tolist(), #This frame rate was obtained in the website of the Andi Challenge
+                        info={
+                            'alpha_t': a.tolist(),
+                            'd_t': d.tolist(),
+                            'state_t': s.tolist()
+                        },
+                        noisy=True
+                    )
+                )
+
+        return trajectories
+
+    @classmethod
     def ensemble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, bin_width=None, alpha=0.95):
         """
         trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 1]
