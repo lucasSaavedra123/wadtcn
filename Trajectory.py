@@ -461,6 +461,7 @@ class Trajectory(Document):
                 plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
                 if with_noise:
                     plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+            plt.show()
         else:
             self.model_category.plot(self, with_noise=with_noise)
 
