@@ -8,6 +8,9 @@ from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 import tqdm
 from Trajectory import Trajectory
 import ray
+
+
+
 class DataSimulation():
     STRING_LABEL = 'default'
 
@@ -232,14 +235,18 @@ class Andi2ndDataSimulation(DataSimulation):
                             choice_index = np.random.randint(0, len(new_trajectories))
                             new_trajectories = [new_trajectories[choice_index]]
                             retry = False
-                        return new_trajectories
+                    return new_trajectories
  
                 if enable_parallelism:
                     @ray.remote
                     def generate_trayectory_to_use():
                         return generate_trayectory()
                     ray.init()
-                    trajectories = ray.get([generate_trayectory_to_use.remote() for _ in range(number_of_trajectories)])
+                    while len(trajectories) < number_of_trajectories:
+                        new_trajectories = ray.get([generate_trayectory_to_use.remote() for _ in range(100)])
+                        trajectories += [l[0] for l in new_trajectories]
+                        pbar.update(len(new_trajectories))
+                    ray.shutdown()
                 else:
                     while len(trajectories) < number_of_trajectories:
                         new_trajectories = generate_trayectory()
