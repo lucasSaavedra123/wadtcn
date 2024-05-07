@@ -182,6 +182,31 @@ class Trajectory(Document):
         return trajectories
 
     @classmethod
+    def from_models_phenom(cls, trajs, labels):
+        trajectories = []
+
+        for traj_index in range(trajs.shape[1]):
+            selected_snr = np.random.uniform(0.5,5)
+            sigma = np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+
+            trajectories.append(
+                Trajectory(
+                    x=trajs[:,traj_index,0],
+                    y=trajs[:,traj_index,1],
+                    t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
+                    noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#defaults_andi2().sigma_noise,
+                    info={
+                        'alpha_t': labels[:,traj_index,0],
+                        'd_t': labels[:,traj_index,1],
+                        'state_t': labels[:,traj_index,2]
+                    }
+                )
+            )
+
+        return trajectories    
+
+    @classmethod
     def from_challenge_phenom_dataset(cls, trajs, labels):
         trajectories = []
 
