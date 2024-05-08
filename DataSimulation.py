@@ -105,9 +105,11 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
+        MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
+        MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
-        D_possible_values = np.logspace(np.log10(models_phenom().bound_D[0]), np.log10(models_phenom().bound_D[1]), num=1000)
-        ALPHA_possible_values = np.linspace(models_phenom().bound_alpha[0], models_phenom().bound_alpha[1], num=1000)
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
@@ -174,7 +176,7 @@ class Andi2ndDataSimulation(DataSimulation):
             dic[key] = custom_dic[key]
 
         if ignore_boundary_effects:
-            dic['L'] = 500
+            dic['L'] = 640
 
         return dic
 
@@ -218,7 +220,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1
