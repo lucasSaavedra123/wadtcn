@@ -178,7 +178,11 @@ class Andi2ndDataSimulation(DataSimulation):
         """
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
-        dic['N'] = number_of_trajectories
+
+        if number_of_trajectories is not None:
+            dic['N'] = number_of_trajectories
+        else:
+            dic['N'] = int((custom_dic['L']**2)*(100/((128)**2)))
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
@@ -225,7 +229,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, None, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
