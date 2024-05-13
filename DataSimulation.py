@@ -112,6 +112,11 @@ class Andi2ndDataSimulation(DataSimulation):
         D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
         ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
 
+        if not ignore_boundary_effects:
+            custom_dic['L'] = 128*1.8
+        else:
+            custom_dic['L'] = 1_000
+
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
             ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
@@ -133,6 +138,19 @@ class Andi2ndDataSimulation(DataSimulation):
                 'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
                 'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
             })
+
+        if model_label == 3:
+            custom_dic.update({
+                'Nt': int((custom_dic['L']**2)*(100/((128*1.8)**2))),            # Number of traps (density = 1 currently)
+                'r': 2}#0.4}             # Size of trap
+                )
+
+        if model_label == 5:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[4],
+            'r': np.uniform(5,10),
+            'Nc': int((custom_dic['L']**2)*(50/((128*1.8)**2))),#30,
+            'trans': 0.1})
+
         """
         # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
         if model_label in [3,4]:
@@ -151,23 +169,12 @@ class Andi2ndDataSimulation(DataSimulation):
                                     [1-p_2, p_2]]),
                         'return_state_num': True              # To get the state numeration back, , hence labels.shape = TxNx4
                     })
-        
-        if model_label == 3:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[2],
-                        'Nt': 300,            # Number of traps (density = 1 currently)
-                        'r': 0.4}             # Size of trap
-                    )
+
         if model_label == 4:
             custom_dic.update({'model': datasets_phenom().avail_models_name[3],
                         'r': 0.6,                 # Size of particles
                         'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
                     })
-
-        if model_label == 5:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[4],
-                        'r': 5,
-                        'Nc': 30,
-                        'trans': 0.1})
         """
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
@@ -175,9 +182,6 @@ class Andi2ndDataSimulation(DataSimulation):
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
-
-        if ignore_boundary_effects:
-            dic['L'] = 640
 
         return dic
 
@@ -251,8 +255,8 @@ class Andi2ndDataSimulation(DataSimulation):
                         else:
                             raise Exception(f'type_of_simulation={type_of_simulation} is not possible')
                         if len(new_trajectories) > 0:
-                            choice_index = np.random.randint(0, len(new_trajectories))
-                            new_trajectories = [new_trajectories[choice_index]]
+                            #choice_index = np.random.randint(0, len(new_trajectories))
+                            new_trajectories = new_trajectories[:10]#[new_trajectories[choice_index]]
                             retry = False
                     return new_trajectories
  
