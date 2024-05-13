@@ -225,7 +225,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
-                def generate_trayectory():
+                def generate_trayectory(limit):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
@@ -260,23 +260,26 @@ class Andi2ndDataSimulation(DataSimulation):
                             raise Exception(f'type_of_simulation={type_of_simulation} is not possible')
                         if len(new_trajectories) > 0:
                             #choice_index = np.random.randint(0, len(new_trajectories))
-                            new_trajectories = new_trajectories[:10]#[new_trajectories[choice_index]]
+                            new_trajectories = new_trajectories[:limit]#[new_trajectories[choice_index]]
                             retry = False
                     return new_trajectories
  
                 if enable_parallelism:
                     @ray.remote
-                    def generate_trayectory_to_use():
-                        return generate_trayectory()
+                    def generate_trayectory_to_use(limit):
+                        return generate_trayectory(limit)
                     ray.init()
                     while len(trajectories) < number_of_trajectories:
-                        new_trajectories = ray.get([generate_trayectory_to_use.remote() for _ in range(100)])
-                        trajectories += [l[0] for l in new_trajectories]
+                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(10) for _ in range(100)])
+                        new_trajectories = []
+                        for t_list in new_list_of_trajectories:
+                            new_trajectories += t_list
+                        trajectories += new_trajectories
                         pbar.update(len(new_trajectories))
                     ray.shutdown()
                 else:
                     while len(trajectories) < number_of_trajectories:
-                        new_trajectories = generate_trayectory()
+                        new_trajectories = generate_trayectory(10)
                         trajectories += new_trajectories
                         pbar.update(len(new_trajectories))
 
