@@ -147,7 +147,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label == 5:
             custom_dic.update({'model': datasets_phenom().avail_models_name[4],
-            'r': np.uniform(5,10),
+            'r': np.random.uniform(5,10),
             'Nc': int((custom_dic['L']**2)*(50/((128*1.8)**2))),#30,
             'trans': 0.1})
 
