@@ -8,6 +8,7 @@ from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 import tqdm
 from Trajectory import Trajectory
 import ray
+import sys, os
 
 
 
@@ -223,15 +224,17 @@ class Andi2ndDataSimulation(DataSimulation):
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
-                            return len(np.unique(trajectory.info['d_t'])) > 1
+                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
                             for _ in range(NUM_FOVS):
                                 trajs, labels = datasets_phenom().create_dataset(dics = dic)
                                 new_trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)]
                         elif type_of_simulation == 'challenge_phenom_dataset':
-                            trajs, labels, _ = challenge_phenom_dataset(1, [dic], num_fovs=10, repeat_exp=False)
+                            sys.stdout = open(os.devnull, 'w')
+                            trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 5, dics = [dic], repeat_exp=True)
                             new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
+                            sys.stdout = sys.__stdout__
                         elif type_of_simulation == 'models_phenom':
                             function_to_use = {
                                 1: models_phenom().single_state,
