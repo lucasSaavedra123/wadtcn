@@ -218,7 +218,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 #{'model': 2, 'force_directed': True},
                 {'model': 2, 'force_directed': False},
                 #{'model': 3, 'force_directed': True},
-                {'model': 3, 'force_directed': False},
+                #{'model': 3, 'force_directed': False},
                 #{'model': 4, 'force_directed': True},
                 {'model': 4, 'force_directed': False},
             ]
@@ -229,7 +229,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, None, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 20, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
