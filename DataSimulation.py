@@ -141,14 +141,14 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label == 3:
             custom_dic.update({
-                'Nt': int((custom_dic['L']**2)*(25/((128*1.8)**2))),            # Number of traps (density = 1 currently)
-                'r': 2}#0.4}             # Size of trap
+                'Nt': int((custom_dic['L']**2)*(25/((128*1.8)**2))), # Number of traps
+                'r': 2}#0.4} # Size of trap
             )
 
         if model_label == 5:
             custom_dic.update({
                 'r': np.random.uniform(5,10),
-                'Nc': int((custom_dic['L']**2)*(25/((128*1.8)**2))),#30,
+                'Nc': int((custom_dic['L']**2)*(25/((128*1.8)**2))),
                 'trans': 0.1
             })
 
