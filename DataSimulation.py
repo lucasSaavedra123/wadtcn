@@ -141,15 +141,16 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label == 3:
             custom_dic.update({
-                'Nt': int((custom_dic['L']**2)*(100/((128*1.8)**2))),            # Number of traps (density = 1 currently)
+                'Nt': int((custom_dic['L']**2)*(25/((128*1.8)**2))),            # Number of traps (density = 1 currently)
                 'r': 2}#0.4}             # Size of trap
-                )
+            )
 
         if model_label == 5:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[4],
-            'r': np.random.uniform(5,10),
-            'Nc': int((custom_dic['L']**2)*(50/((128*1.8)**2))),#30,
-            'trans': 0.1})
+            custom_dic.update({
+                'r': np.random.uniform(5,10),
+                'Nc': int((custom_dic['L']**2)*(25/((128*1.8)**2))),#30,
+                'trans': 0.1
+            })
 
         """
         # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
@@ -229,7 +230,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 20, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
