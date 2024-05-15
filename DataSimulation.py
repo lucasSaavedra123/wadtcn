@@ -211,21 +211,17 @@ class Andi2ndDataSimulation(DataSimulation):
                     noisy=True
                 ))
         else:
-            parameter_simulation_setup = [
-                #{'model': 1, 'force_directed': True},
-                {'model': 1, 'force_directed': False},
-                #{'model': 2, 'force_directed': True},
-                {'model': 2, 'force_directed': False},
-                #{'model': 3, 'force_directed': True},
-                #{'model': 3, 'force_directed': False},
-                #{'model': 4, 'force_directed': True},
-                {'model': 4, 'force_directed': False},
-            ]
-
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 def generate_trayectory(limit):
-                    simulation_setup = np.random.choice(parameter_simulation_setup)
+                    parameter_simulation_setup = [
+                        {'model': 1, 'force_directed': False},
+                        {'model': 2, 'force_directed': False},
+                        #{'model': 3, 'force_directed': False},
+                        {'model': 4, 'force_directed': False},
+                    ]
+
+                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.2, 0.4, 0.4])
                     retry = True
                     while retry:
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
@@ -268,7 +264,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         return generate_trayectory(limit)
                     ray.init()
                     while len(trajectories) < number_of_trajectories:
-                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(100) for _ in range(100)])
+                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(10) for _ in range(100)])
                         new_trajectories = []
                         for t_list in new_list_of_trajectories:
                             new_trajectories += t_list
@@ -277,7 +273,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     ray.shutdown()
                 else:
                     while len(trajectories) < number_of_trajectories:
-                        new_trajectories = generate_trayectory(100)
+                        new_trajectories = generate_trayectory(10)
                         trajectories += new_trajectories
                         pbar.update(len(new_trajectories))
 
