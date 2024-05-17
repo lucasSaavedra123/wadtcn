@@ -48,14 +48,18 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return Y1, Y2, np.log10(Y3)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X_displacements = transform_trajectories_into_displacements(self, trajectories)
+        X_turning_angle = transform_trajectories_into_turning_angle(self, trajectories)
 
-        if self.wadnet_tcn_encoder is not None:
-            X = self.wadnet_tcn_encoder.predict(X, verbose=0)
+        X = np.zeros((len(trajectories), self.trajectory_length, 3))
+        X[:,1:,0:2] = X_displacements
+        X[:,2:,2:] = X_turning_angle
+        #if self.wadnet_tcn_encoder is not None:
+        #    X = self.wadnet_tcn_encoder.predict(X, verbose=0)
         return X
 
     def build_network(self):
-        number_of_features = 2
+        number_of_features = 3
         inputs = Input(shape=(self.trajectory_length, number_of_features))
         wavenet_filters = 16
         dilation_depth = 8
@@ -251,13 +255,13 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
     def plot_single_level_prediction(self, limit=10):
         trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
         result = self.predict(trajectories)
-        result = result[2]#np.argmax(result,axis=2)
+        result = result[1]#np.argmax(result[0],axis=2)
         idxs = np.arange(0,len(trajectories), 1)
         np.random.shuffle(idxs)
 
         for i in idxs[:limit]:
             ti = trajectories[i]
-            plt.plot(np.array(np.log10(ti.info['d_t'])), color='black')
+            plt.plot(ti.info['alpha_t'], color='black')
             plt.plot(result[i, :], color='red')
             #plt.ylim([-1,1])
             plt.show()

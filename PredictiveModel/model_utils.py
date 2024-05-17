@@ -13,6 +13,17 @@ from tensorflow.keras.callbacks import *
 from tensorflow.keras.utils import Sequence
 
 
+def transform_trajectories_into_turning_angle(predictive_model, trajectories, normalize=True):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length-2, 1))
+
+    for index, trajectory in enumerate(trajectories):
+        angles = trajectory.turning_angles(normalized=normalize)
+
+        if len(angles) != 0:
+            X[index, :, 0] = trajectory.turning_angles(normalized=normalize)
+
+    return X
+
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
 
