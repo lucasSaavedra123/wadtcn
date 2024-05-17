@@ -502,7 +502,7 @@ def down_block(x, filters, use_maxpool = True, input_dimension='2d', basic_kerne
     if input_dimension=='2d':
         x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(filters, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -519,7 +519,7 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
     if input_dimension=='2d':
         x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(filters, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -550,21 +550,21 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None,
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -573,7 +573,7 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None,
         if input_dimension=='2d':
             output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
         elif input_dimension=='1d':
-            output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
+            output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'causal')(x)
     else:
         output = x
     model = models.Model(input, output, name = f'unet_{unet_index}' if unet_index is not None else 'unet')
