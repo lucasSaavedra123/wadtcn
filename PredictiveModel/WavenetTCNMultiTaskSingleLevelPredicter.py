@@ -48,18 +48,19 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return Y1, Y2, np.log10(Y3)
 
     def transform_trajectories_to_input(self, trajectories):
-        X_displacements = transform_trajectories_into_displacements(self, trajectories)
-        X_turning_angle = transform_trajectories_into_turning_angle(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        #X_displacements = transform_trajectories_into_displacements(self, trajectories)
+        #X_turning_angle = transform_trajectories_into_turning_angle(self, trajectories)
 
-        X = np.zeros((len(trajectories), self.trajectory_length, 3))
-        X[:,1:,0:2] = X_displacements
-        X[:,2:,2:] = X_turning_angle
+        #X = np.zeros((len(trajectories), self.trajectory_length, 3))
+        #X[:,1:,0:2] = X_displacements
+        #X[:,2:,2:] = X_turning_angle
         #if self.wadnet_tcn_encoder is not None:
         #    X = self.wadnet_tcn_encoder.predict(X, verbose=0)
         return X
 
     def build_network(self):
-        number_of_features = 3
+        number_of_features = 2
         inputs = Input(shape=(self.trajectory_length, number_of_features))
         wavenet_filters = 16
         dilation_depth = 8
