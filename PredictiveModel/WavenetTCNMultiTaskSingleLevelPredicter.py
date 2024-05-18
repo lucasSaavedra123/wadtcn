@@ -66,6 +66,52 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         initializer = 'he_normal'
 
         x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+
+        x1_kernel = 4
+        x2_kernel = 2
+        x3_kernel = 3
+        x4_kernel = 10
+        x5_kernel = 20
+
+        dilation_depth = 8
+
+        inputs = Input(shape=(self.trajectory_length, number_of_features))
+
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+
+        x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
+        x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
+        x3 = convolutional_block(self, x, wavenet_filters, x3_kernel, [1,2,4], initializer)
+        x4 = convolutional_block(self, x, wavenet_filters, x4_kernel, [1,4,8], initializer)
+
+        x5 = Conv1D(filters=wavenet_filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
+        x5 = BatchNormalization()(x5)
+
+        x = concatenate(inputs=[x1, x2, x3, x4, x5])
+
+        model_classification = LeakyReLU()(x)
+        model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(model_classification)
+
+        def custom_tanh_1(x):
+            return (K.tanh(x)+1)/2
+
+        alpha_regression = LeakyReLU()(x)
+        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
+
+        def custom_tanh_2(x):
+            return ((K.tanh(x)+1)*9)-12
+
+        d_regression = LeakyReLU()(x)
+        d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
+
+        """
+        number_of_features = 3
+        inputs = Input(shape=(self.trajectory_length, number_of_features))
+        wavenet_filters = 16
+        dilation_depth = 8
+        initializer = 'he_normal'
+
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
         unet_1 = Unet((self.trajectory_length, wavenet_filters), '1d', 2, unet_index=1, skip_last_block=True)(x)
         unet_2 = Unet((self.trajectory_length, wavenet_filters), '1d', 3, unet_index=2, skip_last_block=True)(x)
         unet_3 = Unet((self.trajectory_length, wavenet_filters), '1d', 4, unet_index=3, skip_last_block=True)(x)
@@ -92,7 +138,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         d_regression = Conv1D(16, 3, 1, padding='causal')(x)
         d_regression = LeakyReLU()(d_regression)
         d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
-
+        """
         self.architecture = Model(inputs=inputs, outputs=[model_classification, alpha_regression, d_regression])
 
         optimizer = Adam(
