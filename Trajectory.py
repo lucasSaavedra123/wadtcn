@@ -9,6 +9,11 @@ from sklearn.metrics import r2_score
 import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 from andi_datasets.datasets_challenge import _defaults_andi2
+from matplotlib import cm
+import matplotlib.cbook as cbook
+import matplotlib.colors as colors
+from matplotlib.collections import LineCollection
+import matplotlib.patches as mpatches
 
 from scipy.spatial import ConvexHull
 import scipy.stats as st
@@ -489,6 +494,52 @@ class Trajectory(Document):
             plt.show()
         else:
             self.model_category.plot(self, with_noise=with_noise)
+
+    def plot_andi_2(self, with_noise=True):
+        if self.noisy:
+            x, y = self.get_noisy_x(), self.get_noisy_y()
+        else:
+            if with_noise:
+                x, y = self.get_x(), self.get_y()
+            if with_noise:
+                x, y = self.get_noisy_x(), self.get_noisy_y()
+
+        fig, ax = plt.subplots(1,3)
+        titles = ['State', 'Diffusion Coefficient', 'Anomalous Exponent']
+        labels = ['trap', 'confined', 'free', 'directed']
+        colors = ['red', 'green', 'blue', 'orange']
+        state_to_color = {index:a_color for index, a_color in enumerate(colors)}
+        label_to_color = {label:a_color for label, a_color in zip(labels, colors)}
+        """
+        state_to_color = {1:confinement_color, 0:non_confinement_color}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold))
+
+        for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+            plt.plot([x1, x2], [y1, y2], states_as_color[i], alpha=alpha)
+        """
+
+        for i, ax_i in enumerate(ax):
+            ax_i.set_title(titles[i])
+
+            if i==0:
+                states_as_color = np.vectorize(state_to_color.get)(self.info['state_t'])
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], states_as_color[i], alpha=1)
+                patches = [mpatches.Patch(color=label_to_color[label], label=label.capitalize()) for label in label_to_color]
+                ax_i.legend(handles=patches)
+            elif i==1:
+                norm = plt.Normalize(-12, 1)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(np.log10(self.info['d_t'][i]))), alpha=1)
+            elif i==2:
+                norm = plt.Normalize(0, 2)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(self.info['alpha_t'][i])), alpha=1)
+            ax_i.set_aspect('equal', adjustable='box')
+        
+        plt.show()
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
         fig, ax = plt.subplots()
