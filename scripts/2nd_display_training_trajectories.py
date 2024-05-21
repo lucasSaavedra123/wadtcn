@@ -6,7 +6,6 @@ from DataSimulation import Andi2ndDataSimulation
 
 
 FROM_TRAINING_POOL=True
-
 if FROM_TRAINING_POOL:
     ALL_PATHS = glob.glob('./2ndAndiTrajectories/*.csv')
 
