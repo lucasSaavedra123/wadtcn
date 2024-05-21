@@ -14,7 +14,8 @@ import matplotlib.cbook as cbook
 import matplotlib.colors as colors
 from matplotlib.collections import LineCollection
 import matplotlib.patches as mpatches
-
+import matplotlib as mpl
+from matplotlib.gridspec import GridSpec
 from scipy.spatial import ConvexHull
 import scipy.stats as st
 import matplotlib.animation as animation
@@ -504,12 +505,20 @@ class Trajectory(Document):
             if with_noise:
                 x, y = self.get_noisy_x(), self.get_noisy_y()
 
-        fig, ax = plt.subplots(1,3)
+        #fig, ax = plt.subplots(1,3)
         titles = ['State', 'Diffusion Coefficient', 'Anomalous Exponent']
         labels = ['trap', 'confined', 'free', 'directed']
         colors = ['red', 'green', 'blue', 'orange']
         state_to_color = {index:a_color for index, a_color in enumerate(colors)}
         label_to_color = {label:a_color for label, a_color in zip(labels, colors)}
+
+        fig = plt.figure(layout="constrained")
+        gs = GridSpec(3, 3, figure=fig)
+
+        ax = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+        ax_regression_alpha = fig.add_subplot(gs[1, :])
+        ax_regression_d = fig.add_subplot(gs[2, :])
+
         """
         state_to_color = {1:confinement_color, 0:non_confinement_color}
         states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold))
@@ -537,8 +546,30 @@ class Trajectory(Document):
                 Blues = plt.get_cmap('viridis')
                 for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
                     ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(self.info['alpha_t'][i])), alpha=1)
+            x_lim = ax_i.get_xlim()
+            y_lim = ax_i.get_ylim()
+
+            x_width = x_lim[1]-x_lim[0]
+            y_height = y_lim[1]-y_lim[0]
+
+            if x_width > y_height:
+                y_middle = y_lim[0] + (y_height/2)
+                ax_i.set_ylim([y_middle-(x_width/2),y_middle+(x_width/2)])
+            else:
+                x_middle = x_lim[0] + (x_width/2)
+                ax_i.set_xlim([x_middle-(y_height/2),x_middle+(y_height/2)])
+
             ax_i.set_aspect('equal', adjustable='box')
-        
+
+        ax_regression_d.plot(self.info['d_t'])
+        ax_regression_d.set_ylabel(r'$D_{i}$')
+        ax_regression_d.set_xlabel(r'$i$')
+
+        ax_regression_alpha.plot(self.info['alpha_t'])
+        ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
+        #ax_regression_alpha.set_xlabel(r'$i$')
+        ax_regression_alpha.set_ylim([0,2])
+
         plt.show()
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
