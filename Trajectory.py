@@ -561,15 +561,16 @@ class Trajectory(Document):
 
             ax_i.set_aspect('equal', adjustable='box')
 
-        ax_regression_d.plot(self.info['d_t'])
+        ax_regression_d.plot(np.log10(self.info['d_t']))
         ax_regression_d.set_ylabel(r'$D_{i}$')
         ax_regression_d.set_xlabel(r'$i$')
-
+        ax_regression_d.set_ylim([-12,0])
         ax_regression_alpha.plot(self.info['alpha_t'])
         ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
         #ax_regression_alpha.set_xlabel(r'$i$')
         ax_regression_alpha.set_ylim([0,2])
-
+        manager = plt.get_current_fig_manager()
+        manager.full_screen_toggle()
         plt.show()
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
