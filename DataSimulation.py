@@ -115,7 +115,7 @@ class Andi2ndDataSimulation(DataSimulation):
         if not ignore_boundary_effects:
             custom_dic['L'] = 128*1.8
         else:
-            custom_dic['L'] = 1_000
+            custom_dic['L'] = 512
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
@@ -128,11 +128,18 @@ class Andi2ndDataSimulation(DataSimulation):
             )
 
         if model_label in [2,4,5]:
-            fast_D = np.random.choice(D_possible_values)
-            slow_D = max(models_phenom().bound_alpha[0], fast_D*np.random.rand())
+            fast_D, slow_D = None, None
+            
+            while fast_D == slow_D:
+                fast_D = np.random.choice(D_possible_values)
+                slow_D = np.random.choice(D_possible_values)
 
+            if fast_D < slow_D:
+                fast_D, slow_D = slow_D, fast_D
+
+            assert slow_D < fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            alpha2 = alpha1*np.random.rand()
+            alpha2 = np.random.choice(ALPHA_possible_values)
 
             custom_dic.update({
                 'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
@@ -217,11 +224,11 @@ class Andi2ndDataSimulation(DataSimulation):
                     parameter_simulation_setup = [
                         {'model': 1, 'force_directed': False},
                         {'model': 2, 'force_directed': False},
-                        #{'model': 3, 'force_directed': False},
+                        {'model': 3, 'force_directed': False},
                         {'model': 4, 'force_directed': False},
                     ]
 
-                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.2, 0.4, 0.4])
+                    simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
