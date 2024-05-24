@@ -62,7 +62,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
     def build_network(self):
         number_of_features = 2
         inputs = Input(shape=(self.trajectory_length, number_of_features))
-        wavenet_filters = 16
+        wavenet_filters = 32
         dilation_depth = 8
         initializer = 'he_normal'
 
@@ -89,21 +89,31 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         x5 = BatchNormalization()(x5)
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
+        x_1 = x
+        #Following code is similar to Requena, 2023.
+        for _ in range(4):
+            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=512, dropout_rate=0.1)(x)
+        x = Add()([x_1, x])
 
-        model_classification = LeakyReLU()(x)
-        model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(model_classification)
+        x = LayerNormalization()(x)
+        x_1 = x
+        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+        x = Add()([x_1, x])
+        x = LayerNormalization()(x)
+
+        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+
+        model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(x)
 
         def custom_tanh_1(x):
             return (K.tanh(x)+1)/2
 
-        alpha_regression = LeakyReLU()(x)
-        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
+        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(x)
 
         def custom_tanh_2(x):
             return ((K.tanh(x)+1)*9)-12
 
-        d_regression = LeakyReLU()(x)
-        d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
+        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(x)
 
         """
         number_of_features = 3
@@ -299,16 +309,25 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
+
     def plot_single_level_prediction(self, limit=10):
         trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
-        result = self.predict(trajectories)
-        result = result[1]#np.argmax(result[0],axis=2)
+        np.random.shuffle(trajectories)
+        result = self.predict(trajectories[:limit])
         idxs = np.arange(0,len(trajectories), 1)
-        np.random.shuffle(idxs)
 
-        for i in idxs[:limit]:
+        for i in idxs:
+            fig, ax = plt.subplots(2,1)
             ti = trajectories[i]
-            plt.plot(ti.info['alpha_t'], color='black')
-            plt.plot(result[i, :], color='red')
-            #plt.ylim([-1,1])
+
+            ax[0].set_title('Alpha')
+            ax[0].plot(ti.info['alpha_t'], color='black')
+            ax[0].plot(result[0][i, :]*2, color='red')
+            ax[0].set_ylim([0,2])
+
+            ax[1].set_title('D')
+            ax[1].plot(np.log10(ti.info['d_t']), color='black')
+            ax[1].plot(result[1][i, :], color='red')
+            ax[1].set_ylim([-12,0])
+
             plt.show()
