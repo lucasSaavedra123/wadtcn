@@ -106,8 +106,8 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
-        MIN_D, MAX_D = models_phenom().bound_D[0], 1#models_phenom().bound_D[1]
-        MIN_A, MAX_A = models_phenom().bound_alpha[0], 2#models_phenom().bound_alpha[1]
+        MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
+        MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
         D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
         ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
