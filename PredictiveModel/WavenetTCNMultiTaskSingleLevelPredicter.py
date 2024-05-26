@@ -45,7 +45,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         Y2 = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
         Y3 = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
         Y3[Y3==0] = 1e-12
-        return Y1, Y2, np.log10(Y3)
+        Y3 = np.log10(Y3)
+
+        Y3 = Y3 + 12
+        Y3 = Y3 / 18
+
+        return Y1, Y2, Y3
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -111,7 +116,8 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(x)
 
         def custom_tanh_2(x):
-            return ((K.tanh(x)+1)*9)-12
+            #return ((K.tanh(x)+1)*9)-12
+            return (K.tanh(x)+1)/2
 
         d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(x)
 
@@ -322,12 +328,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
             ax[0].set_title('Alpha')
             ax[0].plot(ti.info['alpha_t'], color='black')
-            ax[0].plot(result[0][i, :]*2, color='red')
+            ax[0].plot(result[1][i, :]*2, color='red')
             ax[0].set_ylim([0,2])
 
             ax[1].set_title('D')
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
-            ax[1].plot(result[1][i, :], color='red')
-            ax[1].set_ylim([-12,0])
+            ax[1].plot(result[2][i, :], color='red')
+            ax[1].set_ylim([-12,6])
 
             plt.show()
