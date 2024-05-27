@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from keras.layers import Dense, Input, TimeDistributed
 from keras.models import Model
@@ -242,28 +243,25 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         Y2_val = Y_val[1]
         Y3_val = Y_val[2]
 
-        ALL_PATHS = glob.glob('./2ndAndiTrajectories/*.csv')
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/4
 
-        def custom_prepare_dataset(batch_size):
-            trajectories = []
-            
-            files_path = np.random.choice(ALL_PATHS, size=batch_size, replace=False)
+        def custom_prepare_dataset(batch_size):            
+            trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
 
-            for file_path in files_path:
-                t_dataframe = pd.read_csv(file_path)
-                trajectories.append(Trajectory(
-                    x=t_dataframe['x_noisy'].tolist(),
-                    y=t_dataframe['y_noisy'].tolist(),
-                    t=t_dataframe['t'].tolist(),
-                    info={
-                        'alpha_t': t_dataframe['alpha_t'].tolist(),
-                        'd_t': t_dataframe['d_t'].tolist(),
-                        'state_t': t_dataframe['state_t'].tolist()
-                    },
-                    noisy=True
-                ))
+            X, Y0, Y1, Y2 = [], [], [], []
 
-            return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+            for trajectory_id in trajectories_ids:
+                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
+                Y0.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y0.npy')))
+                Y1.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y1.npy')))
+                Y2.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y2.npy')))
+
+            X = np.concatenate(X)
+            Y0 = np.concatenate(Y0)
+            Y1 = np.concatenate(Y1)
+            Y2 = np.concatenate(Y2)
+
+            return X, [Y0, Y1, Y2]
 
         with device(device_name):
             history_training_info = self.architecture.fit(
