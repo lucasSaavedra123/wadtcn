@@ -187,6 +187,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
+
         if not self.trained:
             self.build_network()
             real_epochs = self.hyperparameters['epochs']
@@ -320,10 +321,10 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
         np.random.shuffle(trajectories)
         result = self.predict(trajectories[:limit])
-        idxs = np.arange(0,len(trajectories), 1)
+        idxs = np.arange(0,limit, 1)
 
         for i in idxs:
-            fig, ax = plt.subplots(2,1)
+            fig, ax = plt.subplots(3,1)
             ti = trajectories[i]
 
             ax[0].set_title('Alpha')
@@ -333,7 +334,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
             ax[1].set_title('D')
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
-            ax[1].plot(result[2][i, :], color='red')
+            ax[1].plot((result[2][i, :]*18)-12, color='red')
             ax[1].set_ylim([-12,6])
+
+            ax[2].set_title('State')
+            ax[2].plot(ti.info['state_t'], color='black')
+            ax[2].plot(np.argmax(result[0][i, :], axis=1), color='red')
+            ax[2].set_ylim([-1,5])
 
             plt.show()
