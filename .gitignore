@@ -175,3 +175,4 @@ andi*
 *.json
 
 DockerData/*
+2ndAndiTrajectories/*
