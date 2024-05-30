@@ -173,6 +173,8 @@ andi*
 *.tiff
 *.h5
 *.json
-
+*.rar
+*.cache
 DockerData/*
 2ndAndiTrajectories/*
+public_data_validation_v1*

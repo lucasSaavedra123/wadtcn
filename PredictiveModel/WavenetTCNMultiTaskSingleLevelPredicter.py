@@ -109,18 +109,21 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
         x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
 
-        model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(x)
+        model_classification = Conv1D(filters=wavenet_filters, kernel_size=wavenet_filters*5, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        model_classification = TimeDistributed(Dense(units=4, activation='softmax'), name='model_classification_output')(model_classification)
 
         def custom_tanh_1(x):
             return (K.tanh(x)+1)/2
 
-        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(x)
+        alpha_regression = Conv1D(filters=wavenet_filters, kernel_size=wavenet_filters*5, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(alpha_regression)
 
         def custom_tanh_2(x):
             #return ((K.tanh(x)+1)*9)-12
             return (K.tanh(x)+1)/2
 
-        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(x)
+        d_regression = Conv1D(filters=wavenet_filters, kernel_size=wavenet_filters*5, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(d_regression)
 
         """
         number_of_features = 3
