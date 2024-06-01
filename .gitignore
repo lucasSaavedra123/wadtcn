@@ -175,6 +175,7 @@ andi*
 *.json
 *.rar
 *.cache
-DockerData/*
-2ndAndiTrajectories/*
+DockerData*
+2ndAndiTrajectories*
 public_data_validation_v1*
+single_simulations*
