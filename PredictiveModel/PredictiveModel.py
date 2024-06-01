@@ -267,6 +267,8 @@ class PredictiveModel(Document):
                 self.simulator = AndiDataSimulation
             elif simulator_identifier == 'andi2':
                 self.simulator = Andi2ndDataSimulation
+            elif simulator_identifier is None:
+                self.simulator = None
             else:
                 raise Exception(f'simulator_identifier not recognized. It was {simulator_identifier}')
             
