@@ -39,7 +39,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return ['trap', 'confined', 'free', 'directed']
 
     def predict(self, trajectories):
-        return self.architecture.predict(self.transform_trajectories_to_input(trajectories))
+        return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
 
     def transform_trajectories_to_output(self, trajectories):
         Y1 = transform_trajectories_to_single_level_model(self, trajectories)
@@ -67,13 +67,9 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         number_of_features = 2
-        inputs = Input(shape=(self.trajectory_length, number_of_features))
         wavenet_filters = 32
         dilation_depth = 8
         initializer = 'he_normal'
-
-        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
-
         x1_kernel = 4
         x2_kernel = 2
         x3_kernel = 3
@@ -82,7 +78,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
         dilation_depth = 8
 
-        inputs = Input(shape=(self.trajectory_length, number_of_features))
+        inputs = Input(shape=(None, number_of_features))
 
         x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
 
