@@ -15,7 +15,7 @@ from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 import keras.backend as K
 
-class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
+class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
