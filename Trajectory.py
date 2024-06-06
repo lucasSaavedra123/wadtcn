@@ -238,8 +238,10 @@ class Trajectory(Document):
                     d[from_c:c_i] = d_i
                     a[from_c:c_i] = a_i
                     s[from_c:c_i] = s_i
-                    from_c += c_i
-
+                    from_c = c_i
+                assert len(np.unique(d)) != 3
+                assert len(np.unique(a)) != 3
+                assert len(np.unique(s)) != 3
                 trajectories.append(
                     Trajectory(
                         x=traj_dataframe['x'].tolist(),
