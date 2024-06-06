@@ -234,7 +234,8 @@ class Andi2ndDataSimulation(DataSimulation):
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 250, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
-                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
+                            segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
+                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
