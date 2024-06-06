@@ -115,7 +115,7 @@ class Andi2ndDataSimulation(DataSimulation):
         if not ignore_boundary_effects:
             custom_dic['L'] = 128*1.8
         else:
-            custom_dic['L'] = 512
+            custom_dic['L'] = 512*2
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
@@ -231,7 +231,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 250, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length
@@ -240,10 +240,11 @@ class Andi2ndDataSimulation(DataSimulation):
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
                             new_trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)]
                         elif type_of_simulation == 'challenge_phenom_dataset':
-                            sys.stdout = open(os.devnull, 'w')
-                            trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 5, dics = [dic], repeat_exp=True)
-                            new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
-                            sys.stdout = sys.__stdout__
+                            try:
+                                trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 10, dics = [dic], repeat_exp=False)
+                                new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
+                            except ValueError:
+                                pass
                         elif type_of_simulation == 'models_phenom':
                             function_to_use = {
                                 1: models_phenom().single_state,
