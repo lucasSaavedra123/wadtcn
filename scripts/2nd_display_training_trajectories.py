@@ -5,7 +5,7 @@ import pandas as pd
 from DataSimulation import Andi2ndDataSimulation
 
 
-FROM_TRAINING_POOL=True
+FROM_TRAINING_POOL=False
 if FROM_TRAINING_POOL:
     ALL_PATHS = glob.glob('./2ndAndiTrajectories/*.csv')
 
@@ -23,6 +23,6 @@ if FROM_TRAINING_POOL:
             noisy=True
         ).plot_andi_2()
 else:
-    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories(100, 100, None, get_from_cache=False, ignore_boundary_effects=False)
+    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories(100, 100, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='challenge_phenom_dataset')
     for t_i in t:
         t_i.plot_andi_2()

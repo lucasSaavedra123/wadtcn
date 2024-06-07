@@ -571,8 +571,8 @@ class Trajectory(Document):
         ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
         #ax_regression_alpha.set_xlabel(r'$i$')
         ax_regression_alpha.set_ylim([0,2])
-        manager = plt.get_current_fig_manager()
-        manager.full_screen_toggle()
+        #manager = plt.get_current_fig_manager()
+        #manager.full_screen_toggle()
         plt.show()
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):

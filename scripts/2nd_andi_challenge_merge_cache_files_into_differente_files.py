@@ -15,7 +15,7 @@ DEST_DIRECTORY = '2ndAndiTrajectories'
 os.makedirs(DEST_DIRECTORY, exist_ok=True)
 trajectory_counter = 0
 
-cache_files = glob.glob('*.cache')
+cache_files = glob.glob('*train*.cache')
 
 for cache_i, cache_file_path in enumerate(cache_files):
     cache_dataframe = pd.read_csv(cache_file_path)
