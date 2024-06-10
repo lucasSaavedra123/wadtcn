@@ -109,9 +109,9 @@ class Andi2ndDataSimulation(DataSimulation):
         if model_label == 4:
             TRAJECTORY_DENSITY = 50/((128)**2)
         else:
-            TRAJECTORY_DENSITY = 20/((128)**2)
+            TRAJECTORY_DENSITY = 10/((128)**2)
         TRAP_DENSITY = 25/((128)**2)
-        CONFINEMENTS_DENSITY = 10/((128)**2)
+        CONFINEMENTS_DENSITY = 5/((128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
         MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
@@ -122,19 +122,20 @@ class Andi2ndDataSimulation(DataSimulation):
         if not ignore_boundary_effects:
             custom_dic['L'] = int(128*1.8)
         else:
-            custom_dic['L'] = 512*1.8
+            custom_dic['L'] = int(512)
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
             ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             custom_dic.update(
                 {
-                    'Ds': D, # mean and variance for D
-                    'alphas': ALPHA
+                    'Ds': [D, D*0.01], # mean and variance for D
+                    'alphas': [ALPHA, 0.01]
                 }
             )
 
         if model_label in [2,4,5]:
+            """
             fast_D, slow_D = None, None
             
             while fast_D == slow_D:
@@ -143,27 +144,18 @@ class Andi2ndDataSimulation(DataSimulation):
 
             if fast_D < slow_D:
                 fast_D, slow_D = slow_D, fast_D
+            """
+
+            fast_D = np.random.choice(D_possible_values)
+            slow_D = max(MIN_D, fast_D*np.random.random())
 
             assert slow_D < fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             alpha2 = np.random.choice(ALPHA_possible_values)
 
             custom_dic.update({
-                'Ds': np.array([fast_D, slow_D]),
-                'alphas': np.array([alpha1, alpha2])
-            })
-
-        if model_label == 3:
-            custom_dic.update({
-                'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
-                'r': np.random.uniform(0.5,2)
-            }
-            )
-
-        if model_label == 5:
-            custom_dic.update({
-                'r': np.random.uniform(15,30),
-                'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
+                'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D * 0.01]]),
+                'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
             })
 
         if model_label == 1:
@@ -190,6 +182,20 @@ class Andi2ndDataSimulation(DataSimulation):
                         'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
                     })
 
+        if model_label == 3:
+            custom_dic.update({
+                'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
+                'r': np.random.uniform(0.5,1)
+            }
+            )
+
+        if model_label == 5:
+            custom_dic.update({
+                'r': np.random.uniform(5,20),
+                'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
+                'trans':0.05
+            })
+
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
 
@@ -200,7 +206,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
-
+        #print(dic)
         return dic
 
     def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
@@ -241,7 +247,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
-                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
+                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length > 25 and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
