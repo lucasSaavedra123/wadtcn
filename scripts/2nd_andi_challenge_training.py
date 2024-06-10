@@ -2,7 +2,7 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskSingleLevelPredicter import WavenetTCNMultiTaskSingleLevelPredicter
 
 
-L = 200
+L = 100
 network = WavenetTCNMultiTaskSingleLevelPredicter(L, None, simulator=Andi2ndDataSimulation)
 
 try:

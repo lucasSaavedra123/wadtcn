@@ -5,6 +5,7 @@ from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
 from tensorflow.keras.losses import MeanSquaredLogarithmicError
+from tensorflow.keras.losses import CategoricalFocalCrossentropy
 from sklearn.metrics import confusion_matrix, f1_score
 from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
@@ -93,8 +94,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
-
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics='categorical_accuracy')
+        #self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.90/3, 0.90/3, 0.25, 0.90/3]), metrics=['categorical_accuracy'])
 
     @property
     def type_name(self):
@@ -166,13 +167,13 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
 
         result = self.predict(trajectories)
-        result = np.argmax(result[0],axis=2)
+        result = np.argmax(result,axis=2)
 
         ground_truth = []
         predicted = []
 
         for i, ti in enumerate(trajectories):
-            ground_truth += np.argmax(self.transform_trajectories_to_output([ti])[0], axis=2)[0].tolist()
+            ground_truth += np.argmax(self.transform_trajectories_to_output([ti]), axis=2)[0].tolist()
             predicted += result[i,:].tolist()
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
