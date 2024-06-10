@@ -157,68 +157,37 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
             callbacks = []
 
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
-        """
-        import os
-        if os.path.exists('xt.npy'):
-            X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
-            X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
-        else:
-            X_train, Y_train = self.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH, file_label='train', get_from_cache=True)
-            X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
-
-            Y1_train = Y_train[0]
-            Y2_train = Y_train[1]
-            Y3_train = Y_train[2]
-            Y1_val = Y_val[0]
-            Y2_val = Y_val[1]
-            Y3_val = Y_val[2]
-
-            np.save('xt.npy', X_train)
-            np.save('yt0.npy', Y1_train)
-            np.save('yt1.npy', Y2_train)
-            np.save('yt2.npy', Y3_train)
-            np.save('xv.npy', X_val)
-            np.save('yv0.npy', Y1_val)
-            np.save('yv1.npy', Y2_val)
-            np.save('yv2.npy', Y3_val)
-
-            X_train, Y1_train, Y2_train, Y3_train = np.load('xt.npy'), np.load('yt0.npy'), np.load('yt1.npy'), np.load('yt2.npy')
-            X_val, Y1_val, Y2_val, Y3_val = np.load('xv.npy'), np.load('yv0.npy'), np.load('yv1.npy'), np.load('yv2.npy')
-        """
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
         Y1_val = Y_val[0]
         Y2_val = Y_val[1]
-        Y3_val = Y_val[2]
 
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/4
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
 
-            X, Y0, Y1, Y2 = [], [], [], []
+            X, Y1, Y2 = [], [], [], []
 
             for trajectory_id in trajectories_ids:
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
-                Y0.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y0.npy')))
                 Y1.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y1.npy')))
                 Y2.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y2.npy')))
 
             X = np.concatenate(X)
-            Y0 = np.concatenate(Y0)
             Y1 = np.concatenate(Y1)
             Y2 = np.concatenate(Y2)
 
-            return X, [Y0, Y1, Y2]
+            return X, [Y1, Y2]
 
         with device(device_name):
             history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),#X_train, [Y1_train, Y2_train, Y3_train],
+                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),
                 epochs=real_epochs,
                 callbacks=callbacks,
                 batch_size=self.hyperparameters['batch_size'],
-                validation_data=[X_val, [Y1_val, Y2_val, Y3_val]],
+                validation_data=[X_val, [Y1_val, Y2_val]],
                 shuffle=True
             ).history
 
