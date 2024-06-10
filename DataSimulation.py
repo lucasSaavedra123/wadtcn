@@ -106,6 +106,13 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
+        if model_label == 4:
+            TRAJECTORY_DENSITY = 50/((128)**2)
+        else:
+            TRAJECTORY_DENSITY = 20/((128)**2)
+        TRAP_DENSITY = 25/((128)**2)
+        CONFINEMENTS_DENSITY = 10/((128)**2)
+
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
         MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
@@ -113,17 +120,17 @@ class Andi2ndDataSimulation(DataSimulation):
         ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
 
         if not ignore_boundary_effects:
-            custom_dic['L'] = 128*1.8
+            custom_dic['L'] = int(128*1.8)
         else:
-            custom_dic['L'] = 512
+            custom_dic['L'] = 512*1.8
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
             ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             custom_dic.update(
                 {
-                    'Ds': [D, D*0.01], # mean and variance for D
-                    'alphas': np.array([ALPHA, 0.01])
+                    'Ds': D, # mean and variance for D
+                    'alphas': ALPHA
                 }
             )
 
@@ -142,41 +149,40 @@ class Andi2ndDataSimulation(DataSimulation):
             alpha2 = np.random.choice(ALPHA_possible_values)
 
             custom_dic.update({
-                'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
-                'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
+                'Ds': np.array([fast_D, slow_D]),
+                'alphas': np.array([alpha1, alpha2])
             })
 
         if model_label == 3:
             custom_dic.update({
-                'Nt': int((custom_dic['L']**2)*(50/((128*1.8)**2))), # Number of traps
+                'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
                 'r': np.random.uniform(0.5,2)
             }
             )
 
         if model_label == 5:
             custom_dic.update({
-                'r': np.random.uniform(15,40),
-                'Nc': int((custom_dic['L']**2)*(10/((128*1.8)**2))),
-                #'trans': 0.1
+                'r': np.random.uniform(15,30),
+                'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
             })
-
-        # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
-        if model_label in [3,4]:
-            custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
-                        'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
 
         if model_label == 1:
             custom_dic.update({'model': datasets_phenom().avail_models_name[0],
                         'dim': 2})
 
         if model_label == 2:
-            p_1 = np.random.uniform(0.50,1.00)
-            p_2 = np.random.uniform(0.50,1.00)
+            p_1 = np.random.uniform(0.75,1.00)
+            p_2 = np.random.uniform(0.75,1.00)
             custom_dic.update({'model': datasets_phenom().avail_models_name[1],
                         'M': np.array([[p_1, 1-p_1],            # Transition Matrix
                                     [1-p_2, p_2]]),
                         'return_state_num': True              # To get the state numeration back, , hence labels.shape = TxNx4
                     })
+
+
+        if model_label in [3,4]:
+            custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
+                        'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
 
         if model_label == 4:
             custom_dic.update({'model': datasets_phenom().avail_models_name[3],
@@ -190,7 +196,7 @@ class Andi2ndDataSimulation(DataSimulation):
         if number_of_trajectories is not None:
             dic['N'] = number_of_trajectories
         else:
-            dic['N'] = int((custom_dic['L']**2)*(50/((128)**2)))
+            dic['N'] = int((custom_dic['L']**2)*TRAJECTORY_DENSITY)
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
