@@ -115,7 +115,7 @@ class Andi2ndDataSimulation(DataSimulation):
         if not ignore_boundary_effects:
             custom_dic['L'] = 128*1.8
         else:
-            custom_dic['L'] = 512*2
+            custom_dic['L'] = 512
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
@@ -148,18 +148,18 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label == 3:
             custom_dic.update({
-                'Nt': int((custom_dic['L']**2)*(25/((128*1.8)**2))), # Number of traps
-                'r': 2}#0.4} # Size of trap
+                'Nt': int((custom_dic['L']**2)*(50/((128*1.8)**2))), # Number of traps
+                'r': np.random.uniform(0.5,2)
+            }
             )
 
         if model_label == 5:
             custom_dic.update({
-                'r': np.random.uniform(5,10),
-                'Nc': int((custom_dic['L']**2)*(25/((128*1.8)**2))),
-                'trans': 0.1
+                'r': np.random.uniform(15,40),
+                'Nc': int((custom_dic['L']**2)*(10/((128*1.8)**2))),
+                #'trans': 0.1
             })
 
-        """
         # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
         if model_label in [3,4]:
             custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
@@ -180,17 +180,17 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label == 4:
             custom_dic.update({'model': datasets_phenom().avail_models_name[3],
-                        'r': 0.6,                 # Size of particles
+                        'r': np.random.uniform(0.5,1.00),                 # Size of particles
                         'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
                     })
-        """
+
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
 
         if number_of_trajectories is not None:
             dic['N'] = number_of_trajectories
         else:
-            dic['N'] = int((custom_dic['L']**2)*(100/((128)**2)))
+            dic['N'] = int((custom_dic['L']**2)*(50/((128)**2)))
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
@@ -231,7 +231,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 250, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, None, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
@@ -242,7 +242,7 @@ class Andi2ndDataSimulation(DataSimulation):
                             new_trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)]
                         elif type_of_simulation == 'challenge_phenom_dataset':
                             try:
-                                trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 10, dics = [dic], repeat_exp=False)
+                                trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 5, dics = [dic], repeat_exp=False)
                                 new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
                             except ValueError:
                                 pass
