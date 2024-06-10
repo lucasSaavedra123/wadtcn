@@ -149,9 +149,10 @@ class Andi2ndDataSimulation(DataSimulation):
             fast_D = np.random.choice(D_possible_values)
             slow_D = max(MIN_D, fast_D*np.random.random())
 
-            assert slow_D < fast_D
+            assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            alpha2 = np.random.choice(ALPHA_possible_values)
+            alpha2 = alpha1*np.random.random()
+            #alpha2 = np.random.choice(ALPHA_possible_values)
 
             custom_dic.update({
                 'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D * 0.01]]),
