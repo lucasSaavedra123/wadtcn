@@ -47,19 +47,11 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
-        #X_displacements = transform_trajectories_into_displacements(self, trajectories)
-        #X_turning_angle = transform_trajectories_into_turning_angle(self, trajectories)
-
-        #X = np.zeros((len(trajectories), self.trajectory_length, 3))
-        #X[:,1:,0:2] = X_displacements
-        #X[:,2:,2:] = X_turning_angle
-        #if self.wadnet_tcn_encoder is not None:
-        #    X = self.wadnet_tcn_encoder.predict(X, verbose=0)
         return X
 
     def build_network(self):
         number_of_features = 2
-        wavenet_filters = 32
+        wavenet_filters = 64
         dilation_depth = 8
         initializer = 'he_normal'
         x1_kernel = 4
@@ -84,6 +76,20 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
+        x_1 = x
+        #Following code is similar to Requena, 2023.
+        for _ in range(4):
+            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=512, dropout_rate=0.1)(x)
+        x = Add()([x_1, x])
+        
+        x = LayerNormalization()(x)
+        x_1 = x
+        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+        x = Add()([x_1, x])
+        x = LayerNormalization()(x)
+        
+        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = TimeDistributed(Dense(units=len(self.models_involved_in_predictive_model), activation='softmax'), name='model_classification_output')(x)
 
@@ -95,7 +101,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             amsgrad=self.hyperparameters['amsgrad']
         )
         #self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
-        self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.90/3, 0.90/3, 0.25, 0.90/3]), metrics=['categorical_accuracy'])
+        #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.90/3, 0.90/3, 0.25, 0.90/3]), metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=0.25), metrics=['categorical_accuracy'])
 
     @property
     def type_name(self):
@@ -129,7 +136,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/4
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/2
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
