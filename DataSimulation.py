@@ -248,7 +248,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
-                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length > 25 and not np.any(segments_lengths < 3)
+                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
