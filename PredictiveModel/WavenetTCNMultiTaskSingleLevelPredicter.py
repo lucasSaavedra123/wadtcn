@@ -84,29 +84,29 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         x_1 = x
         #Following code is similar to Requena, 2023.
         for _ in range(4):
-            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=512, dropout_rate=0.1)(x)
+            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=320, dropout_rate=0.1)(x)
         x = Add()([x_1, x])
 
         x = LayerNormalization()(x)
         x_1 = x
-        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
         x = Add()([x_1, x])
         x = LayerNormalization()(x)
 
-        x = FeedForward(wavenet_filters*5, 512, 0.1)(x)
+        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
 
         def custom_tanh_1(x):
             return (K.tanh(x)+1)/2
 
         alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(alpha_regression)
+        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
 
         def custom_tanh_2(x):
             #return ((K.tanh(x)+1)*9)-12
             return (K.tanh(x)+1)/2
 
         d_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(d_regression)
+        d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
 
         self.architecture = Model(inputs=inputs, outputs=[alpha_regression, d_regression])
 
@@ -163,12 +163,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         Y1_val = Y_val[0]
         Y2_val = Y_val[1]
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/4
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
 
-            X, Y1, Y2 = [], [], [], []
+            X, Y1, Y2 = [], [], []
 
             for trajectory_id in trajectories_ids:
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
@@ -213,12 +213,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
             ax[0].set_title('Alpha')
             ax[0].plot(ti.info['alpha_t'], color='black')
-            ax[0].plot(result[1][i, :]*2, color='red')
+            ax[0].plot(result[0][i, :]*2, color='red')
             ax[0].set_ylim([0,2])
 
             ax[1].set_title('D')
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
-            ax[1].plot((result[2][i, :]*18)-12, color='red')
+            ax[1].plot((result[1][i, :]*18)-12, color='red')
             ax[1].set_ylim([-12,6])
 
             plt.show()

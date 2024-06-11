@@ -136,7 +136,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*.npy'))/2
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
