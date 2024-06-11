@@ -89,7 +89,7 @@ def transform_trajectories_into_squared_differences(predictive_model, trajectori
     return X
 
 def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+    X = np.zeros((len(trajectories), trajectories[0].length, 2))
 
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
@@ -169,8 +169,7 @@ def transform_trajectories_to_single_level_diffusion_coefficient(predictive_mode
     return Y
 
 def transform_trajectories_to_single_level_model(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
-
+    Y = np.zeros((len(trajectories), trajectories[0].length, len(predictive_model.models_involved_in_predictive_model)))
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
