@@ -99,10 +99,8 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
         def custom_tanh_2(x):
             return (K.tanh(x)*9*1.1)-3
 
-        d_regression = Conv1D(filters=wavenet_filters*5, kernel_size=1, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(d_regression)
+        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(x)
 
-        # self.architecture = Model(inputs=inputs, outputs=[alpha_regression, d_regression])
         self.architecture = Model(inputs=inputs, outputs=d_regression)
         optimizer = Adam(
             learning_rate=self.hyperparameters['lr'],

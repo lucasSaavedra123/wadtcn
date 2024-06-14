@@ -42,7 +42,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         return  Y
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
         return X
 
     def build_network(self):
@@ -55,8 +55,6 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         x3_kernel = 3
         x4_kernel = 10
         x5_kernel = 20
-
-        dilation_depth = 8
 
         inputs = Input(shape=(None, number_of_features))
 
@@ -88,8 +86,8 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         def custom_tanh_1(x):
             return (K.tanh(x)+1)/2
 
-        alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(alpha_regression)
+        #alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(x)#(alpha_regression)
 
         self.architecture = Model(inputs=inputs, outputs=alpha_regression)
         optimizer = Adam(
@@ -132,13 +130,13 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
         Y1_val = Y_val
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_normalized_regression.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
             X, YD = [], []
             for trajectory_id in trajectories_ids:
-                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
+                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_normalized_regression.npy')))
                 YD.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_YA_regression.npy')))
             X = np.concatenate(X)
             YD = np.concatenate(YD)
@@ -175,7 +173,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
 
             fig, ax = plt.subplots()
             ax.set_title('Alpha')
-            ax.plot(np.log10(ti.info['alpha_t']), color='black')
+            ax.plot(ti.info['alpha_t'], color='black')
             ax.plot(result[i, :]*2, color='red')
             ax.set_ylim([0,2])
 
