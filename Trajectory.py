@@ -193,7 +193,7 @@ class Trajectory(Document):
 
         for traj_index in range(trajs.shape[1]):
             selected_snr = np.random.uniform(0.5,5)
-            sigma = np.random.uniform(0,0.2)#np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+            sigma = np.random.uniform(0,0.25)#np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
 
             trajectories.append(
                 Trajectory(
