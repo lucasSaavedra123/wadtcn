@@ -242,6 +242,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 },
                 noisy=True
             ))
+        return trajectories
 
     def save_trajectories(self, trajectories, file_name):
         data = {
