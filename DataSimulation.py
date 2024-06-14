@@ -111,11 +111,14 @@ class Andi2ndDataSimulation(DataSimulation):
         CONFINEMENTS_DENSITY = 25/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
-        MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+        MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)[1:]
 
-        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-        ALPHA_possible_values = np.linspace(0, MAX_A, num=1000)[1:]
+        if model_label == 5:
+            D_possible_values = np.logspace(np.log(1e-5), np.log10(MAX_D), num=1000)
+        else:
+            D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
 
         if not ignore_boundary_effects:
             custom_dic['L'] = int(128*1.8)
@@ -194,7 +197,7 @@ class Andi2ndDataSimulation(DataSimulation):
             custom_dic.update({
                 'r': np.random.uniform(5,20),
                 'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
-                'trans':0.05
+                'trans':0.1
             })
 
         dic = _get_dic_andi2(model_label)
