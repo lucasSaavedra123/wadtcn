@@ -114,10 +114,7 @@ class Andi2ndDataSimulation(DataSimulation):
         MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
 
-        if model_label in [1,2]:
-            D_possible_values = np.append(0, np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000))
-        else:
-            D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
         ALPHA_possible_values = np.linspace(0, MAX_A, num=1000)[1:]
 
         if not ignore_boundary_effects:
@@ -139,7 +136,7 @@ class Andi2ndDataSimulation(DataSimulation):
             )
 
         if model_label == 2:
-            n = np.random.randint(2,5+1)
+            n = np.random.randint(2,5)
             transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
 
             for i in range(n):
@@ -147,8 +144,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     if i == j:
                         transition_matrix[i, j] = 0.98
                     else:
-                        transition_matrix[i, j] = 0.02/(n-1)
-            #transition_matrix = transition_matrix / transition_matrix.sum(axis=1, keepdims=True)
+                        transition_matrix[i, j] = (1-0.98)/(n-1)
 
             ds_values = np.random.choice(D_possible_values, size=n, replace=False)
             as_values = np.random.choice(ALPHA_possible_values, size=n, replace=False)
@@ -162,17 +158,6 @@ class Andi2ndDataSimulation(DataSimulation):
             })
 
         if model_label in [4,5]:
-            """
-            fast_D, slow_D = None, None
-            
-            while fast_D == slow_D:
-                fast_D = np.random.choice(D_possible_values)
-                slow_D = np.random.choice(D_possible_values)
-
-            if fast_D < slow_D:
-                fast_D, slow_D = slow_D, fast_D
-            """
-
             fast_D = np.random.choice(D_possible_values)
             slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
             assert slow_D <= fast_D
@@ -288,7 +273,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     custom_dic = {}
 
                     D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-                    ALPHA_possible_values = np.linspace(0, 2, num=1000)[1:]
+                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
 
                     n = np.random.randint(2,5)
                     transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
@@ -333,8 +318,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
+    def simulate_phenomenological_trajectories_for_classification(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = self.get_trayectories_from_file(FILE_NAME)
         else:
@@ -378,12 +363,10 @@ class Andi2ndDataSimulation(DataSimulation):
                             dic.pop('model')
                             trajs, labels = function_to_use(**dic)
                             new_trajectories += [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)]
-
                         else:
                             raise Exception(f'type_of_simulation={type_of_simulation} is not possible')
                         if len(new_trajectories) > 0:
-                            #choice_index = np.random.randint(0, len(new_trajectories))
-                            new_trajectories = new_trajectories[:limit]#[new_trajectories[choice_index]]
+                            new_trajectories = new_trajectories[:limit]
                             retry = False
                     return new_trajectories
  
