@@ -15,7 +15,7 @@ from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 import keras.backend as K
 
-class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
+class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
@@ -42,14 +42,9 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
 
     def transform_trajectories_to_output(self, trajectories):
-        Y1 = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
-
-        Y2 = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
-        Y2[Y2==0] = 1e-12
-        Y2 = np.log10(Y2)
-        #Y2 = (Y2 + 12)/18
-
-        return  Y1, Y2
+        Y = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
+        Y = np.log10(Y)
+        return  Y
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -133,7 +128,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+        trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -159,26 +154,19 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
-        Y1_val = Y_val#Y_val[0]
-        #Y2_val = Y_val[1]
+        Y1_val = Y_val
 
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
-
-            X, Y1, Y2 = [], [], []
-
+            X, YD = [], []
             for trajectory_id in trajectories_ids:
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
-                Y1.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y1.npy')))
-                Y2.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y2.npy')))
-
+                YD.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_YD_regression.npy')))
             X = np.concatenate(X)
-            Y1 = np.concatenate(Y1)
-            Y2 = np.concatenate(Y2)
-
-            return X, Y2#[Y1, Y2]
+            YD = np.concatenate(YD)
+            return X, YD
 
         with device(device_name):
             history_training_info = self.architecture.fit(
@@ -201,23 +189,18 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
     def plot_single_level_prediction(self, limit=10):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+        trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(VALIDATION_SET_SIZE_PER_EPOCH,self.trajectory_length,None,True,'val', ignore_boundary_effects=True)
         np.random.shuffle(trajectories)
         result = self.predict(trajectories[:limit])
         idxs = np.arange(0,limit, 1)
 
         for i in idxs:
-            fig, ax = plt.subplots(2,1)
             ti = trajectories[i]
 
-            ax[0].set_title('Alpha')
-            ax[0].plot(ti.info['alpha_t'], color='black')
-            #ax[0].plot(result[i, :]*2, color='red')
-            ax[0].set_ylim([0,2])
-
-            ax[1].set_title('D')
-            ax[1].plot(np.log10(ti.info['d_t']), color='black')
-            ax[1].plot(result[i, :], color='red')
-            ax[1].set_ylim([-12,6])
+            fig, ax = plt.subplots()
+            ax.set_title('D')
+            ax.plot(np.log10(ti.info['d_t']), color='black')
+            ax.plot(result[i, :], color='red')
+            ax.set_ylim([-12,6])
 
             plt.show()
