@@ -106,15 +106,19 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
-        TRAJECTORY_DENSITY = 50/((128)**2)
+        TRAJECTORY_DENSITY = 50/((1.5*128)**2)
         TRAP_DENSITY = 5/((128)**2)
-        CONFINEMENTS_DENSITY = 5/((128)**2)
+        CONFINEMENTS_DENSITY = 25/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
         MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
-        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
+
+        if model_label in [1,2]:
+            D_possible_values = np.append(0, np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000))
+        else:
+            D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+        ALPHA_possible_values = np.linspace(0, MAX_A, num=1000)[1:]
 
         if not ignore_boundary_effects:
             custom_dic['L'] = int(128*1.8)
@@ -134,7 +138,30 @@ class Andi2ndDataSimulation(DataSimulation):
                 }
             )
 
-        if model_label in [2,4,5]:
+        if model_label == 2:
+            n = np.random.randint(2,5+1)
+            transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
+
+            for i in range(n):
+                for j in range(n):
+                    if i == j:
+                        transition_matrix[i, j] = 0.98
+                    else:
+                        transition_matrix[i, j] = 0.02/(n-1)
+            #transition_matrix = transition_matrix / transition_matrix.sum(axis=1, keepdims=True)
+
+            ds_values = np.random.choice(D_possible_values, size=n, replace=False)
+            as_values = np.random.choice(ALPHA_possible_values, size=n, replace=False)
+
+            custom_dic.update({
+                'model': datasets_phenom().avail_models_name[1],
+                'M': transition_matrix, #transition matrix
+                'return_state_num': False,
+                'Ds': np.array([[d, d*0.01] for d in ds_values]),
+                'alphas': np.array([[a, a*0.01] for a in as_values])
+            })
+
+        if model_label in [4,5]:
             """
             fast_D, slow_D = None, None
             
@@ -161,16 +188,6 @@ class Andi2ndDataSimulation(DataSimulation):
         if model_label == 1:
             custom_dic.update({'model': datasets_phenom().avail_models_name[0],
                         'dim': 2})
-
-        if model_label == 2:
-            p_1 = np.random.uniform(0.75,1.00)
-            p_2 = np.random.uniform(0.75,1.00)
-            custom_dic.update({'model': datasets_phenom().avail_models_name[1],
-                        'M': np.array([[p_1, 1-p_1],            # Transition Matrix
-                                    [1-p_2, p_2]]),
-                        'return_state_num': True              # To get the state numeration back, , hence labels.shape = TxNx4
-                    })
-
 
         if model_label in [3,4]:
             custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
@@ -208,7 +225,114 @@ class Andi2ndDataSimulation(DataSimulation):
             dic[key] = custom_dic[key]
         #print(dic)
         return dic
+    
+    def get_trayectories_from_file(self, file_name):
+        trajectories = []
+        dataframe = pd.read_csv(file_name)
+        for unique_id in dataframe['id'].unique():
+            t_dataframe = dataframe[dataframe['id'] == unique_id]
+            trajectories.append(Trajectory(
+                x=t_dataframe['x_noisy'].tolist(),
+                y=t_dataframe['y_noisy'].tolist(),
+                t=t_dataframe['t'].tolist(),
+                info={
+                    'alpha_t': t_dataframe['alpha_t'].tolist(),
+                    'd_t': t_dataframe['d_t'].tolist(),
+                    'state_t': t_dataframe['state_t'].tolist()
+                },
+                noisy=True
+            ))
 
+    def simulate_phenomenological_trajectories_for_regression_training(
+            self,
+            number_of_trajectories,
+            trajectory_length,
+            trajectory_time,
+            get_from_cache=False,
+            file_label='',
+            ignore_boundary_effects=True,
+        ):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
+
+        if get_from_cache and os.path.exists(FILE_NAME):
+            trajectories = self.get_trayectories_from_file(FILE_NAME)
+        else:
+            trajectories = []
+            with tqdm.tqdm(total=number_of_trajectories) as pbar:
+                while len(trajectories) < number_of_trajectories:
+                    MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
+                    MIN_ALPHA, MAX_ALPHA = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+                    custom_dic = {}
+
+                    D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+                    ALPHA_possible_values = np.linspace(0, 2, num=1000)[1:]
+
+                    n = np.random.randint(2,5)
+                    transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
+
+                    for i in range(n):
+                        for j in range(n):
+                            if i == j:
+                                transition_matrix[i, j] = 0.98
+                            else:
+                                transition_matrix[i, j] = (1-0.98)/(n-1)
+
+                    custom_dic.update({
+                        'T': trajectory_length,
+                        'N': 100,
+                        'L': None,
+                        'M': transition_matrix, #transition matrix
+                        'return_state_num': False,
+                        'Ds': np.array([[d, d*0.01] for d in np.random.choice(D_possible_values, size=n, replace=False)]),
+                        'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
+                    })
+
+                    sim_dic = _get_dic_andi2(2)
+
+                    for key in custom_dic:
+                        sim_dic[key] = custom_dic[key]
+
+                    def include_trajectory(trajectory): #We want a diverse number of characteristics
+                        segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
+                        return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
+
+                    sim_dic.pop('model')
+                    trajs, labels = models_phenom().multi_state(**sim_dic)
+                    new_list_of_trajectories = [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)][:10]
+                    trajectories += new_list_of_trajectories
+                    pbar.update(len(new_list_of_trajectories))
+
+            shuffle(trajectories)
+            trajectories = trajectories[:number_of_trajectories]
+
+            if get_from_cache:
+                self.save_trajectories(trajectories, FILE_NAME)
+
+        return trajectories
+
+    def save_trajectories(self, trajectories, file_name):
+        data = {
+            'id':[],
+            't':[],
+            'x_noisy':[],
+            'y_noisy':[],
+            'd_t':[],
+            'alpha_t':[],
+            'state_t':[]
+        }
+
+        for i, t in enumerate(trajectories):
+            data['id'] += [i] * t.length
+            data['t'] += t.get_time().tolist()
+            data['x_noisy'] += t.get_noisy_x().tolist()
+            data['y_noisy'] += t.get_noisy_y().tolist()
+            data['d_t'] += list(t.info['d_t'])
+            data['alpha_t'] += list(t.info['alpha_t'])
+            data['state_t'] += list(t.info['state_t'])
+
+        pd.DataFrame(data).to_csv(file_name, index=False)
+
+    """
     def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
@@ -328,3 +452,4 @@ class Andi2ndDataSimulation(DataSimulation):
                 pd.DataFrame(data).to_csv(FILE_NAME, index=False)
 
         return trajectories[:number_of_trajectories]
+    """
