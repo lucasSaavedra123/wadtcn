@@ -162,8 +162,7 @@ class Andi2ndDataSimulation(DataSimulation):
             slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
             assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            alpha2 = alpha1*np.random.random()
-            #alpha2 = np.random.choice(ALPHA_possible_values)
+            alpha2 = np.random.uniform(0.2, 2)
 
             custom_dic.update({
                 'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D * 0.01]]),
@@ -178,18 +177,18 @@ class Andi2ndDataSimulation(DataSimulation):
             custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
                         'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
 
-        if model_label == 4:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[3],
-                        'r': np.random.uniform(0.5,1.00),                 # Size of particles
-                        'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
-                    })
-
         if model_label == 3:
             custom_dic.update({
                 'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
                 'r': np.random.uniform(0.5,1)
             }
             )
+
+        if model_label == 4:
+            custom_dic.update({'model': datasets_phenom().avail_models_name[3],
+                        'r': np.random.uniform(0.5,1.00),                 # Size of particles
+                        'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
+                    })
 
         if model_label == 5:
             custom_dic.update({
@@ -318,7 +317,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def simulate_phenomenological_trajectories_for_classification(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
+    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = self.get_trayectories_from_file(FILE_NAME)
