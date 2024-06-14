@@ -243,6 +243,28 @@ class Andi2ndDataSimulation(DataSimulation):
                 noisy=True
             ))
 
+    def save_trajectories(self, trajectories, file_name):
+        data = {
+            'id':[],
+            't':[],
+            'x_noisy':[],
+            'y_noisy':[],
+            'd_t':[],
+            'alpha_t':[],
+            'state_t':[]
+        }
+
+        for i, t in enumerate(trajectories):
+            data['id'] += [i] * t.length
+            data['t'] += t.get_time().tolist()
+            data['x_noisy'] += t.get_noisy_x().tolist()
+            data['y_noisy'] += t.get_noisy_y().tolist()
+            data['d_t'] += list(t.info['d_t'])
+            data['alpha_t'] += list(t.info['alpha_t'])
+            data['state_t'] += list(t.info['state_t'])
+
+        pd.DataFrame(data).to_csv(file_name, index=False)
+
     def simulate_phenomenological_trajectories_for_regression_training(
             self,
             number_of_trajectories,
@@ -310,49 +332,10 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def save_trajectories(self, trajectories, file_name):
-        data = {
-            'id':[],
-            't':[],
-            'x_noisy':[],
-            'y_noisy':[],
-            'd_t':[],
-            'alpha_t':[],
-            'state_t':[]
-        }
-
-        for i, t in enumerate(trajectories):
-            data['id'] += [i] * t.length
-            data['t'] += t.get_time().tolist()
-            data['x_noisy'] += t.get_noisy_x().tolist()
-            data['y_noisy'] += t.get_noisy_y().tolist()
-            data['d_t'] += list(t.info['d_t'])
-            data['alpha_t'] += list(t.info['alpha_t'])
-            data['state_t'] += list(t.info['state_t'])
-
-        pd.DataFrame(data).to_csv(file_name, index=False)
-
-    """
     def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = []
-
-            dataframe = pd.read_csv(FILE_NAME)
-
-            for unique_id in dataframe['id'].unique():
-                t_dataframe = dataframe[dataframe['id'] == unique_id]
-                trajectories.append(Trajectory(
-                    x=t_dataframe['x_noisy'].tolist(),
-                    y=t_dataframe['y_noisy'].tolist(),
-                    t=t_dataframe['t'].tolist(),
-                    info={
-                        'alpha_t': t_dataframe['alpha_t'].tolist(),
-                        'd_t': t_dataframe['d_t'].tolist(),
-                        'state_t': t_dataframe['state_t'].tolist()
-                    },
-                    noisy=True
-                ))
+            trajectories = self.get_trayectories_from_file(FILE_NAME)
         else:
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
@@ -426,30 +409,5 @@ class Andi2ndDataSimulation(DataSimulation):
             trajectories = trajectories[:number_of_trajectories]
 
             if get_from_cache:
-                data = {
-                    'id':[],
-                    #'x':[],
-                    #'y':[],
-                    't':[],
-                    'x_noisy':[],
-                    'y_noisy':[],
-                    'd_t':[],
-                    'alpha_t':[],
-                    'state_t':[]
-                }
-
-                for i, t in enumerate(trajectories):
-                    data['id'] += [i] * t.length
-                    #data['x'] += t.get_x().tolist()
-                    #data['y'] += t.get_y().tolist()
-                    data['t'] += t.get_time().tolist()
-                    data['x_noisy'] += t.get_noisy_x().tolist()
-                    data['y_noisy'] += t.get_noisy_y().tolist()
-                    data['d_t'] += list(t.info['d_t'])
-                    data['alpha_t'] += list(t.info['alpha_t'])
-                    data['state_t'] += list(t.info['state_t'])
-
-                pd.DataFrame(data).to_csv(FILE_NAME, index=False)
-
-        return trajectories[:number_of_trajectories]
-    """
+                self.save_trajectories(trajectories, FILE_NAME)
+        return trajectories
