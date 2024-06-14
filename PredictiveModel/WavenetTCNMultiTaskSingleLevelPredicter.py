@@ -4,7 +4,7 @@ from keras.layers import Dense, Input, TimeDistributed
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
-from tensorflow.keras.losses import MeanSquaredLogarithmicError
+from tensorflow.keras.losses import MeanSquaredLogarithmicError, MeanAbsoluteError, MeanSquaredError
 from sklearn.metrics import confusion_matrix, f1_score
 from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
@@ -47,9 +47,9 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         Y2 = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
         Y2[Y2==0] = 1e-12
         Y2 = np.log10(Y2)
-        Y2 = (Y2 + 12)/18
+        #Y2 = (Y2 + 12)/18
 
-        return Y1, Y2
+        return  Y1, Y2
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -83,7 +83,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
         x_1 = x
         #Following code is similar to Requena, 2023.
-        for _ in range(4):
+        for _ in range(2):
             x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=320, dropout_rate=0.1)(x)
         x = Add()([x_1, x])
 
@@ -95,27 +95,26 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
         x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
 
-        def custom_tanh_1(x):
-            return (K.tanh(x)+1)/2
+        # def custom_tanh_1(x):
+        #     return (K.tanh(x)+1)/2
 
-        alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
+        # alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        # alpha_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_1), name='alpha_regression_output')(alpha_regression)
 
         def custom_tanh_2(x):
-            #return ((K.tanh(x)+1)*9)-12
-            return (K.tanh(x)+1)/2
+            return (K.tanh(x)*9*1.1)-3
 
-        d_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        d_regression = TimeDistributed(Dense(units=1, activation=custom_tanh_2), name='d_regression_output')(d_regression)
+        d_regression = Conv1D(filters=wavenet_filters*5, kernel_size=1, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        d_regression = Dense(units=1, activation=custom_tanh_2, name='d_regression_output')(d_regression)
 
-        self.architecture = Model(inputs=inputs, outputs=[alpha_regression, d_regression])
-
+        # self.architecture = Model(inputs=inputs, outputs=[alpha_regression, d_regression])
+        self.architecture = Model(inputs=inputs, outputs=d_regression)
         optimizer = Adam(
             learning_rate=self.hyperparameters['lr'],
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
-
+        """
         loss_parameter = {
             'alpha_regression_output': 'mse',
             'd_regression_output': 'mse'
@@ -127,13 +126,14 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         }
 
         self.architecture.compile(optimizer=optimizer, loss=loss_parameter, metrics=metrics_parameter)
-
+        """
+        self.architecture.compile(optimizer=optimizer, loss='mae' , metrics='mae')
     @property
     def type_name(self):
         return 'wavenet_single_level_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True)
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -159,9 +159,8 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
         device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
-
-        Y1_val = Y_val[0]
-        Y2_val = Y_val[1]
+        Y1_val = Y_val#Y_val[0]
+        #Y2_val = Y_val[1]
 
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
 
@@ -179,7 +178,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
             Y1 = np.concatenate(Y1)
             Y2 = np.concatenate(Y2)
 
-            return X, [Y1, Y2]
+            return X, Y2#[Y1, Y2]
 
         with device(device_name):
             history_training_info = self.architecture.fit(
@@ -187,7 +186,7 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
                 epochs=real_epochs,
                 callbacks=callbacks,
                 batch_size=self.hyperparameters['batch_size'],
-                validation_data=[X_val, [Y1_val, Y2_val]],
+                validation_data=[X_val, Y1_val],#[Y1_val, Y2_val]],
                 shuffle=True
             ).history
 
@@ -213,12 +212,12 @@ class WavenetTCNMultiTaskSingleLevelPredicter(PredictiveModel):
 
             ax[0].set_title('Alpha')
             ax[0].plot(ti.info['alpha_t'], color='black')
-            ax[0].plot(result[0][i, :]*2, color='red')
+            #ax[0].plot(result[i, :]*2, color='red')
             ax[0].set_ylim([0,2])
 
             ax[1].set_title('D')
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
-            ax[1].plot((result[1][i, :]*18)-12, color='red')
+            ax[1].plot(result[i, :], color='red')
             ax[1].set_ylim([-12,6])
 
             plt.show()

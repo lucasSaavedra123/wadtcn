@@ -193,7 +193,7 @@ class Trajectory(Document):
 
         for traj_index in range(trajs.shape[1]):
             selected_snr = np.random.uniform(0.5,5)
-            sigma = np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+            sigma = np.random.uniform(0,0.2)#np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
 
             trajectories.append(
                 Trajectory(
@@ -201,7 +201,7 @@ class Trajectory(Document):
                     y=trajs[:,traj_index,1],
                     t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
                     noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
-                    noise_y=np.random.randn(trajs.shape[0])*sigma,#defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
                     info={
                         'alpha_t': labels[:,traj_index,0],
                         'd_t': labels[:,traj_index,1],
@@ -566,7 +566,7 @@ class Trajectory(Document):
         ax_regression_d.plot(np.log10(self.info['d_t']))
         ax_regression_d.set_ylabel(r'$D_{i}$')
         ax_regression_d.set_xlabel(r'$i$')
-        ax_regression_d.set_ylim([-12,0])
+        ax_regression_d.set_ylim([-12,6])
         ax_regression_alpha.plot(self.info['alpha_t'])
         ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
         #ax_regression_alpha.set_xlabel(r'$i$')

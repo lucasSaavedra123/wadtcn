@@ -6,10 +6,12 @@ import numpy as np
 
 from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskSingleLevelPredicter import WavenetTCNMultiTaskSingleLevelPredicter
+from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from Trajectory import Trajectory
 
 
-network = WavenetTCNMultiTaskSingleLevelPredicter(100, None, simulator=Andi2ndDataSimulation)
+classifier_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(None, None, simulator=Andi2ndDataSimulation)
+regression_network = WavenetTCNMultiTaskSingleLevelPredicter(None, None, simulator=Andi2ndDataSimulation)
 
 DEST_DIRECTORY = '2ndAndiTrajectories'
 os.makedirs(DEST_DIRECTORY, exist_ok=True)
@@ -36,11 +38,14 @@ for cache_i, cache_file_path in enumerate(cache_files):
             noisy=True
         )
 
-        X_train, Y_train = network.transform_trajectories_to_input([trajectory]), network.transform_trajectories_to_output([trajectory])
+        X_train, Y_train = classifier_network.transform_trajectories_to_input([trajectory]), classifier_network.transform_trajectories_to_output([trajectory])
         
         np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_X.npy'), X_train)
-        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y0.npy'), Y_train[0])
-        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y1.npy'), Y_train[1])
-        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y2.npy'), Y_train[2])
+        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y0.npy'), Y_train)
+
+        _, Y_train = regression_network.transform_trajectories_to_input([trajectory]), regression_network.transform_trajectories_to_output([trajectory])
+
+        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y1.npy'), Y_train[0])
+        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y2.npy'), Y_train[1])
 
         trajectory_counter += 1

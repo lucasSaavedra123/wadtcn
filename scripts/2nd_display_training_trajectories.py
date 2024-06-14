@@ -28,7 +28,7 @@ if FROM_TRAINING_POOL:
                 noisy=True
             ).plot_andi_2()
 else:
-    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories(100, 100, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='challenge_phenom_dataset')
+    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories(100, 100, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='models_phenom')
     for t_i in t:
         #t_i.plot_confinement_states(v_th=19, transition_fix_threshold=1)
         t_i.plot_andi_2()

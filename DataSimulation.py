@@ -106,11 +106,8 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
-        if model_label == 4:
-            TRAJECTORY_DENSITY = 50/((128)**2)
-        else:
-            TRAJECTORY_DENSITY = 10/((128)**2)
-        TRAP_DENSITY = 25/((128)**2)
+        TRAJECTORY_DENSITY = 50/((128)**2)
+        TRAP_DENSITY = 5/((128)**2)
         CONFINEMENTS_DENSITY = 5/((128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
@@ -122,7 +119,10 @@ class Andi2ndDataSimulation(DataSimulation):
         if not ignore_boundary_effects:
             custom_dic['L'] = int(128*1.8)
         else:
-            custom_dic['L'] = int(512)
+            if model_label in [1,2]:
+                custom_dic['L'] = None
+            else:
+                custom_dic['L'] = int(512)
 
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
@@ -147,8 +147,7 @@ class Andi2ndDataSimulation(DataSimulation):
             """
 
             fast_D = np.random.choice(D_possible_values)
-            slow_D = max(MIN_D, fast_D*np.random.random())
-
+            slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
             assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             alpha2 = alpha1*np.random.random()
@@ -244,7 +243,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup)
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, None, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))

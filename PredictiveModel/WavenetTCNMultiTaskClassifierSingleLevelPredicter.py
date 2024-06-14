@@ -91,7 +91,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        output = TimeDistributed(Dense(units=len(self.models_involved_in_predictive_model), activation='softmax'), name='model_classification_output')(x)
+        output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
 
@@ -109,7 +109,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_classifier_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True)
+        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -171,7 +171,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True):
         if trajectories is None:
-            trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+            trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
 
         result = self.predict(trajectories)
         result = np.argmax(result,axis=2)
