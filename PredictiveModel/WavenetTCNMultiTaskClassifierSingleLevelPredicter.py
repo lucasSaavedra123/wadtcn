@@ -90,7 +90,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         
         x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
 
-        x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
@@ -109,7 +109,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_classifier_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+        trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
@@ -136,7 +136,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_classifier.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
@@ -144,8 +144,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             X, Y0 = [], []
 
             for trajectory_id in trajectories_ids:
-                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
-                Y0.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y0.npy')))
+                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_classifier.npy')))
+                Y0.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_classifier.npy')))
 
             X = np.concatenate(X)
             Y0 = np.concatenate(Y0)
@@ -171,7 +171,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True):
         if trajectories is None:
-            trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
+            trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
 
         result = self.predict(trajectories)
         result = np.argmax(result,axis=2)
@@ -204,7 +204,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
     def plot_single_level_prediction(self, limit=10):
-        trajectories = self.simulator().simulate_phenomenological_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+        trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
         np.random.shuffle(trajectories)
         result = self.predict(trajectories[:limit])
         idxs = np.arange(0,limit, 1)
