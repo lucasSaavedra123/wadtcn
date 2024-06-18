@@ -267,7 +267,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     custom_dic = {}
 
                     D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)
+                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
 
                     n = np.random.randint(2,5)
                     transition_matrix = np.zeros((n,n))
@@ -286,7 +286,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
                     })
 
-                    sim_dic = _get_dic_andi2(5)
+                    sim_dic = _get_dic_andi2(2)
 
                     for key in custom_dic:
                         sim_dic[key] = custom_dic[key]
