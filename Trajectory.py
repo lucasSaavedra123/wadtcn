@@ -192,8 +192,7 @@ class Trajectory(Document):
         trajectories = []
 
         for traj_index in range(trajs.shape[1]):
-            selected_snr = np.random.uniform(0.5,5)
-            sigma = np.random.uniform(0,0.25)#np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+            sigma = 0 #During simulation, noise is not added in trajectories saving. Instead, It is added during training
 
             trajectories.append(
                 Trajectory(

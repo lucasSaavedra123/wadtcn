@@ -1,15 +1,14 @@
-from random import shuffle, choice
-from numpy.random import choice
+import sys
+import os
+
 import numpy as np
 import pandas as pd
-import os
+import tqdm
+import ray
 from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2, challenge_phenom_dataset
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
-import tqdm
-from Trajectory import Trajectory
-import ray
-import sys, os
 
+from Trajectory import Trajectory
 
 
 class DataSimulation():
@@ -19,11 +18,11 @@ class DataSimulation():
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
-            selected_model_class = choice(model_classes)
+            selected_model_class = np.random.choice(model_classes)
             new_trajectory = selected_model_class.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=self.andi)
             trajectories.append(new_trajectory)
 
-        shuffle(trajectories)
+        np.random.shuffle(trajectories)
 
         return trajectories
 
@@ -31,12 +30,12 @@ class DataSimulation():
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
-            selected_category = categories[choice(list(range(0,len(categories))))]
-            selected_model_class = choice(selected_category)
+            selected_category = categories[np.random.choice(list(range(0,len(categories))))]
+            selected_model_class = np.random.choice(selected_category)
             new_trajectory = selected_model_class.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=self.andi)
             trajectories.append(new_trajectory)
 
-        shuffle(trajectories)
+        np.random.shuffle(trajectories)
 
         return trajectories
 
@@ -55,7 +54,6 @@ class AndiDataSimulation(DataSimulation):
     def simulate_segmentated_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time):
         _, _, _, _, X, Y = challenge_theory_dataset(number_of_trajectories, min_T=trajectory_length, max_T=trajectory_length+1, tasks=3, dimensions=2)
         trajectories = []
-
 
         for trajectory_index in range(number_of_trajectories):
             x = X[1][trajectory_index][:trajectory_length]
@@ -97,7 +95,7 @@ class Andi2ndDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = True
 
-    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False, ignore_boundary_effects=True):
+    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False, ignore_boundary_effects=True, L=128):
         assert 1 <= model_label <= 5
         """
         1: single state
@@ -106,48 +104,47 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
-        TRAJECTORY_DENSITY = 50/((1.5*128)**2)
-        TRAP_DENSITY = 5/((128)**2)
+        #Initial settings
+        TRAJECTORY_DENSITY = 25/((1.5*128)**2)
+        TRAP_DENSITY = 10/((128)**2)
         CONFINEMENTS_DENSITY = 25/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
         MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
-        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)[1:]
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
 
-        if model_label == 5:
-            D_possible_values = np.logspace(np.log(1e-5), np.log10(MAX_D), num=1000)
-        else:
-            D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-
+        """
+        If boundary effects are ignored, we set a relative high L value
+        """
         if not ignore_boundary_effects:
-            custom_dic['L'] = int(128*1.8)
+            custom_dic['L'] = L
         else:
             if model_label in [1,2]:
                 custom_dic['L'] = None
             else:
                 custom_dic['L'] = int(512)
 
+        """
+        We set D and alpha for models 1 and 3
+        """
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
             ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            custom_dic.update(
-                {
-                    'Ds': [D, D*0.01], # mean and variance for D
-                    'alphas': [ALPHA, 0.01]
-                }
-            )
+            custom_dic.update({ 'Ds': [D, D*0.01], 'alphas': [ALPHA, 0.01]})
 
+        """
+        For model 2, transition matrix is created between
+        2 and 5 different states.
+        """
         if model_label == 2:
             n = np.random.randint(2,5)
-            transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
+            transition_matrix = np.zeros((n,n))
 
             for i in range(n):
                 for j in range(n):
-                    if i == j:
-                        transition_matrix[i, j] = 0.98
-                    else:
-                        transition_matrix[i, j] = (1-0.98)/(n-1)
+                    transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
 
             ds_values = np.random.choice(D_possible_values, size=n, replace=False)
             as_values = np.random.choice(ALPHA_possible_values, size=n, replace=False)
@@ -165,33 +162,32 @@ class Andi2ndDataSimulation(DataSimulation):
             slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
             assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            alpha2 = np.random.uniform(0.2, 2)
+            alpha2 = np.random.uniform(MIN_A, 1.8)
 
             custom_dic.update({
-                'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D * 0.01]]),
+                'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
                 'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
             })
 
-        if model_label == 1:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[0],
-                        'dim': 2})
+        custom_dic.update({'model': datasets_phenom().avail_models_name[model_label-1],'dim': 2})
 
         if model_label in [3,4]:
-            custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
-                        'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
+            custom_dic.update({
+                'Pu': np.random.uniform(0.01,0.05), # Unbinding probability
+                'Pb': np.random.uniform(0.95,1.00)  # Binding probability
+            })
 
         if model_label == 3:
             custom_dic.update({
                 'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
-                'r': np.random.uniform(0.5,1)
-            }
-            )
+                'r': np.random.uniform(0.5,1.0)
+            })
 
         if model_label == 4:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[3],
-                        'r': np.random.uniform(0.5,1.00),                 # Size of particles
-                        'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
-                    })
+            custom_dic.update({
+                'r': np.random.uniform(0.5,1.0), # Size of particles
+                'return_state_num': True         # To get the state numeration back, hence labels.shape = TxNx4
+            })
 
         if model_label == 5:
             custom_dic.update({
@@ -202,17 +198,13 @@ class Andi2ndDataSimulation(DataSimulation):
 
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
-
-        if number_of_trajectories is not None:
-            dic['N'] = number_of_trajectories
-        else:
-            dic['N'] = int((custom_dic['L']**2)*TRAJECTORY_DENSITY)
+        dic['N'] = number_of_trajectories if number_of_trajectories is not None else int((custom_dic['L']**2)*TRAJECTORY_DENSITY)
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
         #print(dic)
         return dic
-    
+
     def get_trayectories_from_file(self, file_name):
         trajectories = []
         dataframe = pd.read_csv(file_name)
@@ -257,12 +249,12 @@ class Andi2ndDataSimulation(DataSimulation):
             self,
             number_of_trajectories,
             trajectory_length,
-            trajectory_time,
+            trajectory_time, # For MINFLUX I'm going to modify this variable
             get_from_cache=False,
             file_label='',
             ignore_boundary_effects=True,
         ):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
 
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = self.get_trayectories_from_file(FILE_NAME)
@@ -275,21 +267,18 @@ class Andi2ndDataSimulation(DataSimulation):
                     custom_dic = {}
 
                     D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
+                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)
 
                     n = np.random.randint(2,5)
-                    transition_matrix = np.zeros((n,n))#np.random.rand(n, n)
+                    transition_matrix = np.zeros((n,n))
 
                     for i in range(n):
                         for j in range(n):
-                            if i == j:
-                                transition_matrix[i, j] = 0.98
-                            else:
-                                transition_matrix[i, j] = (1-0.98)/(n-1)
+                            transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
 
                     custom_dic.update({
                         'T': trajectory_length,
-                        'N': 100,
+                        'N': 5,
                         'L': None,
                         'M': transition_matrix, #transition matrix
                         'return_state_num': False,
@@ -297,7 +286,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
                     })
 
-                    sim_dic = _get_dic_andi2(2)
+                    sim_dic = _get_dic_andi2(5)
 
                     for key in custom_dic:
                         sim_dic[key] = custom_dic[key]
@@ -308,11 +297,11 @@ class Andi2ndDataSimulation(DataSimulation):
 
                     sim_dic.pop('model')
                     trajs, labels = models_phenom().multi_state(**sim_dic)
-                    new_list_of_trajectories = [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)][:10]
+                    new_list_of_trajectories = [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)][:2]
                     trajectories += new_list_of_trajectories
                     pbar.update(len(new_list_of_trajectories))
 
-            shuffle(trajectories)
+            np.random.shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
 
             if get_from_cache:
@@ -320,8 +309,8 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='challenge_phenom_dataset', ignore_boundary_effects=True, enable_parallelism=False):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
+    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = self.get_trayectories_from_file(FILE_NAME)
         else:
@@ -329,16 +318,16 @@ class Andi2ndDataSimulation(DataSimulation):
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 def generate_trayectory(limit):
                     parameter_simulation_setup = [
-                        {'model': 1, 'force_directed': False},
+                        {'model': 1, 'force_directed': np.random.choice([False, True])},
                         {'model': 2, 'force_directed': False},
-                        {'model': 3, 'force_directed': False},
+                        #{'model': 3, 'force_directed': False},
                         {'model': 4, 'force_directed': False},
                     ]
 
-                    simulation_setup = np.random.choice(parameter_simulation_setup)
+                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 100, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
@@ -378,7 +367,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         return generate_trayectory(limit)
                     ray.init()
                     while len(trajectories) < number_of_trajectories:
-                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(10) for _ in range(100)])
+                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(2) for _ in range(100)])
                         new_trajectories = []
                         for t_list in new_list_of_trajectories:
                             new_trajectories += t_list
@@ -387,11 +376,11 @@ class Andi2ndDataSimulation(DataSimulation):
                     ray.shutdown()
                 else:
                     while len(trajectories) < number_of_trajectories:
-                        new_trajectories = generate_trayectory(10)
+                        new_trajectories = generate_trayectory(2)
                         trajectories += new_trajectories
                         pbar.update(len(new_trajectories))
 
-            shuffle(trajectories)
+            np.random.shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
 
             if get_from_cache:
