@@ -154,7 +154,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 'M': transition_matrix, #transition matrix
                 'return_state_num': False,
                 'Ds': np.array([[d, d*0.01] for d in ds_values]),
-                'alphas': np.array([[a, a*0.01] for a in as_values])
+                'alphas': np.array([[a, a*0.01] for a in as_values]),
             })
 
         if model_label in [4,5]:
@@ -169,7 +169,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
             })
 
-        custom_dic.update({'model': datasets_phenom().avail_models_name[model_label-1],'dim': 2})
+        custom_dic.update({'model': datasets_phenom().avail_models_name[model_label-1]})
 
         if model_label in [3,4]:
             custom_dic.update({
@@ -327,7 +327,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
@@ -367,7 +367,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         return generate_trayectory(limit)
                     ray.init()
                     while len(trajectories) < number_of_trajectories:
-                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(2) for _ in range(100)])
+                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(5) for _ in range(100)])
                         new_trajectories = []
                         for t_list in new_list_of_trajectories:
                             new_trajectories += t_list
@@ -376,7 +376,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     ray.shutdown()
                 else:
                     while len(trajectories) < number_of_trajectories:
-                        new_trajectories = generate_trayectory(2)
+                        new_trajectories = generate_trayectory(5)
                         trajectories += new_trajectories
                         pbar.update(len(new_trajectories))
 
