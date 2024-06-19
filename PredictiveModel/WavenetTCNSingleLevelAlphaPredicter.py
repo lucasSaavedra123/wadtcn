@@ -99,7 +99,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         self.architecture.compile(optimizer=optimizer, loss='mae' , metrics='mae')
     @property
     def type_name(self):
-        return 'wavenet_single_level_model'
+        return 'wavenet_single_level_classifier_alpha'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
