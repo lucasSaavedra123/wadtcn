@@ -5,7 +5,7 @@ from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
 from tensorflow.keras.losses import MeanSquaredLogarithmicError
-from tensorflow.keras.losses import CategoricalFocalCrossentropy
+#from tensorflow.keras.losses import CategoricalFocalCrossentropy
 from sklearn.metrics import confusion_matrix, f1_score
 from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
