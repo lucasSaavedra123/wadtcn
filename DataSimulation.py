@@ -318,7 +318,7 @@ class Andi2ndDataSimulation(DataSimulation):
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 def generate_trayectory(limit):
                     parameter_simulation_setup = [
-                        {'model': 1, 'force_directed': np.random.choice([False, True])},
+                        {'model': 1, 'force_directed': False},
                         {'model': 2, 'force_directed': False},
                         #{'model': 3, 'force_directed': False},
                         {'model': 4, 'force_directed': False},
