@@ -178,8 +178,6 @@ class UNetSingleParticleTracker(PredictiveModel):
         """
         data = np.array(data)
         data[:,1:] *= pixel_size
-        data[:,2] *= -1
-        data[:,2] += image_array.shape[2] * pixel_size
 
         dataset = pd.DataFrame({'frame': data[:,0],'x': data[:,1],'y': data[:,2]})
 
