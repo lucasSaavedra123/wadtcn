@@ -2,7 +2,6 @@ from os.path import join
 from os import makedirs
 from collections import defaultdict
 
-from IPython import embed
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,6 +12,8 @@ import tqdm
 from Trajectory import Trajectory
 from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
+from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
+from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
 
 PUBLIC_DATA_PATH = './public_data_validation_v1'
 RESULT_PATH = './2nd_andi_challenge_results'
@@ -21,13 +22,18 @@ PATH_TRACK_1, PATH_TRACK_2 = './track_1', './track_2'
 N_EXP = 10
 N_FOVS = 30
 
-#single_level_classifier = WavenetTCNMultiTaskClassifierSingleLevelPredicter(100, None, simulator=Andi2ndDataSimulation)
-#single_level_classifier.build_network()
-#single_level_classifier.load_as_file()
+info_field_to_network = {
+    'alpha_t': WavenetTCNSingleLevelAlphaPredicter(100, None, simulator=Andi2ndDataSimulation),
+    'd_t': WavenetTCNSingleLevelDiffusionCoefficientPredicter(100, None, simulator=Andi2ndDataSimulation),
+    'state_t': WavenetTCNMultiTaskClassifierSingleLevelPredicter(100, None, simulator=Andi2ndDataSimulation),
+}
+
+for field in info_field_to_network:
+    info_field_to_network[field].load_as_file()
 
 #All trajectories are extracted, stored file information and prepared for further inference
 trajectories = []
-
+print("Loading trajectories...")
 for exp in tqdm.tqdm(list(range(N_EXP))):
     for fov in range(N_FOVS):
         submission_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', f'fov_{fov}.txt')
@@ -61,21 +67,18 @@ trajectories_by_length = defaultdict(lambda: [])
 for trajectory in trajectories:
     trajectories_by_length[trajectory.length].append(trajectory)
 print("Number of lengths:", len(trajectories_by_length.keys()))
-#embed()
 
 #Inference and results stored in trajectories
 print("Inference...")
 for trajectory_length in tqdm.tqdm(trajectories_by_length):
     #Here we infere with neural networks and save results
     #By now, fake results are saved
-
-    state_fraction = int(0.75 * trajectory_length)
-
-    for t in trajectories_by_length[trajectory_length]:
-        t.info['alpha_t'] = [0.32] * state_fraction + [1.78] * (trajectory_length-state_fraction)
-        t.info['d_t'] = [0.025] * state_fraction + [1.25] * (trajectory_length-state_fraction)
-        t.info['state_t'] = [3] * state_fraction + [1] * (trajectory_length-state_fraction)
-
+    for field in info_field_to_network:
+        prediction = info_field_to_network[field].predict(trajectories_by_length[trajectory_length]) 
+        if field == 'state_t':
+            prediction = np.argmax(prediction,axis=2)
+        for t_i, t in enumerate(trajectories_by_length[trajectory_length]):
+            t.info[field] = prediction[t_i].flatten()*2 if field == 'alpha_t' else prediction[t_i].flatten()
 
 #Pointwise predictions are converted into segments and results are saved
 for exp in tqdm.tqdm(list(range(N_EXP))):
@@ -87,14 +90,19 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
             """
             Here, breakpoints should be identified. By now, fake breakpoints are saved
             """
-            """
-            break_points = rpt.Window(
-                model='l2',
-                width=5
-            ).fit_predict(
-                np.stack([d, alpha], axis=1),pen=1
-            )
-            """
+            result = rpt.Pelt(model="l1").fit(t.info[field]).predict(pen=1)
+
+            #fig, ax = plt.subplots(2,1)
+
+            #for index in result:
+            #    ax[0].axvline(index)
+
+            #ax[0].plot(t.info[field])
+            #ax[1].plot(np.diff(t.info[field]))
+            #ax[0].set_ylim([0,2])
+            #ax[1].set_ylim([-1,1])
+            #plt.show()
+
             for trajectory in exp_and_fov_trajectories:
                 prediction_traj = [int(trajectory.info['idx'])]
                 break_points = [int(0.75 * trajectory.length), trajectory.length]
