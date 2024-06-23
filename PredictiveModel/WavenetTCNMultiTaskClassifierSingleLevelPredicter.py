@@ -138,18 +138,28 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_classifier.npy'))
 
         def custom_prepare_dataset(batch_size):            
-            trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
+            X, Y = [], []
+            while len(X) < batch_size:
+                selected_model = np.random.randint(len(self.models_involved_in_predictive_model))
+                retry = True
+                while retry:
+                    trajectory_id = np.random.randint(number_of_training_trajectories)
+                    Y_i = np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_classifier.npy'))
+                    simple_Y_i = np.unique(np.argmax(Y_i,axis=2))
+                    if selected_model == 2:
+                        retry = not (len(simple_Y_i) == 1 and 2 in simple_Y_i)
+                    else:
+                        retry = not (len(simple_Y_i) == 2 and selected_model in simple_Y_i)
 
-            X, Y0 = [], []
-
-            for trajectory_id in trajectories_ids:
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_classifier.npy')))
-                Y0.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_classifier.npy')))
+                Y.append(Y_i)
+
+                if np.random.choice([False, True]):
+                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.2
 
             X = np.concatenate(X)
-            Y0 = np.concatenate(Y0)
-
-            return X, Y0
+            Y = np.concatenate(Y)
+            return X, Y
 
         with device(device_name):
             history_training_info = self.architecture.fit(

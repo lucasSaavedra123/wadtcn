@@ -123,7 +123,7 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
         self.architecture.compile(optimizer=optimizer, loss='mae' , metrics='mae')
     @property
     def type_name(self):
-        return 'wavenet_single_level_classifier_diffusion_coefficient'
+        return 'wavenet_single_level_inference_diffusion_coefficient'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
@@ -154,17 +154,21 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
         Y1_val = Y_val
 
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X.npy'))
+        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_D_regression.npy'))
 
         def custom_prepare_dataset(batch_size):            
             trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
-            X, YD = [], []
+            X, Y = [], []
             for trajectory_id in trajectories_ids:
-                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X.npy')))
-                YD.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_YD_regression.npy')))
+                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_D_regression.npy')))
+                Y.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_D_regression.npy')))
+            
+                if np.random.choice([False, True]):
+                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.2
+
             X = np.concatenate(X)
-            YD = np.concatenate(YD)
-            return X, YD
+            Y = np.concatenate(Y)
+            return X, Y
 
         with device(device_name):
             history_training_info = self.architecture.fit(
