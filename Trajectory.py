@@ -497,7 +497,7 @@ class Trajectory(Document):
         else:
             self.model_category.plot(self, with_noise=with_noise)
 
-    def plot_andi_2(self, with_noise=True):
+    def plot_andi_2(self, with_noise=True, absolute_d=False, show_break_points=False):
         if self.noisy:
             x, y = self.get_noisy_x(), self.get_noisy_y()
         else:
@@ -562,11 +562,30 @@ class Trajectory(Document):
 
             ax_i.set_aspect('equal', adjustable='box')
 
-        ax_regression_d.plot(np.log10(self.info['d_t']))
         ax_regression_d.set_ylabel(r'$D_{i}$')
         ax_regression_d.set_xlabel(r'$i$')
-        ax_regression_d.set_ylim([-12,6])
+
+        if not absolute_d:
+            ax_regression_d.plot(np.log10(self.info['d_t']))
+            if show_break_points:
+                break_points = rpt.Pelt(model="l1").fit(np.log10(self.info['d_t'])).predict(pen=1)
+                for bkp in break_points:
+                    ax_regression_d.axvline(bkp, color='black', linestyle='-', linewidth=2)
+            ax_regression_d.set_ylim([-12,6])
+        else:
+            ax_regression_d.plot(self.info['d_t'])
+            if show_break_points:
+                break_points = rpt.Pelt(model="l1").fit(self.info['d_t']).predict(pen=1)
+                for bkp in break_points:
+                    ax_regression_d.axvline(bkp, color='black', linestyle='-', linewidth=2)
+
         ax_regression_alpha.plot(self.info['alpha_t'])
+
+        if show_break_points:
+            break_points = rpt.Pelt(model="l1").fit(self.info['alpha_t']).predict(pen=1)
+            for bkp in break_points:
+                ax_regression_alpha.axvline(bkp, color='black', linestyle='-', linewidth=2)
+
         ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
         #ax_regression_alpha.set_xlabel(r'$i$')
         ax_regression_alpha.set_ylim([0,2])
