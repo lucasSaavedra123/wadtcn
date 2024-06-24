@@ -6,8 +6,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import ruptures as rpt
+import glob
 import statistics as st
 import tqdm
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 import glob
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import KernelDensity
@@ -138,6 +142,7 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
                 formatted_numbers = ','.join(map(str, prediction_traj))
                 f.write(formatted_numbers + '\n')
 
+#From Pointwise predictions, ensemble
 for exp in range(N_EXP):
     files_path = glob.glob(join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'fov_*.txt'))
 
