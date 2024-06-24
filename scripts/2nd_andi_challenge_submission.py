@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import ruptures as rpt
 import statistics as st
 import tqdm
+import glob
+from sklearn.mixture import GaussianMixture
+from sklearn.neighbors import KernelDensity
 
 from Trajectory import Trajectory
 from DataSimulation import Andi2ndDataSimulation
@@ -134,3 +137,48 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
 
                 formatted_numbers = ','.join(map(str, prediction_traj))
                 f.write(formatted_numbers + '\n')
+
+for exp in range(N_EXP):
+    files_path = glob.glob(join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'fov_*.txt'))
+
+    complete_info = {
+        'd': [],
+        'alpha': [],
+        'duration': []
+    }
+
+    for file_path in files_path:
+        results_file = open(file_path,'r')
+
+        trajectories_info = [[float(d) for d in line.split(',')[1:]] for line in results_file.readlines()]
+
+        for trajectory_info in trajectories_info:
+            last_bp = 0
+            for i in range(len(trajectory_info)//4):
+                complete_info['d'].append(trajectory_info[i*4])
+                complete_info['alpha'].append(trajectory_info[(i*4)+1])
+                complete_info['duration'].append(trajectory_info[(i*4)+3] - last_bp)
+                last_bp = trajectory_info[(i*4)+3]
+
+    dataframe = pd.DataFrame(complete_info)
+    dataframe['label'] = GaussianMixture(n_components=2).fit_predict(dataframe.values)
+    ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
+
+    with open(ensemble_labels_file, 'w') as f:
+        model_name = 'confinement'
+        f.write(f'model: {model_name}; num_state: {2} \n')
+
+        data = np.random.rand(5, 2)
+
+        for label in [0,1]:
+            label_dataframe = dataframe[dataframe['label'] == label]
+            data[0, label] = label_dataframe['alpha'].mean()
+            data[1, label] = label_dataframe['alpha'].std()
+            data[2, label] = label_dataframe['d'].mean()
+            data[3, label] = label_dataframe['d'].std()
+            data[3, label] = label_dataframe['duration'].sum()
+        
+        #data[-1,:] /= data[-1,:].sum()
+
+        # Save the data in the corresponding ensemble file
+        np.savetxt(f, data, delimiter = ';')
