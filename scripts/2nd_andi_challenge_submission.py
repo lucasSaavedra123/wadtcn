@@ -82,7 +82,27 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
             elif field == 'd_t':
                 t.info[field] = 10**flatten_input
             else:
-                t.info[field] = flatten_input
+                new_states = []
+                for frame_i in range(len(flatten_input)):
+                    if frame_i < 1:
+                        new_states.append(flatten_input[0])
+                    elif frame_i == len(flatten_input) - 1:
+                        new_states.append(flatten_input[-1])
+                    else:
+                        new_states.append(st.mode(flatten_input[frame_i-1:frame_i+2]))
+
+                    if new_states[-1] == 0:
+                        t.info['alpha_t'][frame_i] = 0
+                        t.info['d_t'][frame_i] = 0
+                    elif new_states[-1] == 3:
+                        t.info['alpha_t'][frame_i] = 1.99
+
+                t.info[field] = np.array(new_states)
+                #plt.plot(t.info[field])
+                #plt.plot(new_states)
+                #plt.show()
+    #for t in trajectories_by_length[trajectory_length]:
+    #    t.plot_andi_2(absolute_d=True, show_break_points=True)
 
 #Pointwise predictions are converted into segments and results are saved
 for exp in tqdm.tqdm(list(range(N_EXP))):
@@ -101,12 +121,15 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
 
                 last_break_point = 0
                 for bp in break_points:
+                    state = st.mode(trajectory.info['state_t'][last_break_point:bp])
+
                     prediction_traj += [
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
-                        st.mode(trajectory.info['state_t'][last_break_point:bp]),
+                        state,
                         bp
                     ]
+
                     last_break_point = bp
 
                 formatted_numbers = ','.join(map(str, prediction_traj))
