@@ -105,9 +105,9 @@ class Andi2ndDataSimulation(DataSimulation):
         5: confinement
         """
         #Initial settings
-        TRAJECTORY_DENSITY = 25*1.8/((1.5*128)**2)
+        TRAJECTORY_DENSITY = 50/((1.5*128)**2)
         TRAP_DENSITY = 10/((128)**2)
-        CONFINEMENTS_DENSITY = 25/((1.5*128)**2)
+        CONFINEMENTS_DENSITY = 10/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
         MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
@@ -193,7 +193,7 @@ class Andi2ndDataSimulation(DataSimulation):
             custom_dic.update({
                 'r': np.random.uniform(5,20),
                 'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
-                'trans':0.1
+                'trans':np.random.uniform(0.01,0.1)
             })
 
         dic = _get_dic_andi2(model_label)
