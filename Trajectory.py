@@ -215,7 +215,7 @@ class Trajectory(Document):
     def from_challenge_phenom_dataset(cls, trajs, labels):
         trajectories = []
 
-        for dataframe, current_labels in zip(trajs, labels):
+        for fov_i, (dataframe, current_labels) in enumerate(zip(trajs, labels)):
             for traj_idx in dataframe['traj_idx'].unique():
                 traj_dataframe = dataframe[dataframe['traj_idx'] == traj_idx]
                 traj_dataframe = traj_dataframe.sort_values('frame')
@@ -238,9 +238,9 @@ class Trajectory(Document):
                     a[from_c:c_i] = a_i
                     s[from_c:c_i] = s_i
                     from_c = c_i
-                assert len(np.unique(d)) != 3
-                assert len(np.unique(a)) != 3
-                assert len(np.unique(s)) != 3
+                #assert len(np.unique(d)) != 3
+                #assert len(np.unique(a)) != 3
+                #assert len(np.unique(s)) != 3
                 trajectories.append(
                     Trajectory(
                         x=traj_dataframe['x'].tolist(),
@@ -249,7 +249,8 @@ class Trajectory(Document):
                         info={
                             'alpha_t': a.tolist(),
                             'd_t': d.tolist(),
-                            'state_t': s.tolist()
+                            'state_t': s.tolist(),
+                            'fov': fov_i
                         },
                         noisy=True
                     )

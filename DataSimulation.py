@@ -105,7 +105,7 @@ class Andi2ndDataSimulation(DataSimulation):
         5: confinement
         """
         #Initial settings
-        TRAJECTORY_DENSITY = 25/((1.5*128)**2)
+        TRAJECTORY_DENSITY = 25*1.8/((1.5*128)**2)
         TRAP_DENSITY = 10/((128)**2)
         CONFINEMENTS_DENSITY = 25/((1.5*128)**2)
 
@@ -152,7 +152,7 @@ class Andi2ndDataSimulation(DataSimulation):
             custom_dic.update({
                 'model': datasets_phenom().avail_models_name[1],
                 'M': transition_matrix, #transition matrix
-                'return_state_num': False,
+                'return_state_num': True,
                 'Ds': np.array([[d, d*0.01] for d in ds_values]),
                 'alphas': np.array([[a, a*0.01] for a in as_values]),
             })
@@ -281,7 +281,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         'N': 5,
                         'L': None,
                         'M': transition_matrix, #transition matrix
-                        'return_state_num': False,
+                        'return_state_num': True,
                         'Ds': np.array([[d, d*0.01] for d in np.random.choice(D_possible_values, size=n, replace=False)]),
                         'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
                     })
@@ -385,4 +385,25 @@ class Andi2ndDataSimulation(DataSimulation):
 
             if get_from_cache:
                 self.save_trajectories(trajectories, FILE_NAME)
+        return trajectories
+
+    def simulate_challenge_trajectories(self):
+        parameter_simulation_setup = [
+            {'model': 0, 'force_directed': False},
+            {'model': 1, 'force_directed': False},
+            {'model': 2, 'force_directed': False},
+            #{'model': 3, 'force_directed': False},
+            {'model': 4, 'force_directed': False},
+        ]
+
+        simulation_setup = np.random.choice(parameter_simulation_setup)
+        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=512)
+        dfs_traj, labs_traj, _ = challenge_phenom_dataset(
+            save_data = False,
+            dics = [dic],
+            return_timestep_labs = True, get_video = False, 
+            num_fovs = 1,
+        )
+        #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
+        trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
         return trajectories
