@@ -271,10 +271,10 @@ class Andi2ndDataSimulation(DataSimulation):
 
                     n = np.random.randint(2,5)
                     transition_matrix = np.zeros((n,n))
-
+                    p = np.random.uniform(0.80, 1)
                     for i in range(n):
                         for j in range(n):
-                            transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
+                            transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
 
                     custom_dic.update({
                         'T': trajectory_length,
