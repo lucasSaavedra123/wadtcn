@@ -124,7 +124,7 @@ class Andi2ndDataSimulation(DataSimulation):
             if model_label in [1,2]:
                 custom_dic['L'] = None
             else:
-                custom_dic['L'] = int(512)
+                custom_dic['L'] = int(1024)
 
         """
         We set D and alpha for models 1 and 3

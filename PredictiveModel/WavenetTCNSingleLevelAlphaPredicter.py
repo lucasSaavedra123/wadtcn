@@ -19,11 +19,11 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -125,7 +125,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         else:
             callbacks = []
 
-        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
+        device_name = '/cpu:0'#'/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
         Y1_val = Y_val
@@ -140,7 +140,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
                 Y.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_A_regression.npy')))
             
                 if np.random.choice([False, True]):
-                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.2
+                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.25
 
             X = np.concatenate(X)
             Y = np.concatenate(Y)
@@ -178,7 +178,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
             fig, ax = plt.subplots()
             ax.set_title('Alpha')
             ax.plot(ti.info['alpha_t'], color='black')
-            ax.plot(result[i, :]*2, color='red')
+            ax.scatter(range(len(result[i, :])), result[i, :]*2, color='red')
             ax.set_ylim([0,2])
 
             plt.show()
