@@ -178,9 +178,13 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             self.history_training_info = history_training_info
             self.trained = True
 
-    def plot_confusion_matrix(self, trajectories=None, normalized=True):
+    def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:
             trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
+
+        for t in trajectories:
+            t.x = (np.array(t.x) + np.random.randn(t.length)*sigma).tolist()
+            t.y = (np.array(t.y) + np.random.randn(t.length)*sigma).tolist()
 
         result = self.predict(trajectories)
         result = np.argmax(result,axis=2)
@@ -212,19 +216,23 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
-    def plot_single_level_prediction(self, limit=10):
+    def plot_single_level_prediction(self, limit=10, sigma=0):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')
+
+        for t in trajectories:
+            t.x = (np.array(t.x) + np.random.randn(t.length)*sigma).tolist()
+            t.y = (np.array(t.y) + np.random.randn(t.length)*sigma).tolist()
+
         np.random.shuffle(trajectories)
         result = self.predict(trajectories[:limit])
         idxs = np.arange(0,limit, 1)
 
-        fig, ax = plt.subplots()
-
         for i in idxs:
             ti = trajectories[i]
+            fig, ax = plt.subplots()
             ax.set_title('State')
             ax.plot(ti.info['state_t'], color='black')
-            ax.plot(np.argmax(result[0][i, :], axis=1), color='red')
-            ax.set_ylim([-1,5])
-            ax.set_xticklabels([s.capitalize() for s in self.models_involved_in_predictive_model])
+            ax.plot(np.argmax(result[i], axis=1), color='red')
+            ax.set_ylim([-1,4])
+            #ax.set_yticklabels([s.capitalize() for s in self.models_involved_in_predictive_model])
             plt.show()

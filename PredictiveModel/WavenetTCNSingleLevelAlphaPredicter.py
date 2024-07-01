@@ -166,8 +166,13 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
-    def plot_single_level_prediction(self, limit=10):
+    def plot_single_level_prediction(self, limit=10, sigma=0):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(VALIDATION_SET_SIZE_PER_EPOCH,self.trajectory_length,None,True,'val', ignore_boundary_effects=True)
+        
+        for t in trajectories:
+            t.x = (np.array(t.x) + np.random.randn(t.length)*sigma).tolist()
+            t.y = (np.array(t.y) + np.random.randn(t.length)*sigma).tolist()
+
         np.random.shuffle(trajectories)
         result = self.predict(trajectories[:limit])
         idxs = np.arange(0,limit, 1)

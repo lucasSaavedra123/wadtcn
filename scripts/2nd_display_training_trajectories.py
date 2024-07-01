@@ -3,9 +3,10 @@ import numpy as np
 from Trajectory import Trajectory
 import pandas as pd
 from DataSimulation import Andi2ndDataSimulation
+import matplotlib.pyplot as plt
 
 
-FROM_TRAINING_POOL=False
+FROM_TRAINING_POOL=True
 if FROM_TRAINING_POOL:
     cache_files = glob.glob('*train*.cache')
 
@@ -26,8 +27,15 @@ if FROM_TRAINING_POOL:
                     'state_t': trajectory_dataframe['state_t'].tolist()
                 },
                 noisy=True
-            ).plot_andi_2()
+            )
+            trajectory.plot_andi_2()
+            #plt.plot(np.diff(trajectory.get_noisy_x()))
+            #plt.plot(np.diff(trajectory.get_noisy_y()))
+            #plt.show()
 else:
     t = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(100, 100, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='models_phenom')
     for t_i in t:
         t_i.plot_andi_2()
+        #plt.plot(np.diff(t_i.get_noisy_x()))
+        #plt.plot(np.diff(t_i.get_noisy_y()))
+        #plt.show()
