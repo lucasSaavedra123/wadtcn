@@ -17,7 +17,7 @@ for network_class in [
 
     with open(f"./networks/{str(network)}.json", "w") as outfile:
         json.dump(network.history_training_info, outfile)
-    network.load_as_file()
+    #network.load_as_file()
     #network.trajectory_length = 100
     #network.plot_single_level_prediction(sigma=0.12)
     #network.plot_confusion_matrix(sigma=0.12)

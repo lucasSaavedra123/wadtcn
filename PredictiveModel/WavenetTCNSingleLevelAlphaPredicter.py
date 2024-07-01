@@ -1,19 +1,17 @@
 import os
 import numpy as np
-from keras.layers import Dense, Input, TimeDistributed
+from keras.layers import Dense, Input
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
-from tensorflow.keras.losses import MeanSquaredLogarithmicError, MeanAbsoluteError, MeanSquaredError
-from sklearn.metrics import confusion_matrix, f1_score
-from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
-import pandas as pd
 from keras.callbacks import EarlyStopping
-from tensorflow import device, config
+from tensorflow import device
 import keras.backend as K
+from utils import break_point_detection_with_stepfinder
+
 
 class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -186,6 +184,10 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
             ax[1].set_title('Alpha')
             ax[1].plot(ti.info['alpha_t'], color='black')
             ax[1].scatter(range(len(result[i, :])), result[i, :]*2, color='red')
+
+            for bkp in break_point_detection_with_stepfinder(result[i, :]*2, tresH=0.2):
+                ax[1].axvline(bkp, color='blue')
+
             ax[1].set_ylim([0,2])
 
             plt.show()

@@ -1,19 +1,18 @@
 import os
 import numpy as np
-from keras.layers import Dense, Input, TimeDistributed
+from keras.layers import Dense, Input
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
-from tensorflow.keras.losses import MeanSquaredLogarithmicError, MeanAbsoluteError, MeanSquaredError
-from sklearn.metrics import confusion_matrix, f1_score
-from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
 import pandas as pd
 from keras.callbacks import EarlyStopping
-from tensorflow import device, config
+from tensorflow import device
 import keras.backend as K
+from utils import break_point_detection_with_stepfinder
+
 
 class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
@@ -210,6 +209,10 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
             ax[1].set_title('D')
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
             ax[1].scatter(range(len(result[i, :])), result[i, :], color='red')
+
+            for bkp in break_point_detection_with_stepfinder(np.log10(ti.info['d_t']), tresH=0.1):
+                ax[1].axvline(bkp, color='blue')
+
             ax[1].set_ylim([-12,6])
 
             plt.show()
