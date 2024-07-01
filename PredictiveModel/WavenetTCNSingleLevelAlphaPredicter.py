@@ -181,10 +181,11 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         for i in idxs:
             ti = trajectories[i]
 
-            fig, ax = plt.subplots()
-            ax.set_title('Alpha')
-            ax.plot(ti.info['alpha_t'], color='black')
-            ax.scatter(range(len(result[i, :])), result[i, :]*2, color='red')
-            ax.set_ylim([0,2])
+            fig, ax = plt.subplots(1,2)
+            ax[0].plot(ti.get_noisy_x(), ti.get_noisy_y())
+            ax[1].set_title('Alpha')
+            ax[1].plot(ti.info['alpha_t'], color='black')
+            ax[1].scatter(range(len(result[i, :])), result[i, :]*2, color='red')
+            ax[1].set_ylim([0,2])
 
             plt.show()

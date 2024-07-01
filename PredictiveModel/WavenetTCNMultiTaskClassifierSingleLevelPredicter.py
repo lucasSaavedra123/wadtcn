@@ -229,10 +229,11 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         for i in idxs:
             ti = trajectories[i]
-            fig, ax = plt.subplots()
-            ax.set_title('State')
-            ax.plot(ti.info['state_t'], color='black')
-            ax.plot(np.argmax(result[i], axis=1), color='red')
-            ax.set_ylim([-1,4])
+            fig, ax = plt.subplots(1,2)
+            ax[0].plot(ti.get_noisy_x(), ti.get_noisy_y())
+            ax[1].set_title('State')
+            ax[1].plot(ti.info['state_t'], color='black')
+            ax[1].plot(np.argmax(result[i], axis=1), color='red')
+            ax[1].set_ylim([-1,4])
             #ax.set_yticklabels([s.capitalize() for s in self.models_involved_in_predictive_model])
             plt.show()

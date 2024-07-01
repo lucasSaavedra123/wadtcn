@@ -205,10 +205,11 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
         for i in idxs:
             ti = trajectories[i]
 
-            fig, ax = plt.subplots()
-            ax.set_title('D')
-            ax.plot(np.log10(ti.info['d_t']), color='black')
-            ax.scatter(range(len(result[i, :])), result[i, :], color='red')
-            ax.set_ylim([-12,6])
+            fig, ax = plt.subplots(1,2)
+            ax[0].plot(ti.get_noisy_x(), ti.get_noisy_y())
+            ax[1].set_title('D')
+            ax[1].plot(np.log10(ti.info['d_t']), color='black')
+            ax[1].scatter(range(len(result[i, :])), result[i, :], color='red')
+            ax[1].set_ylim([-12,6])
 
             plt.show()
