@@ -168,7 +168,7 @@ for exp in range(N_EXP):
                 last_bp = trajectory_info[(i*4)+3]
 
     dataframe = pd.DataFrame(complete_info)
-    dataframe['label'] = GaussianMixture(n_components=2).fit_predict(dataframe.values)
+    dataframe['label'] = GaussianMixture(n_components=2).fit_predict(dataframe[['d', 'alpha']].values)
     ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
 
     with open(ensemble_labels_file, 'w') as f:
