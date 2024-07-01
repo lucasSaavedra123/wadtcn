@@ -210,7 +210,7 @@ class WavenetTCNSingleLevelDiffusionCoefficientPredicter(PredictiveModel):
             ax[1].plot(np.log10(ti.info['d_t']), color='black')
             ax[1].scatter(range(len(result[i, :])), result[i, :], color='red')
 
-            for bkp in break_point_detection_with_stepfinder(np.log10(ti.info['d_t']), tresH=0.1):
+            for bkp in break_point_detection_with_stepfinder(np.log10(ti.info['d_t']), tresH=D_ACCEPTANCE_THRESHOLD):
                 ax[1].axvline(bkp, color='blue')
 
             ax[1].set_ylim([-12,6])

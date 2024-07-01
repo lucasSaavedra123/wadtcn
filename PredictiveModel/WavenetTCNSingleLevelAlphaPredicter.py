@@ -185,7 +185,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
             ax[1].plot(ti.info['alpha_t'], color='black')
             ax[1].scatter(range(len(result[i, :])), result[i, :]*2, color='red')
 
-            for bkp in break_point_detection_with_stepfinder(result[i, :]*2, tresH=0.2):
+            for bkp in break_point_detection_with_stepfinder(result[i, :]*2, tresH=ALPHA_ACCEPTANCE_THRESHOLD):
                 ax[1].axvline(bkp, color='blue')
 
             ax[1].set_ylim([0,2])
