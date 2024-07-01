@@ -22,17 +22,17 @@ from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import Wa
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
 
-PUBLIC_DATA_PATH = './public_data_validation_v1'
+PUBLIC_DATA_PATH = './public_data_challenge_v0'
 RESULT_PATH = './2nd_andi_challenge_results'
 PATH_TRACK_1, PATH_TRACK_2 = './track_1', './track_2'
 
-N_EXP = 13
+N_EXP = 12
 N_FOVS = 30
 
 info_field_to_network = {
-    'alpha_t': WavenetTCNSingleLevelAlphaPredicter(100, None, simulator=Andi2ndDataSimulation),
-    'd_t': WavenetTCNSingleLevelDiffusionCoefficientPredicter(100, None, simulator=Andi2ndDataSimulation),
-    'state_t': WavenetTCNMultiTaskClassifierSingleLevelPredicter(100, None, simulator=Andi2ndDataSimulation),
+    'alpha_t': WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation),
+    'd_t': WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation),
+    'state_t': WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation),
 }
 
 for field in info_field_to_network:
@@ -89,22 +89,24 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
             elif field == 'd_t':
                 t.info[field] = 10**flatten_input
             else:
-                new_states = []
-                for frame_i in range(len(flatten_input)):
-                    if frame_i < 1:
-                        new_states.append(flatten_input[0])
-                    elif frame_i == len(flatten_input) - 1:
-                        new_states.append(flatten_input[-1])
-                    else:
-                        new_states.append(st.mode(flatten_input[frame_i-1:frame_i+2]))
-
-                    if new_states[-1] == 0:
-                        t.info['alpha_t'][frame_i] = 0
-                        t.info['d_t'][frame_i] = 0
-                    elif new_states[-1] == 3:
-                        t.info['alpha_t'][frame_i] = 1.99
-
-                t.info[field] = np.array(new_states)
+                #new_states = []
+                #for frame_i in range(len(flatten_input)):
+                #    if frame_i < 1:
+                #        new_states.append(flatten_input[0])
+                #    elif frame_i == len(flatten_input) - 1:
+                #        new_states.append(flatten_input[-1])
+                #    else:
+                #        new_states.append(st.mode(flatten_input[frame_i-1:frame_i+2]))
+                #
+                #    if new_states[-1] == 0:
+                #        t.info['alpha_t'][frame_i] = 0
+                #        t.info['d_t'][frame_i] = 0
+                #    elif new_states[-1] == 3:
+                #        t.info['alpha_t'][frame_i] = 1.99
+                t.info['alpha_t'][flatten_input == 0] == 0
+                t.info['d_t'][flatten_input == 0] == 0
+                t.info['alpha_t'][flatten_input == 3] == 2
+                t.info[field] = np.array(flatten_input)
                 #plt.plot(t.info[field])
                 #plt.plot(new_states)
                 #plt.show()
