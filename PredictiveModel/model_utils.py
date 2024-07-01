@@ -25,7 +25,7 @@ def transform_trajectories_into_turning_angle(predictive_model, trajectories, no
     return X
 
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
+    X = np.zeros((len(trajectories), trajectories[-1].length-1, 2))
 
     def axis_adaptation_to_net(axis_data, track_length):
         axis_reshaped = np.reshape(axis_data, newshape=[1, len(axis_data)])

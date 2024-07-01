@@ -42,7 +42,8 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         return  Y
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
+        X = transform_trajectories_into_displacements(self, trajectories, normalize=True)
+        X = np.hstack([np.zeros((len(trajectories), 1, 2)), X])
         return X
 
     def build_network(self):

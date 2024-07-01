@@ -11,9 +11,9 @@ from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingle
 from Trajectory import Trajectory
 
 
-classifier_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(None, None, simulator=Andi2ndDataSimulation)
-d_regression_network = WavenetTCNSingleLevelDiffusionCoefficientPredicter(None, None, simulator=Andi2ndDataSimulation)
-alpha_regression_network = WavenetTCNSingleLevelAlphaPredicter(None, None, simulator=Andi2ndDataSimulation)
+classifier_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation)
+d_regression_network = WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation)
+alpha_regression_network = WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation)
 
 DEST_DIRECTORY = '2ndAndiTrajectories'
 os.makedirs(DEST_DIRECTORY, exist_ok=True)
@@ -44,9 +44,9 @@ for cache_i, cache_file_path in enumerate(classification_cache_files):
         np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y_classifier.npy'), Y_train)
         trajectory_counter += 1
 
-classification_cache_files = glob.glob('*train*regression.cache')
+regression_cache_files = glob.glob('*train*regression.cache')
 trajectory_counter = 0
-for cache_i, cache_file_path in enumerate(classification_cache_files):
+for cache_i, cache_file_path in enumerate(regression_cache_files):
     cache_dataframe = pd.read_csv(cache_file_path)
 
     for trajectory_id in tqdm.tqdm(cache_dataframe['id'].unique()):

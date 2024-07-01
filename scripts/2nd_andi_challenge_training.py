@@ -6,17 +6,18 @@ from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingle
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
 
 for network_class in [
+    WavenetTCNMultiTaskClassifierSingleLevelPredicter,
     WavenetTCNSingleLevelAlphaPredicter,
     WavenetTCNSingleLevelDiffusionCoefficientPredicter,
-    WavenetTCNMultiTaskClassifierSingleLevelPredicter,
 ]:
-    network = network_class(100, None, simulator=Andi2ndDataSimulation)
+    network = network_class(200, None, simulator=Andi2ndDataSimulation)
     network.enable_early_stopping()
     network.fit()
     network.save_as_file()
 
     with open(f"./networks/{str(network)}.json", "w") as outfile:
         json.dump(network.history_training_info, outfile)
-    #network.load_as_file()
-    #network.plot_single_level_prediction()
-    #network.plot_confusion_matrix()
+    network.load_as_file()
+    #network.trajectory_length = 100
+    #network.plot_single_level_prediction(sigma=0.12)
+    #network.plot_confusion_matrix(sigma=0.12)
