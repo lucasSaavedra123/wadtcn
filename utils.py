@@ -32,6 +32,33 @@ def delete_spurious_break_points(a_list, distancia=2):
             i += 1
     return new_list
 
+def merge_breakpoints(A, B):
+    i, j = 0, 0
+    C = []
+    len_A, len_B = len(A), len(B)
+    
+    while i < len_A and j < len_B:
+        if abs(A[i] - B[j]) <= 4:
+            C.append((A[i] + B[j]) // 2)
+            i += 1
+            j += 1
+        elif A[i] < B[j]:
+            C.append(A[i])
+            i += 1
+        else:
+            C.append(B[j])
+            j += 1
+    
+    while i < len_A:
+        C.append(A[i])
+        i += 1
+    
+    while j < len_B:
+        C.append(B[j])
+        j += 1
+    
+    return C
+
 """This section contains the 'core' loop of the stepfinder:
 a single full iteration is done and a best fit is determined
 @author: jkerssemakers march 2022       
