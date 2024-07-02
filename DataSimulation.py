@@ -397,7 +397,7 @@ class Andi2ndDataSimulation(DataSimulation):
         ]
 
         simulation_setup = np.random.choice(parameter_simulation_setup)
-        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=512)
+        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
         dfs_traj, labs_traj, _ = challenge_phenom_dataset(
             save_data = False,
             dics = [dic],

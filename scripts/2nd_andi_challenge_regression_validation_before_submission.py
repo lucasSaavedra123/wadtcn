@@ -31,11 +31,10 @@ for trajectory in trajectories:
 
     fig, ax = plt.subplots(2,1)
 
-    ax[0].scatter(range(trajectory.length), alpha_result)
-
     alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
     d_breakpoints = break_point_detection_with_stepfinder(d_result, tresH=D_ACCEPTANCE_THRESHOLD)
 
+    ax[0].scatter(range(trajectory.length), alpha_result)
     for bkp in alpha_breakpoints:
         ax[0].axvline(bkp, color='blue')
     ax[0].plot(trajectory.info['alpha_t'])
@@ -50,7 +49,7 @@ for trajectory in trajectories:
     #ax[1].set_ylim([-12,6])
 
     #Show final breakpoints
-    final_breakpoints = merge_breakpoints(alpha_breakpoints, d_breakpoints)
+    final_breakpoints = merge_breakpoints(alpha_breakpoints, d_breakpoints, 4)
 
     for bkp in final_breakpoints:
         ax[0].axvline(bkp, color='red', linewidth=2)
