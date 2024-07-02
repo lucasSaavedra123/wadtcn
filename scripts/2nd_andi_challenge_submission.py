@@ -21,6 +21,9 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
+from utils import break_point_detection_with_stepfinder, merge_breakpoints
+from CONSTANTS import D_ACCEPTANCE_THRESHOLD, ALPHA_ACCEPTANCE_THRESHOLD
+
 
 PUBLIC_DATA_PATH = './public_data_challenge_v0'
 RESULT_PATH = './2nd_andi_challenge_results'
@@ -126,7 +129,10 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
 
             for trajectory in exp_and_fov_trajectories:
                 prediction_traj = [int(trajectory.info['idx'])]
-                break_points = rpt.Pelt(model="l1").fit(trajectory.info['alpha_t']).predict(pen=1)
+                break_points = merge_breakpoints(
+                    break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
+                    break_point_detection_with_stepfinder(trajectory.info['d_t'], D_ACCEPTANCE_THRESHOLD),
+                )
 
                 last_break_point = 0
                 for bp in break_points:
