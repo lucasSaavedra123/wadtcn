@@ -6,7 +6,7 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data
 
 
 classification_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation)
@@ -50,7 +50,7 @@ while True:
         #ax[1].set_ylim([-12,6])
 
         #Show final breakpoints
-        final_breakpoints = merge_breakpoints(alpha_breakpoints, d_breakpoints, 4)
+        final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
 
         for bkp in final_breakpoints:
             ax[0].axvline(bkp, color='red', linewidth=2)

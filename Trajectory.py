@@ -23,7 +23,6 @@ from collections import defaultdict
 import moviepy.editor as mp
 from moviepy.video.fx.all import crop
 from moviepy.editor import *
-from utils import break_point_detection_with_stepfinder, merge_breakpoints
 from CONSTANTS import *
 #Example about how to read trajectories from .mat
 """

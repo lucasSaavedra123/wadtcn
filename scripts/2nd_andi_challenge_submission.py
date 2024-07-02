@@ -21,7 +21,7 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data
 from CONSTANTS import D_ACCEPTANCE_THRESHOLD, ALPHA_ACCEPTANCE_THRESHOLD
 
 
@@ -129,7 +129,7 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
 
             for trajectory in exp_and_fov_trajectories:
                 prediction_traj = [int(trajectory.info['idx'])]
-                break_points = merge_breakpoints(
+                break_points = merge_breakpoints_and_delete_spurious_of_different_data(
                     break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
                     break_point_detection_with_stepfinder(trajectory.info['d_t'], D_ACCEPTANCE_THRESHOLD),
                     4
