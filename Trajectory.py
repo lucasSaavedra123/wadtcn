@@ -23,7 +23,8 @@ from collections import defaultdict
 import moviepy.editor as mp
 from moviepy.video.fx.all import crop
 from moviepy.editor import *
-
+from utils import break_point_detection_with_stepfinder, merge_breakpoints
+from CONSTANTS import *
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -566,26 +567,23 @@ class Trajectory(Document):
         ax_regression_d.set_ylabel(r'$D_{i}$')
         ax_regression_d.set_xlabel(r'$i$')
 
+        if show_break_points:
+            break_points = merge_breakpoints(
+                break_point_detection_with_stepfinder(self.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
+                break_point_detection_with_stepfinder(np.log10(self.info['d_t']), D_ACCEPTANCE_THRESHOLD)
+            )
+
+            for bkp in break_points:
+                ax_regression_alpha.axvline(bkp, color='black', linestyle='-', linewidth=2)
+                ax_regression_d.axvline(bkp, color='black', linestyle='-', linewidth=2)
+
         if not absolute_d:
             ax_regression_d.plot(np.log10(self.info['d_t']))
-            if show_break_points:
-                break_points = rpt.Pelt(model="l1").fit(np.log10(self.info['d_t'])).predict(pen=1)
-                for bkp in break_points:
-                    ax_regression_d.axvline(bkp, color='black', linestyle='-', linewidth=2)
             ax_regression_d.set_ylim([-12,6])
         else:
             ax_regression_d.plot(self.info['d_t'])
-            if show_break_points:
-                break_points = rpt.Pelt(model="l1").fit(self.info['d_t']).predict(pen=1)
-                for bkp in break_points:
-                    ax_regression_d.axvline(bkp, color='black', linestyle='-', linewidth=2)
 
         ax_regression_alpha.plot(self.info['alpha_t'])
-
-        if show_break_points:
-            break_points = rpt.Pelt(model="l1").fit(self.info['alpha_t']).predict(pen=1)
-            for bkp in break_points:
-                ax_regression_alpha.axvline(bkp, color='black', linestyle='-', linewidth=2)
 
         ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
         #ax_regression_alpha.set_xlabel(r'$i$')
