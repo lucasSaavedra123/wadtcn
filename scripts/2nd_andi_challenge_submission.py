@@ -132,6 +132,7 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
                 break_points = merge_breakpoints(
                     break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
                     break_point_detection_with_stepfinder(trajectory.info['d_t'], D_ACCEPTANCE_THRESHOLD),
+                    4
                 )
 
                 last_break_point = 0
