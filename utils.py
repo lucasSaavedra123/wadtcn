@@ -103,8 +103,13 @@ breakpoints (ya previamente tratados) y les hacemos
 un ultimo refinamiento
 """
 def merge_breakpoints_and_delete_spurious_of_different_data(A, B, distance):
+    assert A[-1] == B[-1]
+    length = A[-1]
     C = sorted(list(set(A+B)))
-    return merge_spurious_break_points_by_distance(C,distance)
+    bkps = merge_spurious_break_points_by_distance_until_stop(C,distance)
+    if length not in bkps:
+        bkps.append(length)
+    return bkps
 
 """This section contains the 'core' loop of the stepfinder:
 a single full iteration is done and a best fit is determined
