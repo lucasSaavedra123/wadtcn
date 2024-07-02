@@ -106,9 +106,9 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
                 #        t.info['d_t'][frame_i] = 0
                 #    elif new_states[-1] == 3:
                 #        t.info['alpha_t'][frame_i] = 1.99
-                t.info['alpha_t'][flatten_input == 0] == 0
-                t.info['d_t'][flatten_input == 0] == 0
-                t.info['alpha_t'][flatten_input == 3] == 2
+                t.info['alpha_t'][flatten_input == 0] = 0
+                t.info['d_t'][flatten_input == 0] = 0
+                t.info['alpha_t'][flatten_input == 3] = 2
                 t.info[field] = np.array(flatten_input)
                 #plt.plot(t.info[field])
                 #plt.plot(new_states)
@@ -128,26 +128,26 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
             """
 
             for trajectory in exp_and_fov_trajectories:
+                d=trajectory.info['d_t']
+                d[d==0] = 1e-12
                 prediction_traj = [int(trajectory.info['idx'])]
                 break_points = merge_breakpoints_and_delete_spurious_of_different_data(
                     break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
-                    break_point_detection_with_stepfinder(trajectory.info['d_t'], D_ACCEPTANCE_THRESHOLD),
+                    break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
 
                 last_break_point = 0
                 for bp in break_points:
-                    state = st.mode(trajectory.info['state_t'][last_break_point:bp])
-
                     prediction_traj += [
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
-                        state,
+                        st.mode(trajectory.info['state_t'][last_break_point:bp]),
                         bp
                     ]
 
                     last_break_point = bp
-
+                assert prediction_traj[-1]==trajectory.length
                 formatted_numbers = ','.join(map(str, prediction_traj))
                 f.write(formatted_numbers + '\n')
 
