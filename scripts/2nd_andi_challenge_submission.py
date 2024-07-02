@@ -111,7 +111,7 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
                 #plt.plot(new_states)
                 #plt.show()
     #for t in trajectories_by_length[trajectory_length]:
-    #    t.plot_andi_2(absolute_d=True, show_break_points=True)
+    #    t.plot_andi_2(absolute_d=False, show_break_points=True)
 
 #Pointwise predictions are converted into segments and results are saved
 for exp in tqdm.tqdm(list(range(N_EXP))):
