@@ -1,5 +1,6 @@
 import numpy as np
 from tifffile import TiffWriter, TiffFile
+from collections import defaultdict
 
 import AutoStepFinder.stepfindCore as core
 import AutoStepFinder.stepfindTools as st
@@ -136,3 +137,85 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
         bkps.append(number_of_points)
 
     return bkps
+
+def get_trajectories_from_2nd_andi_challenge_tiff_movie(
+        tiff_movie,
+        unet_network,
+        expansion_factor=2,
+        spt_max_distance_tolerance=15,
+    ):
+
+    def get_id_of_position(a_dict, position):
+        for an_id in a_dict:
+            x_tuple = a_dict[an_id]['x']
+            y_tuple = a_dict[an_id]['y']
+            if x_tuple[0]<position[0]<x_tuple[1] and y_tuple[0]<position[1]<y_tuple[1]:
+                return an_id
+        return False
+
+    #Get mask
+    mask = tiff_movie[0]
+
+    #Get VIP ids
+    vip_id_to_pixel_position = {}
+    trajectory_vip_ids = np.unique(mask).tolist()
+    trajectory_vip_ids.remove(255)
+
+    #Extract size of "boxes" in the mask
+    for an_id in trajectory_vip_ids:
+        y_position, x_position = np.where(mask == an_id)
+
+        vip_id_to_pixel_position[an_id] = {
+            'x': (np.min(x_position)-expansion_factor, np.max(x_position)+expansion_factor),
+            'y': (np.min(y_position)-expansion_factor, np.max(y_position)+expansion_factor),
+        }
+
+    #Remove mask from the movie
+    tiff_movie = tiff_movie[1:]
+
+    #We get all the trajectories as dataframes
+    dataframe = unet_network.predict(
+        tiff_movie,
+        pixel_size=1,
+        extract_trajectories_as_dataframe=True,
+        spt_max_distance_tolerance=spt_max_distance_tolerance
+    )
+
+    #All trajectories are not VIP at the beginning
+    dataframe['vip'] = False
+
+    #vip_id_to_trajectories save all trajectories
+    #within same 'boxes' in the mask
+    vip_id_to_trajectories = defaultdict(lambda: [])
+    first_frame_dataframe = dataframe[dataframe['frame']==0].copy()
+    vip_trajectories_found = 0
+    for track_id in first_frame_dataframe['traj_idx'].unique():
+        track = first_frame_dataframe[first_frame_dataframe['traj_idx']==track_id]
+        an_id = get_id_of_position(vip_id_to_pixel_position, track[['x','y']].values[0])
+        if an_id != False:
+            vip_id_to_trajectories[an_id].append(track_id)
+
+    for an_id in vip_id_to_trajectories:
+        if len(vip_id_to_trajectories[an_id]) == 1:
+            selected_track_id = vip_id_to_trajectories[an_id][0]
+        else:
+            box_width = (vip_id_to_pixel_position[an_id]['x'][1] - vip_id_to_pixel_position[an_id]['x'][0])/2
+            box_height = (vip_id_to_pixel_position[an_id]['y'][1] - vip_id_to_pixel_position[an_id]['y'][0])/2
+
+            box_center = (vip_id_to_pixel_position[an_id]['x'][0]+box_width,vip_id_to_pixel_position[an_id]['y'][0]+box_height)
+
+            distances = []
+
+            for trajectory_id in vip_id_to_trajectories[an_id]:
+                x = first_frame_dataframe[first_frame_dataframe['traj_idx']==trajectory_id]['x'].values[0]
+                y = first_frame_dataframe[first_frame_dataframe['traj_idx']==trajectory_id]['y'].values[0]
+
+                distances.append(np.sqrt(((box_center[0]-x)**2)+((box_center[1]-y)**2)))
+
+            selected_track_id = vip_id_to_trajectories[an_id][np.argmin(distances)]
+        
+        dataframe.loc[dataframe['traj_idx']==selected_track_id, 'vip'] = True
+        vip_trajectories_found += 1
+
+    assert len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
+    return dataframe

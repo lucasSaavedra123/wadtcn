@@ -202,14 +202,14 @@ class UNetSingleParticleTracker(PredictiveModel):
         )
         dataset = pd.concat(tr)
 
-        dataset = dataset.rename(columns={'particle': 'track_id'})
+        dataset = dataset.rename(columns={'particle': 'traj_idx'})
         dataset = dataset.reset_index(drop=True)
 
-        track_ids = dataset['track_id'].unique()
+        track_ids = dataset['traj_idx'].unique()
         trajectories = []
 
         for track_id in track_ids:
-            track_dataframe = dataset[dataset['track_id'] == track_id].sort_values('frame')
+            track_dataframe = dataset[dataset['traj_idx'] == track_id].sort_values('frame')
             
             new_trajectory = Trajectory(
                 x=track_dataframe['x'].tolist(),
