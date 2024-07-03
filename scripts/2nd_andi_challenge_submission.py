@@ -175,16 +175,34 @@ for exp in range(N_EXP):
                 last_bp = trajectory_info[(i*4)+3]
 
     dataframe = pd.DataFrame(complete_info)
-    dataframe['label'] = GaussianMixture(n_components=2).fit_predict(dataframe[['d', 'alpha']].values)
+    dataframe['d'] = np.log10(dataframe['d'])
+
+    fig, ax = plt.subplots()
+    sns.histplot(dataframe,x='d', y='alpha', ax=ax)
+    ax.set_xlim(-12,6)
+    ax.set_ylim(0,2)
+    plt.show()
+
+    number_of_states = int(input('How many "peaks" do you see?'))
+    dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
+
+    fig, ax = plt.subplots()
+    sns.histplot(dataframe,x='d', y='alpha', hue='label', ax=ax)
+    ax.set_xlim(-12,6)
+    ax.set_ylim(0,2)
+    plt.show()
+
     ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
+
+    dataframe['d'] = 10**dataframe['d']
 
     with open(ensemble_labels_file, 'w') as f:
         model_name = 'confinement'
-        f.write(f'model: {model_name}; num_state: {2} \n')
+        f.write(f'model: {model_name}; num_state: {number_of_states} \n')
 
-        data = np.random.rand(5, 2)
+        data = np.random.zeros(5, number_of_states)
 
-        for label in [0,1]:
+        for label in dataframe['label'].unique():
             label_dataframe = dataframe[dataframe['label'] == label]
             data[0, label] = label_dataframe['alpha'].mean()
             data[1, label] = label_dataframe['alpha'].std()
