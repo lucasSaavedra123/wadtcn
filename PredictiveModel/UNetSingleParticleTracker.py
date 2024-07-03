@@ -100,6 +100,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             extract_trajectories=True,
             extract_localizations=True,
             extract_trajectories_as_dataframe=False,
+            extract_trajectories_as_trajectories=False,
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
@@ -191,8 +192,8 @@ class UNetSingleParticleTracker(PredictiveModel):
         dataset = pd.concat(tr)
 
         dataset = dataset.rename(columns={'particle': 'track_id'})
-        if extract_trajectories_as_dataframe:
-            return dataset
+        dataset = dataset.reset_index(drop=True)
+
         track_ids = dataset['track_id'].unique()
         trajectories = []
 
@@ -214,7 +215,12 @@ class UNetSingleParticleTracker(PredictiveModel):
         if plot_trajectories:
             plt.show()
 
-        return trajectories
+        if extract_trajectories_as_dataframe and extract_trajectories_as_trajectories:
+            return trajectories, dataset
+        elif extract_trajectories_as_dataframe:
+            return dataset
+        elif extract_trajectories_as_trajectories:
+            return trajectories
 
     @property
     def type_name(self):
