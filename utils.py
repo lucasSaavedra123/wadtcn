@@ -143,15 +143,17 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         unet_network,
         expansion_factor=3,
         spt_max_distance_tolerance=15,
+        assertion = True
     ):
     tiff_movie = tiff_movie.copy()
-    def get_id_of_position(a_dict, position):
-        for an_id in a_dict:
-            x_tuple = a_dict[an_id]['x']
-            y_tuple = a_dict[an_id]['y']
+    def get_vip_ids_of_position(a_dict, position):
+        ids = []
+        for vip_id in a_dict:
+            x_tuple = a_dict[vip_id]['x']
+            y_tuple = a_dict[vip_id]['y']
             if x_tuple[0]<position[0]<x_tuple[1] and y_tuple[0]<position[1]<y_tuple[1]:
-                return an_id
-        return False
+                ids.append(vip_id)
+        return False if len(ids)==0 else ids
 
     #Get mask
     mask = tiff_movie[0]
@@ -186,10 +188,10 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     trajectory_vip_ids.remove(255)
 
     #Extract size of "boxes" in the mask
-    for an_id in trajectory_vip_ids:
-        y_position, x_position = np.where(mask == an_id)
+    for vip_id in trajectory_vip_ids:
+        y_position, x_position = np.where(mask == vip_id)
 
-        vip_id_to_pixel_position[an_id] = {
+        vip_id_to_pixel_position[vip_id] = {
             'x': (np.min(x_position)-expansion_factor, np.max(x_position)+expansion_factor),
             'y': (np.min(y_position)-expansion_factor, np.max(y_position)+expansion_factor),
         }
@@ -213,31 +215,36 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     vip_trajectories_found = 0
     for track_id in first_frame_dataframe['traj_idx'].unique():
         track = first_frame_dataframe[first_frame_dataframe['traj_idx']==track_id]
-        an_id = get_id_of_position(vip_id_to_pixel_position, track[['x','y']].values[0])
-        if an_id is not False:
-            vip_id_to_trajectories[an_id].append(track_id)
+        vip_ids = get_vip_ids_of_position(vip_id_to_pixel_position, track[['x','y']].values[0])
+        if vip_ids is not False:
+            for vip_id in vip_ids:
+                vip_id_to_trajectories[vip_id].append(track_id)
 
-    for an_id in vip_id_to_trajectories:
-        if len(vip_id_to_trajectories[an_id]) == 1:
-            selected_track_id = vip_id_to_trajectories[an_id][0]
+    for vip_id in vip_id_to_trajectories:
+        if len(vip_id_to_trajectories[vip_id]) == 1:
+            selected_track_id = vip_id_to_trajectories[vip_id][0]
         else:
-            box_width = (vip_id_to_pixel_position[an_id]['x'][1] - vip_id_to_pixel_position[an_id]['x'][0])/2
-            box_height = (vip_id_to_pixel_position[an_id]['y'][1] - vip_id_to_pixel_position[an_id]['y'][0])/2
+            box_width = (vip_id_to_pixel_position[vip_id]['x'][1] - vip_id_to_pixel_position[vip_id]['x'][0])/2
+            box_height = (vip_id_to_pixel_position[vip_id]['y'][1] - vip_id_to_pixel_position[vip_id]['y'][0])/2
 
-            box_center = (vip_id_to_pixel_position[an_id]['x'][0]+box_width,vip_id_to_pixel_position[an_id]['y'][0]+box_height)
+            box_center = (vip_id_to_pixel_position[vip_id]['x'][0]+box_width,vip_id_to_pixel_position[vip_id]['y'][0]+box_height)
 
             distances = []
 
-            for trajectory_id in vip_id_to_trajectories[an_id]:
+            for trajectory_id in vip_id_to_trajectories[vip_id]:
                 x = first_frame_dataframe[first_frame_dataframe['traj_idx']==trajectory_id]['x'].values[0]
                 y = first_frame_dataframe[first_frame_dataframe['traj_idx']==trajectory_id]['y'].values[0]
 
                 distances.append(np.sqrt(((box_center[0]-x)**2)+((box_center[1]-y)**2)))
 
-            selected_track_id = vip_id_to_trajectories[an_id][np.argmin(distances)]
-        
+            selected_track_id = vip_id_to_trajectories[vip_id][np.argmin(distances)]
+
+            for aux_id in vip_id_to_trajectories:
+                if aux_id != vip_id and selected_track_id in vip_id_to_trajectories[aux_id]:
+                    vip_id_to_trajectories[aux_id].remove(selected_track_id)
+
         dataframe.loc[dataframe['traj_idx']==selected_track_id, 'vip'] = True
         vip_trajectories_found += 1
 
-    assert len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
+    assert not assertion or len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
     return dataframe
