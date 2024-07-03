@@ -176,8 +176,6 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         """
         Localizations are multiplied by the pixel size.
-        The origin of the axis is positioned to the 
-        left-bottom corner of the movie.
         """
         data = np.array(data)
         data[:,1:] *= pixel_size
