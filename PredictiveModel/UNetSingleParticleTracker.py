@@ -8,6 +8,7 @@ import pandas as pd
 import skimage
 import math
 import trackpy
+trackpy.quiet()
 import deeptrack as dt
 
 from .PredictiveModel import PredictiveModel
@@ -112,7 +113,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         import matplotlib
         matplotlib.use('TkAgg')
 
-        unet_result = (self.architecture.predict(image_array/255)[...,0] > classification_threshold).astype(int)
+        unet_result = (self.architecture.predict(image_array/255, verbose=0)[...,0] > classification_threshold).astype(int)
 
         if not extract_localizations:
             return unet_result
