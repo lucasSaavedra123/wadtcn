@@ -260,7 +260,6 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     for index, row in dataframe.iterrows():
         row.traj_idx = next(id_iterator) if not row.vip else row.new_traj_idx
 
-    #dataframe['traj_idx'] = dataframe['new_traj_idx']
     dataframe = dataframe.drop(['new_traj_idx'], axis=1)
     assert not assertion or len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
     return dataframe
