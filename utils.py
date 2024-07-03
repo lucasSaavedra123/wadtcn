@@ -141,10 +141,10 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         tiff_movie,
         unet_network,
-        expansion_factor=2,
+        expansion_factor=3,
         spt_max_distance_tolerance=15,
     ):
-
+    tiff_movie = tiff_movie.copy()
     def get_id_of_position(a_dict, position):
         for an_id in a_dict:
             x_tuple = a_dict[an_id]['x']
@@ -155,6 +155,30 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
 
     #Get mask
     mask = tiff_movie[0]
+
+    #Remove mask from the movie
+    tiff_movie = tiff_movie[1:]
+
+    # def conv(img, size):
+    #     mask = np.ones([size, size], dtype = int) 
+    #     mask = mask / (size*size)
+
+    #     m, n = img.shape
+
+    #     # Convolve the 3X3 mask over the image  
+    #     img_new = np.zeros([m, n]) 
+        
+    #     for i in range(1, m-1): 
+    #         for j in range(1, n-1): 
+    #             temp = img[i-1, j-1]*mask[0, 0]+img[i-1, j]*mask[0, 1]+img[i-1, j + 1]*mask[0, 2]+img[i, j-1]*mask[1, 0]+ img[i, j]*mask[1, 1]+img[i, j + 1]*mask[1, 2]+img[i + 1, j-1]*mask[2, 0]+img[i + 1, j]*mask[2, 1]+img[i + 1, j + 1]*mask[2, 2] 
+                
+    #             img_new[i, j]= temp 
+                
+    #     img_new = img_new.astype(np.uint8)
+    #     return img_new
+    # for frame_i in range(tiff_movie.shape[0]):
+    #    tiff_movie[frame_i] = conv(tiff_movie[frame_i],3)
+    #    tiff_movie[frame_i] = conv(tiff_movie[frame_i],5)
 
     #Get VIP ids
     vip_id_to_pixel_position = {}
@@ -170,15 +194,13 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
             'y': (np.min(y_position)-expansion_factor, np.max(y_position)+expansion_factor),
         }
 
-    #Remove mask from the movie
-    tiff_movie = tiff_movie[1:]
-
     #We get all the trajectories as dataframes
     dataframe = unet_network.predict(
         tiff_movie,
         pixel_size=1,
         extract_trajectories_as_dataframe=True,
-        spt_max_distance_tolerance=spt_max_distance_tolerance
+        spt_max_distance_tolerance=spt_max_distance_tolerance,
+        debug=False
     )
 
     #All trajectories are not VIP at the beginning
@@ -192,7 +214,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     for track_id in first_frame_dataframe['traj_idx'].unique():
         track = first_frame_dataframe[first_frame_dataframe['traj_idx']==track_id]
         an_id = get_id_of_position(vip_id_to_pixel_position, track[['x','y']].values[0])
-        if an_id != False:
+        if an_id != False or an_id==0:
             vip_id_to_trajectories[an_id].append(track_id)
 
     for an_id in vip_id_to_trajectories:
