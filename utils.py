@@ -142,7 +142,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         tiff_movie,
         unet_network,
         expansion_factor=3,
-        spt_max_distance_tolerance=15,
+        spt_max_distance_tolerance=11,
         assertion = True
     ):
     tiff_movie = tiff_movie.copy()
@@ -220,6 +220,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
             for vip_id in vip_ids:
                 vip_id_to_trajectories[vip_id].append(track_id)
 
+    dataframe['new_traj_idx'] = -1
     for vip_id in vip_id_to_trajectories:
         if len(vip_id_to_trajectories[vip_id]) == 1:
             selected_track_id = vip_id_to_trajectories[vip_id][0]
@@ -244,7 +245,22 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
                     vip_id_to_trajectories[aux_id].remove(selected_track_id)
 
         dataframe.loc[dataframe['traj_idx']==selected_track_id, 'vip'] = True
+        dataframe.loc[dataframe['traj_idx']==selected_track_id, 'new_traj_idx'] = vip_id
         vip_trajectories_found += 1
 
+    def give_id():
+        an_id = 0
+        while True:
+            if an_id not in trajectory_vip_ids:
+                yield an_id
+            an_id += 1
+
+    id_iterator = give_id()
+
+    for index, row in dataframe.iterrows():
+        row.traj_idx = next(id_iterator) if not row.vip else row.new_traj_idx
+
+    #dataframe['traj_idx'] = dataframe['new_traj_idx']
+    dataframe = dataframe.drop(['new_traj_idx'], axis=1)
     assert not assertion or len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
     return dataframe
