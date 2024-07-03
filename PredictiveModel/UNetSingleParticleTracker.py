@@ -104,6 +104,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
+            spt_max_number_of_empty_frames = 3,
             debug=False,
             plot_trajectories=False,
         ):
@@ -188,7 +189,17 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         grouped_dataset = dataset.groupby(dataset.frame)
         tr_datasets = [grouped_dataset.get_group(frame_value).reset_index(drop=True) for frame_value in dataset['frame'].unique()]
-        tr = trackpy.link_df_iter(tr_datasets, spt_max_distance_tolerance, pos_columns=['x', 'y'], t_column='frame')
+        """
+        This part was based on https://github.com/GanzingerLab/SPIT
+        """
+        tr = trackpy.link_df_iter(
+            tr_datasets,
+            search_range=spt_max_distance_tolerance,
+            memory=spt_max_number_of_empty_frames,
+            pos_columns=['x', 'y'],
+            t_column='frame',
+            link_strategy='auto'
+        )
         dataset = pd.concat(tr)
 
         dataset = dataset.rename(columns={'particle': 'track_id'})

@@ -1,12 +1,10 @@
-from matplotlib import pyplot as plt
 from PredictiveModel.UNetSingleParticleTracker import UNetSingleParticleTracker
 from utils import tiff_movie_path_to_numpy_array
 import numpy as np
 import cv2
 from time import sleep
 from scipy.ndimage import gaussian_filter
-from IPython import embed
-
+from collections import defaultdict
 
 def get_id_of_position(a_dict, position):
     for an_id in a_dict:
@@ -34,22 +32,22 @@ def conv(img, size):
     img_new = img_new.astype(np.uint8)
     return img_new
 
-#https://github.com/GanzingerLab/SPIT check that code please
 network = UNetSingleParticleTracker(128,128,2)
 network.load_as_file()
 
-movie = tiff_movie_path_to_numpy_array('public_data_challenge_v0/track_1/exp_6/videos_fov_2.tiff')
+movie = tiff_movie_path_to_numpy_array('public_data_challenge_v0/track_1/exp_11/videos_fov_9.tiff')
 mask = movie[0]
 id_to_pixel_position = {}
 ids = np.unique(mask).tolist()
 ids.remove(255)
 
+expansion_factor = 2
 for an_id in ids:
     y_position, x_position = np.where(mask == an_id)
 
     id_to_pixel_position[an_id] = {
-        'x': (np.min(x_position), np.max(x_position)),
-        'y': (np.min(y_position), np.max(y_position)),
+        'x': (np.min(x_position)-expansion_factor, np.max(x_position)+expansion_factor),
+        'y': (np.min(y_position)-expansion_factor, np.max(y_position)+expansion_factor),
     }
 
 movie = movie[1:]
@@ -62,20 +60,45 @@ for frame_i in range(processed_movie.shape[0]):
 
 dataframe = network.predict(processed_movie, pixel_size=1, extract_trajectories_as_dataframe=True, spt_max_distance_tolerance=15)
 dataframe['vip'] = False
-
+ids_to_trajectories = defaultdict(lambda: [])
 first_frame_dataframe = dataframe[dataframe['frame']==0].copy()
-
+vip_trajectories_found = 0
 for track_id in first_frame_dataframe['track_id'].unique():
     track = first_frame_dataframe[first_frame_dataframe['track_id']==track_id]
-    if get_id_of_position(id_to_pixel_position, track[['x','y']].values[0]) != False:
-        dataframe.loc[dataframe['track_id']==track_id, 'vip'] = True
+    an_id = get_id_of_position(id_to_pixel_position, track[['x','y']].values[0])
+    if an_id != False:
+        ids_to_trajectories[an_id].append(track_id)
+
+for an_id in ids_to_trajectories:
+    if len(ids_to_trajectories[an_id]) == 1:
+        selected_track_id = ids_to_trajectories[an_id][0]
+    else:
+        box_width = (id_to_pixel_position[an_id]['x'][1] - id_to_pixel_position[an_id]['x'][0])/2
+        box_height = (id_to_pixel_position[an_id]['y'][1] - id_to_pixel_position[an_id]['y'][0])/2
+
+        box_center = (id_to_pixel_position[an_id]['x'][0]+box_width,id_to_pixel_position[an_id]['y'][0]+box_height)
+
+        distances = []
+
+        for trajectory_id in ids_to_trajectories[an_id]:
+            x = first_frame_dataframe[first_frame_dataframe['track_id']==trajectory_id]['x'].values[0]
+            y = first_frame_dataframe[first_frame_dataframe['track_id']==trajectory_id]['y'].values[0]
+
+            distances.append(np.sqrt(((box_center[0]-x)**2)+((box_center[1]-y)**2)))
+
+        selected_track_id = ids_to_trajectories[an_id][np.argmin(distances)]
+    
+    dataframe.loc[dataframe['track_id']==selected_track_id, 'vip'] = True
+    vip_trajectories_found += 1
+
+assert len(ids)==vip_trajectories_found, f"{len(ids)}=={vip_trajectories_found}"
 
 movie = np.repeat(movie[..., np.newaxis], 3, axis=-1)
 i = 0
 
-while True: 
+while True:
     i += 1
-    frame_index = i%30
+    frame_index = i%200
 
     frame = movie[frame_index]
 
