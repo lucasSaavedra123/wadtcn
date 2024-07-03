@@ -214,7 +214,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     for track_id in first_frame_dataframe['traj_idx'].unique():
         track = first_frame_dataframe[first_frame_dataframe['traj_idx']==track_id]
         an_id = get_id_of_position(vip_id_to_pixel_position, track[['x','y']].values[0])
-        if an_id != False or an_id==0:
+        if an_id is not False:
             vip_id_to_trajectories[an_id].append(track_id)
 
     for an_id in vip_id_to_trajectories:
