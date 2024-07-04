@@ -166,9 +166,9 @@ for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
                     time_axis[-1]+1
                 ]
 
-                assert prediction_traj[-1]==time_axis[-1]
+                assert prediction_traj[-1]==time_axis[-1]+1
                 formatted_numbers = ','.join(map(str, prediction_traj))
-
+                
                 if track_path == PATH_TRACK_2:
                     submission_file.write(formatted_numbers + '\n')
                 elif track_path == PATH_TRACK_1:
