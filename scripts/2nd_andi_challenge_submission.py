@@ -1,5 +1,5 @@
 from os.path import join
-from os import makedirs
+from os import makedirs, remove
 from collections import defaultdict
 
 import pandas as pd
@@ -44,28 +44,32 @@ for field in info_field_to_network:
 #All trajectories are extracted, stored file information and prepared for further inference
 trajectories = []
 print("Loading trajectories...")
-for exp in tqdm.tqdm(list(range(N_EXP))):
-    for fov in range(N_FOVS):
-        dataframe_path = join(PUBLIC_DATA_PATH, PATH_TRACK_2, f'exp_{exp}', f'trajs_fov_{fov}.csv')
-        df = pd.read_csv(dataframe_path)
+for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+    for exp in tqdm.tqdm(list(range(N_EXP))):
+        for fov in range(N_FOVS):
+            dataframe_path = join(PUBLIC_DATA_PATH, track_path, f'exp_{exp}', f'trajs_fov_{fov}.csv')
+            df = pd.read_csv(dataframe_path)
 
-        for idx in df.traj_idx.unique():
-            df_traj = df[df.traj_idx == idx].sort_values('frame')
+            for idx in df.traj_idx.unique():
+                df_traj = df[df.traj_idx == idx].sort_values('frame')
 
-            trajectories.append(Trajectory(
-                x = df_traj['x'].tolist(),
-                y = df_traj['y'].tolist(),
-                t = df_traj['frame'].tolist(),
-                noisy=True,
-                info={
-                    'idx': idx,
-                    'exp': exp,
-                    'fov': fov
-                }
-            ))
+                trajectories.append(Trajectory(
+                    x = df_traj['x'].tolist(),
+                    y = df_traj['y'].tolist(),
+                    t = df_traj['frame'].tolist(),
+                    noisy=True,
+                    info={
+                        'track_path': track_path,
+                        'idx': idx,
+                        'exp': exp,
+                        'fov': fov
+                    }
+                ))
 
-            #plt.plot(df_traj['x'].tolist(), df_traj['y'].tolist())
-        #plt.show()
+                if 'vip' in df_traj.columns:
+                    trajectories[-1].info['vip'] = df_traj['vip'].all()
+                #plt.plot(df_traj['x'].tolist(), df_traj['y'].tolist())
+            #plt.show()
 
 print("Number of trajectories:", len(trajectories))
 
@@ -106,9 +110,9 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
                 #        t.info['d_t'][frame_i] = 0
                 #    elif new_states[-1] == 3:
                 #        t.info['alpha_t'][frame_i] = 1.99
-                t.info['alpha_t'][flatten_input == 0] = 0
-                t.info['d_t'][flatten_input == 0] = 0
-                t.info['alpha_t'][flatten_input == 3] = 2
+                #t.info['alpha_t'][flatten_input == 0] = 0
+                #t.info['d_t'][flatten_input == 0] = 0
+                #t.info['alpha_t'][flatten_input == 3] = 2
                 t.info[field] = np.array(flatten_input)
                 #plt.plot(t.info[field])
                 #plt.plot(new_states)
@@ -117,12 +121,17 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
     #    t.plot_andi_2(absolute_d=False)
 
 #Pointwise predictions are converted into segments and results are saved
-for exp in tqdm.tqdm(list(range(N_EXP))):
-    for fov in range(N_FOVS):
-        makedirs(join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}'), exist_ok=True)
-        submission_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', f'fov_{fov}.txt')
-        with open(submission_file, 'w') as f:
-            exp_and_fov_trajectories = [t for t in trajectories if t.info['exp']==exp and t.info['fov']==fov]
+for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+    for exp in tqdm.tqdm(list(range(N_EXP))):
+        for fov in range(N_FOVS):
+            makedirs(join(RESULT_PATH, track_path, f'exp_{exp}'), exist_ok=True)
+
+            #all_submission_file includes all trajectories of track
+            submission_file = open(join(RESULT_PATH, track_path, f'exp_{exp}', f'fov_{fov}.txt'), 'w')
+            if track_path == PATH_TRACK_1:
+                all_submission_file = open(join(RESULT_PATH, track_path, f'exp_{exp}', f'fov_{fov}_all.txt'), 'w')
+
+            exp_and_fov_trajectories = [t for t in trajectories if t.info['exp']==exp and t.info['fov']==fov and t.info['track_path'] == track_path]
             """
             Here, breakpoints are identified looking at the alpha signal
             """
@@ -136,81 +145,101 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
                     break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
-
+                #get_time in this challenge is the frame axis
+                time_axis = trajectory.get_time()
+                time_axis = (time_axis - np.min(time_axis)) + 1
                 last_break_point = 0
                 for bp in break_points:
                     prediction_traj += [
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
                         st.mode(trajectory.info['state_t'][last_break_point:bp]),
-                        bp
+                        bp if track_path == PATH_TRACK_2 else time_axis[bp-1]
                     ]
 
                     last_break_point = bp
                 assert prediction_traj[-1]==trajectory.length
                 formatted_numbers = ','.join(map(str, prediction_traj))
-                f.write(formatted_numbers + '\n')
+                
+                if track_path == PATH_TRACK_2:
+                    submission_file.write(formatted_numbers + '\n')
+                elif track_path == PATH_TRACK_1:
+                    all_submission_file.write(formatted_numbers + '\n')
+                    if trajectory.info['vip']:
+                        submission_file.write(formatted_numbers + '\n')
+
+            submission_file.close()
+            if track_path == PATH_TRACK_1:
+                all_submission_file.close()
+
 
 #From Pointwise predictions, ensemble
-for exp in range(N_EXP):
-    files_path = glob.glob(join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'fov_*.txt'))
+for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+    for exp in range(N_EXP):
+        if track_path == PATH_TRACK_1:
+            files_path = glob.glob(join(RESULT_PATH, track_path, f'exp_{exp}', 'fov_*_all.txt'))
+        else:
+            files_path = glob.glob(join(RESULT_PATH, track_path, f'exp_{exp}', 'fov_*.txt'))
 
-    complete_info = {
-        'd': [],
-        'alpha': [],
-        'duration': []
-    }
+        complete_info = {
+            'd': [],
+            'alpha': [],
+            'duration': []
+        }
 
-    for file_path in files_path:
-        results_file = open(file_path,'r')
+        for file_path in files_path:
+            results_file = open(file_path,'r')
 
-        trajectories_info = [[float(d) for d in line.split(',')[1:]] for line in results_file.readlines()]
+            trajectories_info = [[float(d) for d in line.split(',')[1:]] for line in results_file.readlines()]
 
-        for trajectory_info in trajectories_info:
-            last_bp = 0
-            for i in range(len(trajectory_info)//4):
-                complete_info['d'].append(trajectory_info[i*4])
-                complete_info['alpha'].append(trajectory_info[(i*4)+1])
-                complete_info['duration'].append(trajectory_info[(i*4)+3] - last_bp)
-                last_bp = trajectory_info[(i*4)+3]
+            for trajectory_info in trajectories_info:
+                last_bp = 0
+                for i in range(len(trajectory_info)//4):
+                    complete_info['d'].append(trajectory_info[i*4])
+                    complete_info['alpha'].append(trajectory_info[(i*4)+1])
+                    complete_info['duration'].append(trajectory_info[(i*4)+3] - last_bp)
+                    last_bp = trajectory_info[(i*4)+3]
 
-    dataframe = pd.DataFrame(complete_info)
-    dataframe['d'] = np.log10(dataframe['d'])
+            if track_path == PATH_TRACK_1:
+                remove(file_path)
 
-    fig, ax = plt.subplots()
-    sns.histplot(dataframe,x='d', y='alpha', ax=ax)
-    ax.set_xlim(-12,6)
-    ax.set_ylim(0,2)
-    plt.show()
+        dataframe = pd.DataFrame(complete_info)
+        dataframe['d'] = np.log10(dataframe['d'])
 
-    number_of_states = int(input('How many "peaks" do you see?'))
-    dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
+        fig, ax = plt.subplots()
+        sns.histplot(dataframe,x='d', y='alpha', ax=ax)
+        ax.set_xlim(-12,6)
+        ax.set_ylim(0,2)
+        plt.show()
 
-    fig, ax = plt.subplots()
-    sns.histplot(dataframe,x='d', y='alpha', hue='label', ax=ax)
-    ax.set_xlim(-12,6)
-    ax.set_ylim(0,2)
-    plt.show()
+        number_of_states = int(input('How many "peaks" do you see?'))
+        dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
 
-    ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
+        fig, ax = plt.subplots()
+        sns.histplot(dataframe,x='d', y='alpha', hue='label', ax=ax)
+        ax.set_xlim(-12,6)
+        ax.set_ylim(0,2)
+        plt.show()
 
-    dataframe['d'] = 10**dataframe['d']
+        ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
 
-    with open(ensemble_labels_file, 'w') as f:
-        model_name = 'confinement'
-        f.write(f'model: {model_name}; num_state: {number_of_states} \n')
+        dataframe['d'] = 10**dataframe['d']
 
-        data = np.random.zeros(5, number_of_states)
+        with open(ensemble_labels_file, 'w') as f:
+            model_name = 'confinement'
+            f.write(f'model: {model_name}; num_state: {number_of_states} \n')
 
-        for label in dataframe['label'].unique():
-            label_dataframe = dataframe[dataframe['label'] == label]
-            data[0, label] = label_dataframe['alpha'].mean()
-            data[1, label] = label_dataframe['alpha'].std()
-            data[2, label] = label_dataframe['d'].mean()
-            data[3, label] = label_dataframe['d'].std()
-            data[3, label] = label_dataframe['duration'].sum()
-        
-        #data[-1,:] /= data[-1,:].sum()
+            data = np.random.zeros(5, number_of_states)
 
-        # Save the data in the corresponding ensemble file
-        np.savetxt(f, data, delimiter = ';')
+            for label in dataframe['label'].unique():
+                label_dataframe = dataframe[dataframe['label'] == label]
+                data[0, label] = label_dataframe['alpha'].mean()
+                data[1, label] = label_dataframe['alpha'].std()
+                data[2, label] = label_dataframe['d'].mean()
+                data[3, label] = label_dataframe['d'].std()
+                data[3, label] = label_dataframe['duration'].sum()
+
+            #data[-1,:] /= data[-1,:].sum()
+
+            # Save the data in the corresponding ensemble file
+            np.savetxt(f, data, delimiter = ';')
