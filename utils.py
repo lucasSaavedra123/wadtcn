@@ -110,6 +110,8 @@ def merge_breakpoints_and_delete_spurious_of_different_data(A, B, distance):
     bkps = merge_spurious_break_points_by_distance_until_stop(C,distance)
     if length not in bkps:
         bkps.append(length)
+    if length - 1 in bkps:
+        bkps.remove(length - 1)
     return bkps
 
 """This section contains the 'core' loop of the stepfinder:
@@ -135,7 +137,8 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     number_of_points = len(dataX)
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-
+    if number_of_points - 1 in bkps:
+        bkps.remove(number_of_points - 1)
     return bkps
 
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
