@@ -154,7 +154,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
                         st.mode(trajectory.info['state_t'][last_break_point:bp]),
-                        bp if track_path == PATH_TRACK_2 else time_axis[bp]
+                        int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
                     ]
 
                     last_break_point = bp
@@ -163,7 +163,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                     np.mean(trajectory.info['d_t'][last_break_point:]),
                     np.mean(trajectory.info['alpha_t'][last_break_point:]),
                     st.mode(trajectory.info['state_t'][last_break_point:]),
-                    time_axis[-1]+1
+                    int(time_axis[-1]+1)
                 ]
 
                 assert prediction_traj[-1]==time_axis[-1]+1
@@ -219,7 +219,7 @@ for track_path in LIST_OF_TRACK_PATHS:
         ax.set_xlim(-12,6)
         ax.set_ylim(0,2)
         plt.show()
-
+        print("Type please:")
         number_of_states = int(input('How many "peaks" do you see?'))
         dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
 
