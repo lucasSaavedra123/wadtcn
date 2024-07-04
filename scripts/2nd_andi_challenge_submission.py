@@ -31,7 +31,7 @@ PATH_TRACK_1, PATH_TRACK_2 = './track_1', './track_2'
 
 N_EXP = 12
 N_FOVS = 30
-
+LIST_OF_TRACK_PATHS = [PATH_TRACK_1, PATH_TRACK_2]
 info_field_to_network = {
     'alpha_t': WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation),
     'd_t': WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation),
@@ -44,7 +44,7 @@ for field in info_field_to_network:
 #All trajectories are extracted, stored file information and prepared for further inference
 trajectories = []
 print("Loading trajectories...")
-for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+for track_path in LIST_OF_TRACK_PATHS:
     for exp in tqdm.tqdm(list(range(N_EXP))):
         for fov in range(N_FOVS):
             dataframe_path = join(PUBLIC_DATA_PATH, track_path, f'exp_{exp}', f'trajs_fov_{fov}.csv')
@@ -121,7 +121,7 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
     #    t.plot_andi_2(absolute_d=False)
 
 #Pointwise predictions are converted into segments and results are saved
-for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+for track_path in LIST_OF_TRACK_PATHS:
     for exp in tqdm.tqdm(list(range(N_EXP))):
         for fov in range(N_FOVS):
             makedirs(join(RESULT_PATH, track_path, f'exp_{exp}'), exist_ok=True)
@@ -182,7 +182,7 @@ for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
 
 
 #From Pointwise predictions, ensemble
-for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
+for track_path in LIST_OF_TRACK_PATHS:
     for exp in range(N_EXP):
         if track_path == PATH_TRACK_1:
             files_path = glob.glob(join(RESULT_PATH, track_path, f'exp_{exp}', 'fov_*_all.txt'))
