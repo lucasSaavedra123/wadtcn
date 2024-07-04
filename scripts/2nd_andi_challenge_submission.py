@@ -145,6 +145,21 @@ for track_path in LIST_OF_TRACK_PATHS:
                     break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
+                # fig, ax = plt.subplots(2,1)
+
+                # ax[0].scatter(range(trajectory.length), trajectory.info['alpha_t'])
+                # ax[0].set_title('Alpha')
+                # ax[0].set_ylim([0,2])
+                # ax[1].scatter(range(trajectory.length), np.log10(trajectory.info['d_t']))
+                # ax[1].set_title('Diffusion Coefficient')
+                # ax[1].set_ylim([-12,6])
+
+                # #Show final breakpoints
+                # for bkp in break_points:
+                #     ax[0].axvline(bkp, color='red', linewidth=2)
+                #     ax[1].axvline(bkp, color='red', linewidth=2)
+
+                # plt.show()
                 #get_time in this challenge is the frame axis
                 time_axis = trajectory.get_time()
                 time_axis -= np.min(time_axis)
