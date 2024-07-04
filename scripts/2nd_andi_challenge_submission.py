@@ -237,7 +237,7 @@ for track_path in LIST_OF_TRACK_PATHS:
             model_name = 'confinement'
             f.write(f'model: {model_name}; num_state: {number_of_states} \n')
 
-            data = np.random.zeros(5, number_of_states)
+            data = np.zeros((5, number_of_states))
 
             for label in dataframe['label'].unique():
                 label_dataframe = dataframe[dataframe['label'] == label]
