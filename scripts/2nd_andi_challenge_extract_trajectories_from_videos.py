@@ -1,14 +1,7 @@
 from os.path import join
-from collections import defaultdict
-
-from IPython import embed
-import pandas as pd
 import tqdm
-from andi_datasets.utils_videos import play_video
-import matplotlib.animation as animation
-import moviepy.editor as mp
 
-from Trajectory import Trajectory
+
 from PredictiveModel.UNetSingleParticleTracker import UNetSingleParticleTracker
 from utils import tiff_movie_path_to_numpy_array, get_trajectories_from_2nd_andi_challenge_tiff_movie
 
@@ -26,5 +19,8 @@ for exp in tqdm.tqdm(list(range(N_EXP))):
         print(exp,fov)
         tiff_file_path = join(PUBLIC_DATA_PATH, PATH_TRACK_1, f'exp_{exp}', f'videos_fov_{fov}.tiff')
         tiff_movie = tiff_movie_path_to_numpy_array(tiff_file_path)
-        dataframe = get_trajectories_from_2nd_andi_challenge_tiff_movie(tiff_movie, unet_network)
+        if exp==4:
+            dataframe = get_trajectories_from_2nd_andi_challenge_tiff_movie(tiff_movie, unet_network, spt_max_distance_tolerance=7)
+        else:
+            dataframe = get_trajectories_from_2nd_andi_challenge_tiff_movie(tiff_movie, unet_network)
         dataframe.to_csv(join(PUBLIC_DATA_PATH, PATH_TRACK_1, f'exp_{exp}', f'trajs_fov_{fov}.csv'), index=False)
