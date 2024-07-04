@@ -229,7 +229,7 @@ for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
         ax.set_ylim(0,2)
         plt.show()
 
-        ensemble_labels_file = join(RESULT_PATH, PATH_TRACK_2, f'exp_{exp}', 'ensemble_labels.txt')
+        ensemble_labels_file = join(RESULT_PATH, track_path, f'exp_{exp}', 'ensemble_labels.txt')
 
         dataframe['d'] = 10**dataframe['d']
 
