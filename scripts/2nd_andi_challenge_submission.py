@@ -147,20 +147,28 @@ for track_path in [PATH_TRACK_1, PATH_TRACK_2]:
                 )
                 #get_time in this challenge is the frame axis
                 time_axis = trajectory.get_time()
-                time_axis = (time_axis - np.min(time_axis)) + 1
+                time_axis -= np.min(time_axis)
                 last_break_point = 0
-                for bp in break_points:
+                for bp in break_points[:-1]:
                     prediction_traj += [
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
                         st.mode(trajectory.info['state_t'][last_break_point:bp]),
-                        bp if track_path == PATH_TRACK_2 else time_axis[bp-1]
+                        bp if track_path == PATH_TRACK_2 else time_axis[bp]
                     ]
 
                     last_break_point = bp
-                assert prediction_traj[-1]==trajectory.length
+
+                prediction_traj += [
+                    np.mean(trajectory.info['d_t'][last_break_point:]),
+                    np.mean(trajectory.info['alpha_t'][last_break_point:]),
+                    st.mode(trajectory.info['state_t'][last_break_point:]),
+                    time_axis[-1]+1
+                ]
+
+                assert prediction_traj[-1]==time_axis[-1]
                 formatted_numbers = ','.join(map(str, prediction_traj))
-                
+
                 if track_path == PATH_TRACK_2:
                     submission_file.write(formatted_numbers + '\n')
                 elif track_path == PATH_TRACK_1:
