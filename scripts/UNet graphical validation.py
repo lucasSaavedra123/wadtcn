@@ -9,7 +9,7 @@ from utils import tiff_movie_path_to_numpy_array, get_trajectories_from_2nd_andi
 
 DATA_PATH = './public_data_challenge_v0'
 EXP = 3
-FOV = 27
+FOV = 29
 
 network = UNetSingleParticleTracker(128,128,2)
 network.load_as_file()
