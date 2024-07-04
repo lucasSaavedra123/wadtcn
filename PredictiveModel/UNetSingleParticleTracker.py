@@ -10,11 +10,14 @@ import math
 import trackpy
 trackpy.quiet()
 import deeptrack as dt
-
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
 from .model_utils import ImageGenerator, Unet
 from Trajectory import Trajectory
+
+from scipy import ndimage as ndi
+from skimage.segmentation import watershed
+from skimage.feature import peak_local_max
 
 
 class UNetSingleParticleTracker(PredictiveModel):
@@ -124,6 +127,13 @@ class UNetSingleParticleTracker(PredictiveModel):
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             rough_localizations = []
 
+            distance = ndi.distance_transform_edt(mask)
+            coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask)
+            true_mask = np.zeros(distance.shape, dtype=bool)
+            true_mask[tuple(coords.T)] = True
+            markers, _ = ndi.label(true_mask)
+            labels = watershed(-distance, markers, mask=mask)
+
             if debug:
                 plt.title(f"Frame {frame_index}")
                 plt.imshow(frame)
@@ -133,7 +143,23 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.imshow(mask)
                 plt.show()
 
-            cs = skimage.measure.regionprops(skimage.measure.label(mask))
+                fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
+                ax = axes.ravel()
+
+                ax[0].imshow(mask, cmap=plt.cm.gray)
+                ax[0].set_title('Overlapping objects')
+                ax[1].imshow(-distance, cmap=plt.cm.gray)
+                ax[1].set_title('Distances')
+                ax[2].imshow(labels, cmap=plt.cm.nipy_spectral)
+                ax[2].set_title('Separated objects')
+
+                for a in ax:
+                    a.set_axis_off()
+
+                fig.tight_layout()
+                plt.show()
+
+            cs = skimage.measure.regionprops(labels)#(skimage.measure.label(mask))
             rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
