@@ -109,6 +109,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
             spt_max_number_of_empty_frames = 3,
+            spt_adaptive_stop = 100e-9,
             debug=False,
             plot_trajectories=False,
         ):
@@ -216,6 +217,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         tr_datasets = [grouped_dataset.get_group(frame_value).reset_index(drop=True) for frame_value in dataset['frame'].unique()]
         """
         This part was based on https://github.com/GanzingerLab/SPIT
+        Also, check https://soft-matter.github.io/trackpy/v0.3.0/tutorial/subnets.html
         """
         tr = trackpy.link_df_iter(
             tr_datasets,
@@ -223,7 +225,9 @@ class UNetSingleParticleTracker(PredictiveModel):
             memory=spt_max_number_of_empty_frames,
             pos_columns=['x', 'y'],
             t_column='frame',
-            link_strategy='auto'
+            link_strategy='auto',
+            adaptive_stop=spt_adaptive_stop,
+            adaptive_step=0.95
         )
         dataset = pd.concat(tr)
 
@@ -235,7 +239,7 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         for track_id in track_ids:
             track_dataframe = dataset[dataset['traj_idx'] == track_id].sort_values('frame')
-            
+
             new_trajectory = Trajectory(
                 x=track_dataframe['x'].tolist(),
                 y=track_dataframe['y'].tolist(),

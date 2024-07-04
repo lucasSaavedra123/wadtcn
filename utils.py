@@ -142,7 +142,8 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         tiff_movie,
         unet_network,
         expansion_factor=3,
-        spt_max_distance_tolerance=11,
+        spt_max_distance_tolerance=15,
+        spt_adaptive_stop=3,
         assertion = True
     ):
     tiff_movie = tiff_movie.copy()
@@ -202,6 +203,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         pixel_size=1,
         extract_trajectories_as_dataframe=True,
         spt_max_distance_tolerance=spt_max_distance_tolerance,
+        spt_adaptive_stop=spt_adaptive_stop,
         debug=False
     )
 

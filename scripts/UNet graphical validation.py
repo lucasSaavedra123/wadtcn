@@ -9,13 +9,13 @@ from utils import tiff_movie_path_to_numpy_array, get_trajectories_from_2nd_andi
 
 DATA_PATH = './public_data_challenge_v0'
 EXP = 4
-FOV = 1
+FOV = 11
 
 network = UNetSingleParticleTracker(128,128,2)
 network.load_as_file()
 
 movie = tiff_movie_path_to_numpy_array(f'{DATA_PATH}/track_1/exp_{EXP}/videos_fov_{FOV}.tiff')
-dataframe = get_trajectories_from_2nd_andi_challenge_tiff_movie(movie,network,assertion=False,spt_max_distance_tolerance=7)
+dataframe = get_trajectories_from_2nd_andi_challenge_tiff_movie(movie,network,assertion=False)
 
 movie = movie[1:]
 movie = np.repeat(movie[..., np.newaxis], 3, axis=-1)
