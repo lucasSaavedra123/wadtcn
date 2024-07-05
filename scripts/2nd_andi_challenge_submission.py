@@ -145,6 +145,21 @@ for track_path in LIST_OF_TRACK_PATHS:
                     break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
+                # fig, ax = plt.subplots(2,1)
+
+                # ax[0].scatter(range(trajectory.length), trajectory.info['alpha_t'])
+                # ax[0].set_title('Alpha')
+                # ax[0].set_ylim([0,2])
+                # ax[1].scatter(range(trajectory.length), np.log10(trajectory.info['d_t']))
+                # ax[1].set_title('Diffusion Coefficient')
+                # ax[1].set_ylim([-12,6])
+
+                # #Show final breakpoints
+                # for bkp in break_points:
+                #     ax[0].axvline(bkp, color='red', linewidth=2)
+                #     ax[1].axvline(bkp, color='red', linewidth=2)
+
+                # plt.show()
                 #get_time in this challenge is the frame axis
                 time_axis = trajectory.get_time()
                 time_axis -= np.min(time_axis)
@@ -154,7 +169,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                         np.mean(trajectory.info['d_t'][last_break_point:bp]),
                         np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
                         st.mode(trajectory.info['state_t'][last_break_point:bp]),
-                        bp if track_path == PATH_TRACK_2 else time_axis[bp]
+                        int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
                     ]
 
                     last_break_point = bp
@@ -163,7 +178,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                     np.mean(trajectory.info['d_t'][last_break_point:]),
                     np.mean(trajectory.info['alpha_t'][last_break_point:]),
                     st.mode(trajectory.info['state_t'][last_break_point:]),
-                    time_axis[-1]+1
+                    int(time_axis[-1]+1)
                 ]
 
                 assert prediction_traj[-1]==time_axis[-1]+1
@@ -214,12 +229,17 @@ for track_path in LIST_OF_TRACK_PATHS:
         dataframe = pd.DataFrame(complete_info)
         dataframe['d'] = np.log10(dataframe['d'])
 
-        fig, ax = plt.subplots()
-        sns.histplot(dataframe,x='d', y='alpha', ax=ax)
-        ax.set_xlim(-12,6)
-        ax.set_ylim(0,2)
+        fig, ax = plt.subplots(1,3)
+        sns.kdeplot(dataframe,x='alpha', ax=ax[0])
+        sns.kdeplot(dataframe,x='d', ax=ax[1])
+        sns.histplot(dataframe,x='d', y='alpha', ax=ax[2])
+        ax[0].set_xlim(0,2)
+        ax[1].set_xlim(-12,6)
+        ax[2].set_xlim(-12,6)
+        ax[2].set_ylim(0,2)
         plt.show()
 
+        print("Type please:")
         number_of_states = int(input('How many "peaks" do you see?'))
         dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
 
@@ -237,7 +257,7 @@ for track_path in LIST_OF_TRACK_PATHS:
             model_name = 'confinement'
             f.write(f'model: {model_name}; num_state: {number_of_states} \n')
 
-            data = np.random.zeros(5, number_of_states)
+            data = np.zeros((5, number_of_states))
 
             for label in dataframe['label'].unique():
                 label_dataframe = dataframe[dataframe['label'] == label]
