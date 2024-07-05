@@ -11,6 +11,7 @@ from keras.callbacks import EarlyStopping
 from tensorflow import device
 import keras.backend as K
 from utils import break_point_detection_with_stepfinder
+from andi_datasets.datasets_challenge import _defaults_andi2
 
 
 class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
@@ -129,6 +130,9 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
         Y1_val = Y_val
 
+        for X_val_i in range(X_val.shape[0]):
+            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
+
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_A_regression.npy'))
 
         def custom_prepare_dataset(batch_size):            
@@ -137,9 +141,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
             for trajectory_id in trajectories_ids:
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_A_regression.npy')))
                 Y.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_A_regression.npy')))
-            
-                if np.random.choice([False, True]):
-                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.25
+                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
 
             X = np.concatenate(X)
             Y = np.concatenate(Y)

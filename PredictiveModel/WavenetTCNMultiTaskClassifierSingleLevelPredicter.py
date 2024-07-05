@@ -15,16 +15,18 @@ import pandas as pd
 from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 import keras.backend as K
+from andi_datasets.datasets_challenge import _defaults_andi2
+
 
 class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':100}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -135,6 +137,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
+        for X_val_i in range(X_val.shape[0]):
+            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
+
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_classifier.npy'))
 
         def custom_prepare_dataset(batch_size):            
@@ -153,9 +158,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_classifier.npy')))
                 Y.append(Y_i)
-
-                if np.random.choice([False, True]):
-                    X[-1] += np.random.randn(*X[-1].shape) * np.random.rand() * 0.2
+                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
 
             X = np.concatenate(X)
             Y = np.concatenate(Y)
