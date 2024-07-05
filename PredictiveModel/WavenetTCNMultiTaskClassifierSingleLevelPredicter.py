@@ -54,6 +54,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     def build_network(self):
         number_of_features = 2
         wavenet_filters = 32
+        dff = 320
+
         dilation_depth = 8
         initializer = 'he_normal'
         x1_kernel = 4
@@ -81,16 +83,16 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         x_1 = x
         #Following code is similar to Requena, 2023.
         for _ in range(4):
-            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=320, dropout_rate=0.1)(x)
+            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=dff, dropout_rate=0.1)(x)
         x = Add()([x_1, x])
         
         x = LayerNormalization()(x)
         x_1 = x
-        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
+        x = FeedForward(wavenet_filters*5, dff, 0.1)(x)
         x = Add()([x_1, x])
         x = LayerNormalization()(x)
         
-        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
+        x = FeedForward(wavenet_filters*5, dff, 0.1)(x)
 
         #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
