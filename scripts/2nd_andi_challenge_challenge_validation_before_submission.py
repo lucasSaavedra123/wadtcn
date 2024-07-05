@@ -17,7 +17,9 @@ diffusion_coefficient_network = WavenetTCNSingleLevelDiffusionCoefficientPredict
 diffusion_coefficient_network.load_as_file()
 
 while True:
-    trajectories = Andi2ndDataSimulation().simulate_challenge_trajectories()
+    trajectories = []
+    while len(trajectories) == 0:
+        trajectories = Andi2ndDataSimulation().simulate_challenge_trajectories()
 
     for t in trajectories:
         plt.plot(t.get_noisy_x(), t.get_noisy_y())
@@ -29,8 +31,9 @@ while True:
     for trajectory in trajectories:
         alpha_result = alpha_network.predict([trajectory])[0,:,0]*2
         d_result = diffusion_coefficient_network.predict([trajectory])[0,:,0]
+        state_result = np.argmax(classification_network.predict([trajectory])[0], axis=1)
 
-        fig, ax = plt.subplots(2,1)
+        fig, ax = plt.subplots(3,1)
 
         alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
         d_breakpoints = break_point_detection_with_stepfinder(d_result, tresH=D_ACCEPTANCE_THRESHOLD)
@@ -49,11 +52,18 @@ while True:
         ax[1].set_title('Diffusion Coefficient')
         #ax[1].set_ylim([-12,6])
 
+        ax[2].scatter(range(trajectory.length), state_result)
+        for bkp in d_breakpoints:
+            ax[2].axvline(bkp, color='blue')
+        ax[2].plot(trajectory.info['state_t'])
+        ax[2].set_title('Single-level classification')
+
         #Show final breakpoints
         final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
 
         for bkp in final_breakpoints:
             ax[0].axvline(bkp, color='red', linewidth=2)
             ax[1].axvline(bkp, color='red', linewidth=2)
+            ax[2].axvline(bkp, color='red', linewidth=2)
 
         plt.show()

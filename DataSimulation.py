@@ -387,7 +387,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 self.save_trajectories(trajectories, FILE_NAME)
         return trajectories
 
-    def simulate_challenge_trajectories(self):
+    def simulate_challenge_trajectories(self, filter=False):
         parameter_simulation_setup = [
             {'model': 0, 'force_directed': False},
             {'model': 1, 'force_directed': False},
@@ -406,4 +406,6 @@ class Andi2ndDataSimulation(DataSimulation):
         )
         #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
         trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
+        if simulation_setup['model'] >= 2 and filter:
+            trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
         return trajectories
