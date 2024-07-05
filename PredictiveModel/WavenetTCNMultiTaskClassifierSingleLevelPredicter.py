@@ -53,8 +53,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         number_of_features = 2
-        wavenet_filters = 32
-        dff = 320
+        wavenet_filters = 64#32
+        dff = 512#320
+        number_of_passes = 4
 
         dilation_depth = 8
         initializer = 'he_normal'
@@ -82,7 +83,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x_1 = x
         #Following code is similar to Requena, 2023.
-        for _ in range(4):
+        for _ in range(number_of_passes):
             x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=dff, dropout_rate=0.1)(x)
         x = Add()([x_1, x])
         
