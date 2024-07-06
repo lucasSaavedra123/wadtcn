@@ -275,7 +275,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                 data[1, label] = label_dataframe['alpha'].std()
                 data[2, label] = label_dataframe['d'].mean()
                 data[3, label] = label_dataframe['d'].std()
-                data[3, label] = label_dataframe['duration'].sum()
+                data[4, label] = label_dataframe['duration'].sum()
 
             #data[-1,:] /= data[-1,:].sum()
 
