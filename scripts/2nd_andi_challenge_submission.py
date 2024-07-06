@@ -15,6 +15,7 @@ import pandas as pd
 import glob
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import KernelDensity
+from matplotlib.gridspec import GridSpec
 
 from Trajectory import Trajectory
 from DataSimulation import Andi2ndDataSimulation
@@ -145,7 +146,12 @@ for track_path in LIST_OF_TRACK_PATHS:
                     break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
-                # fig, ax = plt.subplots(2,1)
+                # fig = plt.figure(layout="constrained")
+                # gs = GridSpec(3, 2, figure=fig)
+
+                # ax = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[2, 1])]
+                # ax_trajectory = fig.add_subplot(gs[:, 0])
+                # ax_trajectory.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y())
 
                 # ax[0].scatter(range(trajectory.length), trajectory.info['alpha_t'])
                 # ax[0].set_title('Alpha')
@@ -153,11 +159,15 @@ for track_path in LIST_OF_TRACK_PATHS:
                 # ax[1].scatter(range(trajectory.length), np.log10(trajectory.info['d_t']))
                 # ax[1].set_title('Diffusion Coefficient')
                 # ax[1].set_ylim([-12,6])
+                # ax[2].plot(trajectory.info['state_t'])
+                # ax[2].set_title('State')
+                # ax[2].set_ylim([-1,4])
 
                 # #Show final breakpoints
                 # for bkp in break_points:
                 #     ax[0].axvline(bkp, color='red', linewidth=2)
                 #     ax[1].axvline(bkp, color='red', linewidth=2)
+                #     ax[2].axvline(bkp, color='red', linewidth=2)
 
                 # plt.show()
                 #get_time in this challenge is the frame axis
