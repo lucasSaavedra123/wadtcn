@@ -173,7 +173,7 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label in [3,4]:
             custom_dic.update({
-                'Pu': np.random.uniform(0.01,0.05), # Unbinding probability
+                'Pu': np.random.uniform(0,0.05), # Unbinding probability
                 'Pb': np.random.uniform(0.95,1.00)  # Binding probability
             })
 
@@ -193,7 +193,7 @@ class Andi2ndDataSimulation(DataSimulation):
             custom_dic.update({
                 'r': np.random.uniform(5,20),
                 'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
-                'trans':np.random.uniform(0.01,0.1)
+                'trans':np.random.uniform(0,0.50)
             })
 
         dic = _get_dic_andi2(model_label)
