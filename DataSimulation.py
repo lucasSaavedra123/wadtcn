@@ -124,7 +124,7 @@ class Andi2ndDataSimulation(DataSimulation):
             if model_label in [1,2]:
                 custom_dic['L'] = None
             else:
-                custom_dic['L'] = int(1024)
+                custom_dic['L'] = int(512)
 
         """
         We set D and alpha for models 1 and 3
@@ -327,7 +327,7 @@ class Andi2ndDataSimulation(DataSimulation):
                     simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
                     retry = True
                     while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects)
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects, L=512)
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
