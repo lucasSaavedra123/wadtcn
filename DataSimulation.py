@@ -331,7 +331,10 @@ class Andi2ndDataSimulation(DataSimulation):
 
                         def include_trajectory(trajectory): #We want a diverse number of characteristics
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
-                            return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
+                            x_diff = np.max(trajectory.get_noisy_x()) - np.min(trajectory.get_noisy_x())
+                            y_diff = np.max(trajectory.get_noisy_y()) - np.min(trajectory.get_noisy_y())
+                            within_roi = x_diff <= 128 and y_diff <= 128
+                            return within_roi and len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
                             trajs, labels = datasets_phenom().create_dataset(dics = dic)
