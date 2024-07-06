@@ -6,7 +6,8 @@ from DataSimulation import Andi2ndDataSimulation
 import matplotlib.pyplot as plt
 
 
-FROM_TRAINING_POOL=True
+SIGMA = 0.12
+FROM_TRAINING_POOL=False
 if FROM_TRAINING_POOL:
     cache_files = glob.glob('*train*.cache')
 
@@ -33,8 +34,10 @@ if FROM_TRAINING_POOL:
             #plt.plot(np.diff(trajectory.get_noisy_y()))
             #plt.show()
 else:
-    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(100, 100, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='models_phenom')
+    t = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(100, 200, None, get_from_cache=False, ignore_boundary_effects=True, type_of_simulation='models_phenom')
     for t_i in t:
+        t_i.x = (np.array(t_i.x) + np.random.randn(t_i.length)*SIGMA).tolist()
+        t_i.y = (np.array(t_i.y) + np.random.randn(t_i.length)*SIGMA).tolist()
         t_i.plot_andi_2()
         #plt.plot(np.diff(t_i.get_noisy_x()))
         #plt.plot(np.diff(t_i.get_noisy_y()))
