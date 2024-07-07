@@ -6,7 +6,7 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, break_point_discrete_detection
 
 
 classification_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation)
@@ -25,17 +25,14 @@ while True:
         plt.plot(t.get_noisy_x(), t.get_noisy_y())
     plt.show()
     retry = True
-    retry_full = False
     while retry:
         try:
             value = int(input('0 (Skip) or 1 (Continue): '))
             retry = False
             if value==0:
-                retry_full = True
+                continue
         except ValueError:
             pass
-    if retry_full:
-        continue
     for trajectory in trajectories:
         alpha_result = alpha_network.predict([trajectory])[0,:,0]*2
         d_result = diffusion_coefficient_network.predict([trajectory])[0,:,0]
@@ -45,6 +42,7 @@ while True:
 
         alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
         d_breakpoints = break_point_detection_with_stepfinder(d_result, tresH=D_ACCEPTANCE_THRESHOLD)
+        state_breakpoints = break_point_discrete_detection(state_result)
 
         ax[0].scatter(range(trajectory.length), alpha_result)
         for bkp in alpha_breakpoints:
@@ -61,13 +59,16 @@ while True:
         #ax[1].set_ylim([-12,6])
 
         ax[2].scatter(range(trajectory.length), state_result)
-        for bkp in d_breakpoints:
+        for bkp in state_breakpoints:
             ax[2].axvline(bkp, color='blue')
         ax[2].plot(trajectory.info['state_t'])
         ax[2].set_title('Single-level classification')
 
         #Show final breakpoints
-        final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
+        if len(state_breakpoints) != 1:
+            final_breakpoints = state_breakpoints
+        else:
+            final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
 
         for bkp in final_breakpoints:
             ax[0].axvline(bkp, color='red', linewidth=2)
