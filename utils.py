@@ -58,7 +58,7 @@ Las ventanas cuya media esta por debajo de umbral, se unen en una sola.
 Unir es basicamente retirar el breakpoint que separa a las ventanas
 consecutivas.
 """
-def merge_breakpoints_by_window_mean(values, breakpoints, umbral):
+def merge_breakpoints_by_window_criterion(values, breakpoints, umbral):
     class Window:
         def __init__(self, values, initial_index, final_index):
             self.values = np.array(values).tolist()
@@ -111,10 +111,10 @@ def merge_breakpoints_by_window_mean(values, breakpoints, umbral):
         breakpoints.remove(len(values))
     return breakpoints
 
-def merge_breakpoints_by_window_mean_until_stop(dataX, bkps, tresH):
+def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, tresH):
     #Delete breakpoints
     while True:
-        new_bpks = merge_breakpoints_by_window_mean(dataX,bkps,tresH)
+        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps,tresH)
         if new_bpks == bkps:
             break
         else:
@@ -156,7 +156,7 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
 
     bkps = merge_spurious_break_points_by_distance_until_stop(bkps,4)
-    bkps = merge_breakpoints_by_window_mean_until_stop(dataX,bkps,tresH)
+    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,tresH)
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
