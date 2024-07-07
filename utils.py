@@ -161,7 +161,7 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     number_of_points = len(dataX)
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if bkps[-1] - bkps[-2] <= 4:
+    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 4:
         bkps.remove(bkps[-2])
     return bkps
 
