@@ -108,10 +108,8 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
                 windows[window_index+1]
             )
             windows.remove(windows[window_index])
-            windows[0] = new_window
-            window_index += 2
-        else:
-            window_index += 1
+            windows[window_index] = new_window
+        window_index += 1
 
     breakpoints = [w.indexes[1] for w in windows]
 
