@@ -1,6 +1,7 @@
 import numpy as np
 from tifffile import TiffWriter, TiffFile
 from collections import defaultdict
+from statistics import mode
 
 import AutoStepFinder.stepfindCore as core
 import AutoStepFinder.stepfindTools as st
@@ -58,7 +59,7 @@ Las ventanas cuya media esta por debajo de umbral, se unen en una sola.
 Unir es basicamente retirar el breakpoint que separa a las ventanas
 consecutivas.
 """
-def merge_breakpoints_by_window_criterion(values, breakpoints, umbral):
+def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, criterion='mean'):
     class Window:
         def __init__(self, values, initial_index, final_index):
             self.values = np.array(values).tolist()
@@ -72,8 +73,11 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral):
                 window_two.indexes[1]
             )
 
-        def mean_value(self):
-            return np.mean(self.values)
+        def representative_value(self):
+            if criterion == 'mean':
+                return np.mean(self.values)
+            else:
+                return mode(self.values)
 
     breakpoints = breakpoints.copy()
     if len(values) not in breakpoints:
@@ -94,7 +98,11 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral):
     window_index = 0
 
     while window_index < len(windows) - 1:
-        if abs(windows[window_index].mean_value() - windows[window_index+1].mean_value()) < umbral:
+        if criterion == 'mean':
+            condition = abs(windows[window_index].representative_value() - windows[window_index+1].representative_value()) < umbral
+        else:
+            condition = windows[window_index].representative_value() == windows[window_index+1].representative_value()
+        if condition:
             new_window = Window.merge_windows(
                 windows[window_index],
                 windows[window_index+1]
@@ -111,10 +119,10 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral):
         breakpoints.remove(len(values))
     return breakpoints
 
-def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, tresH):
+def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, tresH=0.5, criterion='mean'):
     #Delete breakpoints
     while True:
-        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps,tresH)
+        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps,tresH, criterion)
         if new_bpks == bkps:
             break
         else:
@@ -163,6 +171,27 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
         bkps.append(number_of_points)
     if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 4:
         bkps.remove(bkps[-2])
+    return bkps
+
+"""
+Hay arrays de estados. Es decir, arrays discretos.
+Estos no pasan por stepfinder. Sino que los breakpoints
+son directamente los cambias de transición que detectó
+la red y retira ventanas por moda, no por promedio.
+"""
+
+def break_point_discrete_detection(dataX):
+    number_of_points = len(dataX)
+    bkps = (np.where(np.diff(dataX)!=0)[0]+1).tolist()
+    if number_of_points in bkps:
+        bkps.remove(number_of_points)
+    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,4)
+    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,criterion='mode')
+
+    if number_of_points not in bkps:
+        bkps.append(number_of_points)
+    if number_of_points - 1 in bkps:
+        bkps.remove(number_of_points - 1)
     return bkps
 
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
