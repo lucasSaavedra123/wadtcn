@@ -29,7 +29,7 @@ def merge_spurious_break_points_by_distance(a_list, distance):
     new_list = []
     i = 0
     while i < len(a_list):
-        if i < len(a_list) - 1 and a_list[i + 1] - a_list[i] < distance:
+        if i < len(a_list) - 1 and a_list[i + 1] - a_list[i] <= distance:
             average = (a_list[i] + a_list[i + 1]) // 2
             new_list.append(average)
             i += 2
@@ -59,30 +59,54 @@ Unir es basicamente retirar el breakpoint que separa a las ventanas
 consecutivas.
 """
 def merge_breakpoints_by_window_mean(values, breakpoints, umbral):
+    class Window:
+        def __init__(self, values, initial_index, final_index):
+            self.values = np.array(values).tolist()
+            self.indexes = [initial_index, final_index]
+
+        @classmethod
+        def merge_windows(cls, window_one, window_two):
+            return Window(
+                window_one.values + window_two.values,
+                window_one.indexes[0],
+                window_two.indexes[1]
+            )
+
+        def mean_value(self):
+            return np.mean(self.values)
+
     breakpoints = breakpoints.copy()
     if len(values) not in breakpoints:
         breakpoints.append(len(values))
-    if len(breakpoints) != 1:
-        last_break_point = 0
-        new_break_points = []
-        bkp_i = 0
-        while bkp_i < len(breakpoints)-1:
-            bkp_c = breakpoints[bkp_i]
-            bkp_n = breakpoints[bkp_i+1]
+    initial_index = 0
+    windows = []
 
-            current_window = values[last_break_point:bkp_c]
-            next_window = values[bkp_c:bkp_n]
+    for bkp in breakpoints:
+        windows.append(
+            Window(
+                values[initial_index:bkp],
+                initial_index,
+                bkp
+            )
+        )
+        initial_index = bkp
 
-            if np.abs(np.mean(current_window) - np.mean(next_window)) < umbral:
-                new_break_points.append(bkp_n)
-                bkp_i += 2
-                last_break_point = bkp_n
-            else:
-                new_break_points.append(bkp_c)
-                bkp_i += 1
-                last_break_point = bkp_c
+    window_index = 0
 
-        breakpoints = new_break_points
+    while window_index < len(windows) - 1:
+        if abs(windows[window_index].mean_value() - windows[window_index+1].mean_value()) < umbral:
+            new_window = Window.merge_windows(
+                windows[window_index],
+                windows[window_index+1]
+            )
+            windows.remove(windows[window_index])
+            windows[0] = new_window
+            window_index += 2
+        else:
+            window_index += 1
+
+    breakpoints = [w.indexes[1] for w in windows]
+
     if len(values) in breakpoints:
         breakpoints.remove(len(values))
     return breakpoints
@@ -137,8 +161,8 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     number_of_points = len(dataX)
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if number_of_points - 1 in bkps:
-        bkps.remove(number_of_points - 1)
+    if bkps[-1] - bkps[-2] <= 4:
+        bkps.remove(bkps[-2])
     return bkps
 
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
