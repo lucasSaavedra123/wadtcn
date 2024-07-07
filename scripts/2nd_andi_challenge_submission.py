@@ -255,7 +255,13 @@ for track_path in LIST_OF_TRACK_PATHS:
         plt.show()
 
         print("Type please:")
-        number_of_states = int(input('How many "peaks" do you see?'))
+        retry = True
+        while retry:
+            try:
+                number_of_states = int(input('How many "peaks" do you see?'))
+                retry = False
+            except:
+                retry = True
         dataframe['label'] = GaussianMixture(n_components=number_of_states).fit_predict(dataframe[['d', 'alpha']].values)
 
         fig, ax = plt.subplots()
