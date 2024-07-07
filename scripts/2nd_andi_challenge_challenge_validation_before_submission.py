@@ -25,14 +25,17 @@ while True:
         plt.plot(t.get_noisy_x(), t.get_noisy_y())
     plt.show()
     retry = True
+    retry_full = False
     while retry:
         try:
             value = int(input('0 (Skip) or 1 (Continue): '))
             retry = False
             if value==0:
-                continue
+                retry_full = True
         except ValueError:
             pass
+    if retry_full:
+        continue
     for trajectory in trajectories:
         alpha_result = alpha_network.predict([trajectory])[0,:,0]*2
         d_result = diffusion_coefficient_network.predict([trajectory])[0,:,0]
