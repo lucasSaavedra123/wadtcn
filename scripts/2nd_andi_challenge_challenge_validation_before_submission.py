@@ -24,10 +24,15 @@ while True:
     for t in trajectories:
         plt.plot(t.get_noisy_x(), t.get_noisy_y())
     plt.show()
-
-    if int(input('0 (Skip) or 1 (Continue): '))==0:
-        continue
-
+    retry = True
+    while retry:
+        try:
+            value = int(input('0 (Skip) or 1 (Continue): '))
+            retry = False
+            if value==0:
+                continue
+        except ValueError:
+            pass
     for trajectory in trajectories:
         alpha_result = alpha_network.predict([trajectory])[0,:,0]*2
         d_result = diffusion_coefficient_network.predict([trajectory])[0,:,0]
