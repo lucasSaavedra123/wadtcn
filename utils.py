@@ -188,8 +188,8 @@ def break_point_discrete_detection(dataX):
 
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if number_of_points - 1 in bkps:
-        bkps.remove(number_of_points - 1)
+    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 4:
+        bkps.remove(bkps[-2])
     return bkps
 
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
