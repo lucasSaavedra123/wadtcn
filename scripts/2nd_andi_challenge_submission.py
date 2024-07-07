@@ -133,9 +133,6 @@ for track_path in LIST_OF_TRACK_PATHS:
                 all_submission_file = open(join(RESULT_PATH, track_path, f'exp_{exp}', f'fov_{fov}_all.txt'), 'w')
 
             exp_and_fov_trajectories = [t for t in trajectories if t.info['exp']==exp and t.info['fov']==fov and t.info['track_path'] == track_path]
-            """
-            Here, breakpoints are identified looking at the alpha signal
-            """
 
             for trajectory in exp_and_fov_trajectories:
                 d=trajectory.info['d_t']
