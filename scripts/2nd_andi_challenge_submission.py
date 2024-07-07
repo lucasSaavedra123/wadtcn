@@ -22,7 +22,7 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, break_point_discrete_detection
 from CONSTANTS import D_ACCEPTANCE_THRESHOLD, ALPHA_ACCEPTANCE_THRESHOLD
 
 
@@ -141,11 +141,16 @@ for track_path in LIST_OF_TRACK_PATHS:
                 d=trajectory.info['d_t']
                 d[d==0] = 1e-12
                 prediction_traj = [int(trajectory.info['idx'])]
-                break_points = merge_breakpoints_and_delete_spurious_of_different_data(
+                regression_break_points = merge_breakpoints_and_delete_spurious_of_different_data(
                     break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
                     break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
                     4
                 )
+                state_breakpoints = break_point_discrete_detection(trajectory.info['state_t'])
+                if len(state_breakpoints) != 1:
+                    break_points = state_breakpoints
+                else:
+                    break_points = regression_break_points
                 # fig = plt.figure(layout="constrained")
                 # gs = GridSpec(3, 2, figure=fig)
 
