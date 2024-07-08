@@ -50,7 +50,7 @@ while True:
 
         alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
         d_breakpoints = break_point_detection_with_stepfinder(d_result, tresH=D_ACCEPTANCE_THRESHOLD)
-        state_breakpoints = break_point_discrete_detection(state_result)
+        state_breakpoints = break_point_discrete_detection(state_result,3)
 
         ax[0].scatter(range(trajectory.length), alpha_result)
         for bkp in alpha_breakpoints:
@@ -73,11 +73,12 @@ while True:
         ax[2].set_title('Single-level classification')
 
         #Show final breakpoints
-        if len(state_breakpoints) != 1:
-            final_breakpoints = state_breakpoints
-        else:
-            final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
-
+        final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(
+            alpha_breakpoints,
+            d_breakpoints,
+            3,
+            EXTRA=state_breakpoints
+        )
         for bkp in final_breakpoints:
             ax[0].axvline(bkp, color='red', linewidth=2)
             ax[1].axvline(bkp, color='red', linewidth=2)

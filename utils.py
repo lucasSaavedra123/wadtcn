@@ -133,10 +133,14 @@ lado breakpoints del coeficiente de difusion. Tomamos a esos
 breakpoints (ya previamente tratados) y les hacemos
 un ultimo refinamiento
 """
-def merge_breakpoints_and_delete_spurious_of_different_data(A, B, distance):
-    assert A[-1] == B[-1]
+def merge_breakpoints_and_delete_spurious_of_different_data(A, B, distance, EXTRA=[]):
+    if len(EXTRA) != 0:
+        assert A[-1] == B[-1] == EXTRA[-1]
+        C = sorted(list(set(A+B+EXTRA)))
+    else:
+        assert A[-1] == B[-1]
+        C = sorted(list(set(A+B)))
     length = A[-1]
-    C = sorted(list(set(A+B)))
     bkps = merge_spurious_break_points_by_distance_until_stop(C,distance)
     if length not in bkps:
         bkps.append(length)
@@ -161,13 +165,13 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     FitX = st.AppendFitX(newFitX, FitX, dataX)
     bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
 
-    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,4)
+    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,3)
     bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,tresH)
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 4:
+    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 3:
         bkps.remove(bkps[-2])
     return bkps
 
@@ -178,7 +182,7 @@ son directamente los cambias de transición que detectó
 la red y retira ventanas por moda, no por promedio.
 """
 
-def break_point_discrete_detection(dataX):
+def break_point_discrete_detection(dataX, distance):
     number_of_points = len(dataX)
     bkps = (np.where(np.diff(dataX)!=0)[0]+1).tolist()
     if number_of_points in bkps:
@@ -188,7 +192,7 @@ def break_point_discrete_detection(dataX):
 
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 4:
+    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= distance:
         bkps.remove(bkps[-2])
     return bkps
 

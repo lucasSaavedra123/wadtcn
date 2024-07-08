@@ -16,6 +16,7 @@ import glob
 from sklearn.mixture import GaussianMixture
 from sklearn.neighbors import KernelDensity
 from matplotlib.gridspec import GridSpec
+import matplotlib.patches as mpatches
 
 from Trajectory import Trajectory
 from DataSimulation import Andi2ndDataSimulation
@@ -30,8 +31,12 @@ PUBLIC_DATA_PATH = './public_data_challenge_v0'
 RESULT_PATH = './2nd_andi_challenge_results'
 PATH_TRACK_1, PATH_TRACK_2 = './track_1', './track_2'
 
-N_EXP = 12
-N_FOVS = 30
+SPECIFIC_N_EXP = None
+EXPS = list(range(12)) if SPECIFIC_N_EXP is None else SPECIFIC_N_EXP
+
+SPECIFIC_N_FOV = None
+FOVS = list(range(30)) if SPECIFIC_N_FOV is None else SPECIFIC_N_FOV
+
 LIST_OF_TRACK_PATHS = [PATH_TRACK_1, PATH_TRACK_2]
 info_field_to_network = {
     'alpha_t': WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation),
@@ -46,8 +51,8 @@ for field in info_field_to_network:
 trajectories = []
 print("Loading trajectories...")
 for track_path in LIST_OF_TRACK_PATHS:
-    for exp in tqdm.tqdm(list(range(N_EXP))):
-        for fov in range(N_FOVS):
+    for exp in tqdm.tqdm(EXPS):
+        for fov in FOVS:
             dataframe_path = join(PUBLIC_DATA_PATH, track_path, f'exp_{exp}', f'trajs_fov_{fov}.csv')
             df = pd.read_csv(dataframe_path)
 
@@ -123,8 +128,8 @@ for trajectory_length in tqdm.tqdm(trajectories_by_length):
 
 #Pointwise predictions are converted into segments and results are saved
 for track_path in LIST_OF_TRACK_PATHS:
-    for exp in tqdm.tqdm(list(range(N_EXP))):
-        for fov in range(N_FOVS):
+    for exp in tqdm.tqdm(EXPS):
+        for fov in FOVS:
             makedirs(join(RESULT_PATH, track_path, f'exp_{exp}'), exist_ok=True)
 
             #all_submission_file includes all trajectories of track
@@ -138,22 +143,36 @@ for track_path in LIST_OF_TRACK_PATHS:
                 d=trajectory.info['d_t']
                 d[d==0] = 1e-12
                 prediction_traj = [int(trajectory.info['idx'])]
-                regression_break_points = merge_breakpoints_and_delete_spurious_of_different_data(
-                    break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD),
-                    break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD),
-                    4
+                alpha_bkps = break_point_detection_with_stepfinder(trajectory.info['alpha_t'], ALPHA_ACCEPTANCE_THRESHOLD)
+                d_bkps = break_point_detection_with_stepfinder(np.log10(d), D_ACCEPTANCE_THRESHOLD)
+                state_bkps = break_point_discrete_detection(trajectory.info['state_t'], 3)
+                break_points = merge_breakpoints_and_delete_spurious_of_different_data(
+                    alpha_bkps,
+                    d_bkps,
+                    3,
+                    EXTRA=state_bkps
                 )
-                state_breakpoints = break_point_discrete_detection(trajectory.info['state_t'])
-                if len(state_breakpoints) != 1:
-                    break_points = state_breakpoints
-                else:
-                    break_points = regression_break_points
+                #if len(state_breakpoints) != 1:
+                #    break_points = state_breakpoints
+                #else:
+                #    break_points = regression_break_points
+                # break_points = regression_break_points
+                # labels = ['trap', 'confined', 'free', 'directed']
+                # colors = ['red', 'green', 'blue', 'orange']
+                # state_to_color = {index:a_color for index, a_color in enumerate(colors)}
+                # label_to_color = {label:a_color for label, a_color in zip(labels, colors)}
+
                 # fig = plt.figure(layout="constrained")
                 # gs = GridSpec(3, 2, figure=fig)
 
                 # ax = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[1, 1]), fig.add_subplot(gs[2, 1])]
                 # ax_trajectory = fig.add_subplot(gs[:, 0])
-                # ax_trajectory.plot(trajectory.get_noisy_x(), trajectory.get_noisy_y())
+
+                # states_as_color = np.vectorize(state_to_color.get)(trajectory.info['state_t'])
+                # for i,(x1, x2, y1,y2) in enumerate(zip(trajectory.get_noisy_x(), trajectory.get_noisy_x()[1:], trajectory.get_noisy_y(), trajectory.get_noisy_y()[1:])):
+                #     ax_trajectory.plot([x1, x2], [y1, y2], states_as_color[i], alpha=1)
+                # patches = [mpatches.Patch(color=label_to_color[label], label=label.capitalize()) for label in label_to_color]
+                # ax_trajectory.legend(handles=patches)
 
                 # ax[0].scatter(range(trajectory.length), trajectory.info['alpha_t'])
                 # ax[0].set_title('Alpha')
@@ -177,21 +196,55 @@ for track_path in LIST_OF_TRACK_PATHS:
                 time_axis -= np.min(time_axis)
                 last_break_point = 0
                 for bp in break_points[:-1]:
-                    prediction_traj += [
-                        np.mean(trajectory.info['d_t'][last_break_point:bp]),
-                        np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
-                        st.mode(trajectory.info['state_t'][last_break_point:bp]),
-                        int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
-                    ]
+                    state_mode = st.mode(trajectory.info['state_t'][last_break_point:bp])
+
+                    if state_mode == 3:
+                        prediction_traj += [
+                            np.mean(trajectory.info['d_t'][last_break_point:bp]),
+                            2,
+                            state_mode,
+                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                        ]
+                    elif state_mode == 0:
+                        prediction_traj += [
+                            0,
+                            0,
+                            state_mode,
+                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                        ]
+                    else:
+                        prediction_traj += [
+                            np.mean(trajectory.info['d_t'][last_break_point:bp]),
+                            np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
+                            state_mode,
+                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                        ]
 
                     last_break_point = bp
 
-                prediction_traj += [
-                    np.mean(trajectory.info['d_t'][last_break_point:]),
-                    np.mean(trajectory.info['alpha_t'][last_break_point:]),
-                    st.mode(trajectory.info['state_t'][last_break_point:]),
-                    int(time_axis[-1]+1)
-                ]
+                state_mode = st.mode(trajectory.info['state_t'][last_break_point:])
+
+                if state_mode == 3:
+                    prediction_traj += [
+                        np.mean(trajectory.info['d_t'][last_break_point:]),
+                        2,
+                        state_mode,
+                        int(time_axis[-1]+1)
+                    ]
+                elif state_mode == 0:
+                    prediction_traj += [
+                        0,
+                        0,
+                        state_mode,
+                        int(time_axis[-1]+1)
+                    ]
+                else:
+                    prediction_traj += [
+                        np.mean(trajectory.info['d_t'][last_break_point:]),
+                        np.mean(trajectory.info['alpha_t'][last_break_point:]),
+                        state_mode,
+                        int(time_axis[-1]+1)
+                    ]
 
                 assert prediction_traj[-1]==time_axis[-1]+1
                 formatted_numbers = ','.join(map(str, prediction_traj))
@@ -210,7 +263,7 @@ for track_path in LIST_OF_TRACK_PATHS:
 
 #From Pointwise predictions, ensemble
 for track_path in LIST_OF_TRACK_PATHS:
-    for exp in range(N_EXP):
+    for exp in EXPS:
         if track_path == PATH_TRACK_1:
             files_path = glob.glob(join(RESULT_PATH, track_path, f'exp_{exp}', 'fov_*_all.txt'))
         else:
