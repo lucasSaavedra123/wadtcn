@@ -116,7 +116,7 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         import matplotlib
         matplotlib.use('TkAgg')
-
+        image_array = image_array.copy()
         unet_result = (self.architecture.predict(image_array/255, verbose=0)[...,0] > classification_threshold).astype(int)
 
         if not extract_localizations:
@@ -127,7 +127,7 @@ class UNetSingleParticleTracker(PredictiveModel):
         #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             rough_localizations = []
-
+            """
             distance = ndi.distance_transform_edt(mask)
             coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask)
             true_mask = np.zeros(distance.shape, dtype=bool)
@@ -159,8 +159,9 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 fig.tight_layout()
                 plt.show()
-
-            cs = skimage.measure.regionprops(labels)#(skimage.measure.label(mask))
+            """
+            #cs = skimage.measure.regionprops(labels)
+            cs = skimage.measure.regionprops(skimage.measure.label(mask))
             rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
@@ -201,6 +202,12 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.imshow(frame)
                 plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
                 plt.show()
+
+        if manual_picking:
+            pass
+
+
+
 
         """
         Localizations are multiplied by the pixel size.
