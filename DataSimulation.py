@@ -276,13 +276,24 @@ class Andi2ndDataSimulation(DataSimulation):
                         for j in range(n):
                             transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
 
+                    similar_order_magnitude = np.random.choice([False, True])
+                    if similar_order_magnitude:
+                        ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
+                        magnitude_order = int(np.log10(ds_values[0]))
+                        minimum_magnitude_order = max(magnitude_order-1,-12)
+                        maximum_magnitude_order = min(magnitude_order+1,6)
+                        for ds_value_i in range(1,n):
+                            ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+                    else:
+                        ds_values = np.random.choice(D_possible_values, size=n, replace=False)
+
                     custom_dic.update({
                         'T': trajectory_length,
                         'N': 5,
                         'L': None,
                         'M': transition_matrix, #transition matrix
                         'return_state_num': True,
-                        'Ds': np.array([[d, d*0.01] for d in np.random.choice(D_possible_values, size=n, replace=False)]),
+                        'Ds': np.array([[d, d*0.01] for d in ds_values]),
                         'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
                     })
 

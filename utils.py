@@ -153,7 +153,7 @@ a single full iteration is done and a best fit is determined
 @author: jkerssemakers march 2022       
 """
 
-def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
+def break_point_detection_with_stepfinder(dataX, distance, tresH=0.15, N_iter=100):
     demo = 0.0
     """This is the main, multi-pass loop of the autostepfinder
     @author: jkerssemakers march 2022"""
@@ -165,13 +165,13 @@ def break_point_detection_with_stepfinder(dataX, tresH=0.15, N_iter=100):
     FitX = st.AppendFitX(newFitX, FitX, dataX)
     bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
 
-    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,3)
+    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,distance)
     bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,tresH)
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
         bkps.append(number_of_points)
-    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= 3:
+    if len(bkps) > 1 and bkps[-1] - bkps[-2] <= distance:
         bkps.remove(bkps[-2])
     return bkps
 
