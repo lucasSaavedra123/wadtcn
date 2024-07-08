@@ -31,8 +31,8 @@ for trajectory in trajectories:
 
     fig, ax = plt.subplots(2,1)
 
-    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
-    d_breakpoints = break_point_detection_with_stepfinder(d_result, tresH=D_ACCEPTANCE_THRESHOLD)
+    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
+    d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
 
     ax[0].scatter(range(trajectory.length), alpha_result)
     for bkp in alpha_breakpoints:
