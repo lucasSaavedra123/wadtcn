@@ -17,10 +17,15 @@ diffusion_coefficient_network = WavenetTCNSingleLevelDiffusionCoefficientPredict
 diffusion_coefficient_network.load_as_file()
 
 while True:
-    trajectories = []
-    while len(trajectories) == 0:
-        trajectories = Andi2ndDataSimulation().simulate_challenge_trajectories(filter=True)
-
+    retry = True
+    while retry:
+        try:
+            trajectories = []
+            while len(trajectories) == 0:
+                trajectories = Andi2ndDataSimulation().simulate_challenge_trajectories(filter=True)
+            retry = False
+        except:
+            retry = True
     for t in trajectories:
         plt.plot(t.get_noisy_x(), t.get_noisy_y())
     plt.show()
