@@ -210,16 +210,16 @@ for track_path in LIST_OF_TRACK_PATHS:
                             0,
                             0,
                             state_mode,
-                            int(bp if track_path == PATH_TRACK_2 else time_axis[last_break_point])
+                            int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
                     else:
                         prediction_traj_r = [
                             np.mean(d_t[first_break_point:last_break_point]),
                             np.mean(alpha_t[first_break_point:last_break_point]),
                             state_mode,
-                            int(bp if track_path == PATH_TRACK_2 else time_axis[last_break_point])
+                            int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
-                    
+
                     return prediction_traj_r
 
                 last_break_point = 0
