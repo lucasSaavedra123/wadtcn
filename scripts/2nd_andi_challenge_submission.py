@@ -194,7 +194,6 @@ for track_path in LIST_OF_TRACK_PATHS:
                 #get_time in this challenge is the frame axis
                 time_axis = trajectory.get_time()
                 time_axis -= np.min(time_axis)
-                last_break_point = 0
 
                 def generate_andi_array(d_t, alpha_t, state_t, time_axis, first_break_point, last_break_point):
                     state_mode = st.mode(state_t[first_break_point:last_break_point])
@@ -223,6 +222,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                     
                     return prediction_traj_r
 
+                last_break_point = 0
                 for bp in break_points[:-1]:
                     prediction_traj += generate_andi_array(trajectory.info['d_t'],trajectory.info['alpha_t'],trajectory.info['state_t'], time_axis, last_break_point, bp)
                     last_break_point = bp
