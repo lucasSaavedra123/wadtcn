@@ -405,7 +405,7 @@ class Andi2ndDataSimulation(DataSimulation):
             save_data = False,
             dics = [dic],
             return_timestep_labs = True, get_video = False, 
-            num_fovs = 1,
+            num_fovs = 5,
         )
         #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
         trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
