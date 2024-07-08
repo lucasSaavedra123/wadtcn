@@ -274,15 +274,15 @@ for track_path in LIST_OF_TRACK_PATHS:
                 remove(file_path)
 
         dataframe = pd.DataFrame(complete_info)
-        dataframe['d'] = np.log10(dataframe['d'])
+        #dataframe['d'] = np.log10(dataframe['d'])
 
         fig, ax = plt.subplots(1,3)
         sns.kdeplot(dataframe,x='alpha', ax=ax[0])
         sns.kdeplot(dataframe,x='d', ax=ax[1])
         sns.histplot(dataframe,x='d', y='alpha', ax=ax[2])
         ax[0].set_xlim(0,2)
-        ax[1].set_xlim(-12,6)
-        ax[2].set_xlim(-12,6)
+        #ax[1].set_xlim(-12,6)
+        #ax[2].set_xlim(-12,6)
         ax[2].set_ylim(0,2)
         plt.show()
 
@@ -298,13 +298,13 @@ for track_path in LIST_OF_TRACK_PATHS:
 
         fig, ax = plt.subplots()
         sns.histplot(dataframe,x='d', y='alpha', hue='label', ax=ax)
-        ax.set_xlim(-12,6)
+        #ax.set_xlim(-12,6)
         ax.set_ylim(0,2)
         plt.show()
 
         ensemble_labels_file = join(RESULT_PATH, track_path, f'exp_{exp}', 'ensemble_labels.txt')
 
-        dataframe['d'] = 10**dataframe['d']
+        #dataframe['d'] = 10**dataframe['d']
 
         with open(ensemble_labels_file, 'w') as f:
             model_name = 'confinement'
