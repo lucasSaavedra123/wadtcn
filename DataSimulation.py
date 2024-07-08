@@ -279,8 +279,11 @@ class Andi2ndDataSimulation(DataSimulation):
                     similar_order_magnitude = np.random.choice([False, True])
                     if similar_order_magnitude:
                         ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
+                        magnitude_order = int(np.log10(ds_values[0]))
+                        minimum_magnitude_order = max(magnitude_order-1,-12)
+                        maximum_magnitude_order = min(magnitude_order+1,6)
                         for ds_value_i in range(1,n):
-                            ds_values[ds_value_i] = ds_values[0]*np.random.uniform(0,2)
+                            ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
                     else:
                         ds_values = np.random.choice(D_possible_values, size=n, replace=False)
 
