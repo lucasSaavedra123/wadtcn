@@ -195,57 +195,39 @@ for track_path in LIST_OF_TRACK_PATHS:
                 time_axis = trajectory.get_time()
                 time_axis -= np.min(time_axis)
                 last_break_point = 0
-                for bp in break_points[:-1]:
-                    state_mode = st.mode(trajectory.info['state_t'][last_break_point:bp])
+
+                def generate_andi_array(d_t, alpha_t, state_t, time_axis, first_break_point, last_break_point):
+                    state_mode = st.mode(state_t[first_break_point:last_break_point])
 
                     if state_mode == 3:
-                        prediction_traj += [
-                            np.mean(trajectory.info['d_t'][last_break_point:bp]),
+                        prediction_traj_r = [
+                            np.mean(d_t[first_break_point:last_break_point]),
                             2,
                             state_mode,
-                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                            int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
                     elif state_mode == 0:
-                        prediction_traj += [
+                        prediction_traj_r = [
                             0,
                             0,
                             state_mode,
-                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                            int(bp if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
                     else:
-                        prediction_traj += [
-                            np.mean(trajectory.info['d_t'][last_break_point:bp]),
-                            np.mean(trajectory.info['alpha_t'][last_break_point:bp]),
+                        prediction_traj_r = [
+                            np.mean(d_t[first_break_point:last_break_point]),
+                            np.mean(alpha_t[first_break_point:last_break_point]),
                             state_mode,
-                            int(bp if track_path == PATH_TRACK_2 else time_axis[bp])
+                            int(bp if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
+                    
+                    return prediction_traj_r
 
+                for bp in break_points[:-1]:
+                    prediction_traj += generate_andi_array(trajectory.info['d_t'],trajectory.info['alpha_t'],trajectory.info['state_t'], time_axis, last_break_point, bp)
                     last_break_point = bp
 
-                state_mode = st.mode(trajectory.info['state_t'][last_break_point:])
-
-                if state_mode == 3:
-                    prediction_traj += [
-                        np.mean(trajectory.info['d_t'][last_break_point:]),
-                        2,
-                        state_mode,
-                        int(time_axis[-1]+1)
-                    ]
-                elif state_mode == 0:
-                    prediction_traj += [
-                        0,
-                        0,
-                        state_mode,
-                        int(time_axis[-1]+1)
-                    ]
-                else:
-                    prediction_traj += [
-                        np.mean(trajectory.info['d_t'][last_break_point:]),
-                        np.mean(trajectory.info['alpha_t'][last_break_point:]),
-                        state_mode,
-                        int(time_axis[-1]+1)
-                    ]
-
+                prediction_traj += generate_andi_array(trajectory.info['d_t'],trajectory.info['alpha_t'],trajectory.info['state_t'], time_axis, last_break_point, int(time_axis[-1]+1))
                 assert prediction_traj[-1]==time_axis[-1]+1
                 formatted_numbers = ','.join(map(str, prediction_traj))
                 
