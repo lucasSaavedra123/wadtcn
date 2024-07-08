@@ -84,3 +84,16 @@ while True:
             ax[2].axvline(bkp, color='red', linewidth=2)
 
         plt.show()
+
+        trajectory.plot_andi_2()
+
+        del trajectory.info['d_t']
+        del trajectory.info['alpha_t']
+        del trajectory.info['state_t']
+
+        trajectory.info['d_t'] = 10**np.array(d_result)
+        trajectory.info['alpha_t'] = 2*np.array(alpha_result)
+        trajectory.info['state_t'] = state_result
+        print(state_breakpoints,final_breakpoints)
+        trajectory.plot_andi_2()
+
