@@ -202,13 +202,6 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.imshow(frame)
                 plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
                 plt.show()
-
-        if manual_picking:
-            pass
-
-
-
-
         """
         Localizations are multiplied by the pixel size.
         """
