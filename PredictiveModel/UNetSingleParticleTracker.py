@@ -112,6 +112,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             spt_adaptive_stop = 100e-9,
             debug=False,
             plot_trajectories=False,
+            intensity_filter=False,
         ):
 
         import matplotlib
@@ -127,14 +128,14 @@ class UNetSingleParticleTracker(PredictiveModel):
         #Code from https://github.com/DeepTrackAI/DeepTrack2/blob/develop/examples/paper-examples/4-multi-molecule-tracking.ipynb
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             rough_localizations = []
-            """
+
             distance = ndi.distance_transform_edt(mask)
             coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask)
             true_mask = np.zeros(distance.shape, dtype=bool)
             true_mask[tuple(coords.T)] = True
             markers, _ = ndi.label(true_mask)
             labels = watershed(-distance, markers, mask=mask)
-
+            """
             if debug:
                 plt.title(f"Frame {frame_index}")
                 plt.imshow(frame)
@@ -160,9 +161,15 @@ class UNetSingleParticleTracker(PredictiveModel):
                 fig.tight_layout()
                 plt.show()
             """
-            #cs = skimage.measure.regionprops(labels)
-            cs = skimage.measure.regionprops(skimage.measure.label(mask))
+            cs = skimage.measure.regionprops(labels)
+            #cs = skimage.measure.regionprops(skimage.measure.label(mask))
             rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+
+            if debug:
+                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
+                plt.show()
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
@@ -184,24 +191,32 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
-            rough_localizations= np.array(rough_localizations)
-
             if debug:
-                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.title(f"Circle radius and perimeters localizations fix: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(rough_localizations[:,0], rough_localizations[:,1], marker='X', color='red')
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
                 plt.show()
 
-            #By now, rough localizations = refined localizations
-            raw_localizations = rough_localizations.tolist()
-            data += [[frame_index]+p for p in raw_localizations]
-            raw_localizations = np.array(raw_localizations)
+            rough_localizations= np.array(rough_localizations)
 
             if debug:
                 plt.title(f"Refined localizations from Frame Index: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
+                for rough_localization in rough_localizations:
+                    x_l = round(rough_localization[0])
+                    y_l = round(rough_localization[1])
+
+                    if frame[y_l, x_l] > 250:
+                        plt.scatter([x_l], [y_l], marker='X', color='green')
+                    elif frame[y_l, x_l] < 50:
+                        plt.scatter([x_l], [y_l], marker='X', color='orange')
+                    else:
+                        plt.scatter([x_l], [y_l], marker='X', color='pink')
                 plt.show()
+
+            #By now, rough localizations = refined localizations
+            data += [[frame_index]+p for p in rough_localizations.tolist()]
+
         """
         Localizations are multiplied by the pixel size.
         """
