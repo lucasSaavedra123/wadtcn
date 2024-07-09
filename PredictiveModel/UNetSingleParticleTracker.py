@@ -108,7 +108,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
-            spt_max_number_of_empty_frames = 3,
+            spt_max_number_of_empty_frames = 9,
             spt_adaptive_stop = 100e-9,
             debug=False,
             plot_trajectories=False,
@@ -164,7 +164,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             """
             cs = skimage.measure.regionprops(labels)
             #cs = skimage.measure.regionprops(skimage.measure.label(mask))
-            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['area'] <= ((self.extra_parameters['circle_radius']*2)**2)-1]
 
             if debug:
                 plt.title(f"Rough localizations from Frame Index: {frame_index}")
@@ -172,7 +172,7 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
                 plt.show()
 
-            for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
+            for props in [ci for ci in cs if ci['area'] > ((self.extra_parameters['circle_radius']*2)**2)-1]:
                 y0, x0 = props.centroid
                 orientation = props.orientation
 
@@ -244,8 +244,8 @@ class UNetSingleParticleTracker(PredictiveModel):
                     y_l = round(rough_localization[1])
 
                     if frame[y_l, x_l] > 250:
-                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
-                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
+                        validated_rough_localizations.append([rough_localization[0]+0.01,rough_localization[1]+0.01])
+                        validated_rough_localizations.append([rough_localization[0]-0.01,rough_localization[1]-0.01])
                     elif frame[y_l, x_l] < 50:
                         pass
                     else:
