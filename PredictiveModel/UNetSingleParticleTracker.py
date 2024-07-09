@@ -244,7 +244,8 @@ class UNetSingleParticleTracker(PredictiveModel):
                     y_l = round(rough_localization[1])
 
                     if frame[y_l, x_l] > 250:
-                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]]*2)
+                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
+                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
                     elif frame[y_l, x_l] < 50:
                         pass
                     else:
