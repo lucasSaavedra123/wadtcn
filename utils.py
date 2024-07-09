@@ -263,7 +263,7 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         spt_max_distance_tolerance=spt_max_distance_tolerance,
         spt_adaptive_stop=spt_adaptive_stop,
         debug=False,
-        intensity_filter=True
+        intensity_filter=False
     )
 
     #All trajectories are not VIP at the beginning
