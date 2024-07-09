@@ -164,7 +164,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             """
             cs = skimage.measure.regionprops(labels)
             #cs = skimage.measure.regionprops(skimage.measure.label(mask))
-            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['area'] <= ((self.extra_parameters['circle_radius']*2)**2)-1]
+            rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
 
             if debug:
                 plt.title(f"Rough localizations from Frame Index: {frame_index}")
@@ -172,7 +172,7 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
                 plt.show()
 
-            for props in [ci for ci in cs if ci['area'] > ((self.extra_parameters['circle_radius']*2)**2)-1]:
+            for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
                 orientation = props.orientation
 
