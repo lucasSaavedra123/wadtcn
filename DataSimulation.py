@@ -146,7 +146,17 @@ class Andi2ndDataSimulation(DataSimulation):
                 for j in range(n):
                     transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
 
-            ds_values = np.random.choice(D_possible_values, size=n, replace=False)
+            similar_order_magnitude = np.random.choice([False, True])
+            if similar_order_magnitude:
+                ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
+                magnitude_order = int(np.log10(ds_values[0]))
+                minimum_magnitude_order = max(magnitude_order-1,-12)
+                maximum_magnitude_order = min(magnitude_order+1,6)
+                for ds_value_i in range(1,n):
+                    ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+            else:
+                ds_values = np.random.choice(D_possible_values, size=n, replace=False)
+
             as_values = np.random.choice(ALPHA_possible_values, size=n, replace=False)
 
             custom_dic.update({
@@ -159,7 +169,16 @@ class Andi2ndDataSimulation(DataSimulation):
 
         if model_label in [4,5]:
             fast_D = np.random.choice(D_possible_values)
-            slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
+
+            similar_order_magnitude = np.random.choice([False, True])
+            if similar_order_magnitude:
+                magnitude_order = int(np.log10(fast_D))
+                minimum_magnitude_order = max(magnitude_order-1,-12)
+                maximum_magnitude_order = min(magnitude_order+1,6)
+                slow_D = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+            else:
+                slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
+
             assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
             alpha2 = np.random.uniform(MIN_A, 1.8)
