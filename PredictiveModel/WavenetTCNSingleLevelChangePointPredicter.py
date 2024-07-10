@@ -1,6 +1,8 @@
 from keras.layers import Dense, Input, Average, Conv1D, TimeDistributed
 from keras.models import Model
 from keras.losses import BinaryCrossentropy, BinaryCrossentropy, BinaryFocalCrossentropy 
+from keras.metrics.accuracy_metrics import CategoricalAccuracy
+from keras.metrics.confusion_metrics import AUC, Recall, Precision
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
 import tensorflow as tf
@@ -148,7 +150,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
         """
 
-        self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True), metrics=['categorical_accuracy'])#, metrics=[weighted_binary_crossentropy])
+        self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
