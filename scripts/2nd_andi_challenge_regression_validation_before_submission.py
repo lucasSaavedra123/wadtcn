@@ -35,7 +35,7 @@ for trajectory in trajectories:
     alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
 
     if d_result.max() - d_result.min() < 2:
-        d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3, tresH=np.mean(10**d_result)*0.1)
+        d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3, tresH=np.mean(10**d_result)*0.10)
     else:
         d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
 

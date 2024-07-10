@@ -211,9 +211,9 @@ def refine_values_and_states_following_breakpoints(alpha, diffusion_coefficient,
         cp_initial = last_break_point
         cp_final = cp[cp_i]
 
-        alpha[cp_initial:cp_final] = np.mean(alpha)
-        diffusion_coefficient[cp_initial:cp_final] = np.mean(diffusion_coefficient)
-        state[cp_initial:cp_final] = mode(state)
+        alpha[cp_initial:cp_final] = np.mean(alpha[cp_initial:cp_final])
+        diffusion_coefficient[cp_initial:cp_final] = np.mean(diffusion_coefficient[cp_initial:cp_final])
+        state[cp_initial:cp_final] = mode(state[cp_initial:cp_final])
         last_break_point = cp_final
 
     return alpha, diffusion_coefficient, state
