@@ -64,11 +64,17 @@ for trajectory in trajectories:
     for bkp in d_breakpoints:
         ax[1].axvline(bkp, color='blue', linewidth=3)
 
-    labs = np.zeros((200,2))
-    labs[:,0] = trajectory.info['alpha_t']
-    labs[:,1] = trajectory.info['d_t']
+    gt_labs = np.zeros((200,3))
+    gt_labs[:,0] = trajectory.info['alpha_t']
+    gt_labs[:,1] = trajectory.info['d_t']
+    gt_labs[:,2] = trajectory.info['state_t']
 
-    gt_cp = label_continuous_to_list(labs)[0]
+    pred_labs = np.zeros((200,3))
+    pred_labs[:,0] = trajectory.info['alpha_t']
+    pred_labs[:,1] = trajectory.info['d_t']
+    pred_labs[:,2] = 2*np.ones(200)
+
+    gt_cp = label_continuous_to_list(gt_labs)[0]
     rmse, jcs = single_changepoint_error(gt_cp, np.array(final_breakpoints), threshold = 10)
 
     fig.suptitle(f'RMSE={np.round(rmse,2)}, JCS={np.round(jcs,2)}')
