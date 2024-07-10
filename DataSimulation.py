@@ -174,7 +174,7 @@ class Andi2ndDataSimulation(DataSimulation):
             if similar_order_magnitude:
                 magnitude_order = int(np.log10(fast_D))
                 minimum_magnitude_order = max(magnitude_order-1,-12)
-                maximum_magnitude_order = min(magnitude_order+1,6)
+                maximum_magnitude_order = np.log10(fast_D)
                 slow_D = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
             else:
                 slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
