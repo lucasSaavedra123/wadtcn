@@ -32,19 +32,28 @@ for trajectory in trajectories:
     fig, ax = plt.subplots(2,1)
 
     alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
-    d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
 
     ax[0].scatter(range(trajectory.length), alpha_result)
     for bkp in alpha_breakpoints:
-        ax[0].axvline(bkp, color='blue')
+        ax[0].axvline(bkp, color='blue', linewidth=3)
     ax[0].plot(trajectory.info['alpha_t'])
     ax[0].set_title('Alpha')
     ax[0].set_ylim([0,2])
 
-    ax[1].scatter(range(trajectory.length), d_result)
+    if d_result.max() - d_result.min() < 2:
+        ax[1].plot(trajectory.info['d_t'])
+        ax[1].scatter(range(trajectory.length), 10**d_result)
+        ax[1].set_ylabel('Absolute Diffusion Coefficient')
+        d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3, tresH=np.mean(10**d_result)*0.1)
+    else:
+        ax[1].plot(np.log10(trajectory.info['d_t']))
+        ax[1].scatter(range(trajectory.length), d_result)
+        ax[1].set_ylabel('Logarithmic Diffusion Coefficient')
+        d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
+
     for bkp in d_breakpoints:
-        ax[1].axvline(bkp, color='blue')
-    ax[1].plot(np.log10(trajectory.info['d_t']))
+        ax[1].axvline(bkp, color='blue', linewidth=3)
+
     ax[1].set_title('Diffusion Coefficient')
     #ax[1].set_ylim([-12,6])
 
@@ -52,7 +61,7 @@ for trajectory in trajectories:
     final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 4)
 
     for bkp in final_breakpoints:
-        ax[0].axvline(bkp, color='red', linewidth=2)
-        ax[1].axvline(bkp, color='red', linewidth=2)
+        ax[0].axvline(bkp, color='red', linewidth=1)
+        ax[1].axvline(bkp, color='red', linewidth=1)
 
     plt.show()
