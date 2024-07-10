@@ -82,7 +82,8 @@ print("Number of trajectories:", len(trajectories))
 #Divide trajectories by length for inference acceleration
 trajectories_by_length = defaultdict(lambda: [])
 for trajectory in trajectories:
-    trajectories_by_length[trajectory.length].append(trajectory)
+    if trajectory.length > 1:
+        trajectories_by_length[trajectory.length].append(trajectory)
 print("Number of lengths:", len(trajectories_by_length.keys()))
 
 #Inference and results stored in trajectories
