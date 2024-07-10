@@ -262,7 +262,8 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         extract_trajectories_as_dataframe=True,
         spt_max_distance_tolerance=spt_max_distance_tolerance,
         spt_adaptive_stop=spt_adaptive_stop,
-        debug=False
+        debug=False,
+        intensity_filter=False
     )
 
     #All trajectories are not VIP at the beginning
@@ -323,3 +324,31 @@ def get_trajectories_from_2nd_andi_challenge_tiff_movie(
     dataframe = dataframe.drop(['new_traj_idx'], axis=1)
     assert not assertion or len(trajectory_vip_ids)==vip_trajectories_found, f"{len(trajectory_vip_ids)}=={vip_trajectories_found}"
     return dataframe
+
+"""
+Below code was extracted from
+https://colab.research.google.com/drive/1Jir3HxTZ-au8L56ZrNHGxfBD0XlDkOMl?usp=sharing#scrollTo=BoNTgNwNMVWW
+"""
+def fit_position_within_image(ROI):
+  #assert ROI.shape[0] % 2 == 1 and ROI.shape[1] % 2 == 1
+  ROIradius = ROI.shape[0]//2
+  #Perform 2D Fourier transform over the complete ROI
+  ROI_F = np.fft.fft2(ROI)
+
+  #We have to calculate the phase angle of array entries [0,1] and [1,0] for
+  #the sub-pixel x and y values, respectively
+  #This phase angle can be calculated as follows:
+  xangle = np.arctan(ROI_F[0,1].imag/ROI_F[0,1].real) - np.pi
+  #Correct in case it's positive
+  if xangle > 0:
+    xangle -= 2*np.pi
+  #Calculate position based on the ROI radius
+  PositionX = abs(xangle)/(2*np.pi/(ROIradius*2+1))+0.5
+
+  #Do the same for the Y angle and position
+  yangle = np.arctan(ROI_F[1,0].imag/ROI_F[1,0].real) - np.pi
+  if yangle > 0:
+    yangle -= 2*np.pi
+  PositionY = abs(yangle)/(2*np.pi/(ROIradius*2+1))+0.5
+
+  return [PositionX, PositionY]

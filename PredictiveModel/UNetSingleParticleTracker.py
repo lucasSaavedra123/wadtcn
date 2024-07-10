@@ -14,7 +14,7 @@ from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
 from .model_utils import ImageGenerator, Unet
 from Trajectory import Trajectory
-
+from utils import fit_position_within_image
 from scipy import ndimage as ndi
 from skimage.segmentation import watershed
 from skimage.feature import peak_local_max
@@ -108,15 +108,17 @@ class UNetSingleParticleTracker(PredictiveModel):
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
-            spt_max_number_of_empty_frames = 3,
+            spt_max_number_of_empty_frames = 9,
             spt_adaptive_stop = 100e-9,
             debug=False,
             plot_trajectories=False,
+            intensity_filter=False,
+            #sub_roi_size=9
         ):
-
+        #assert sub_roi_size % 2 == 1
         import matplotlib
         matplotlib.use('TkAgg')
-
+        image_array = image_array.copy()
         unet_result = (self.architecture.predict(image_array/255, verbose=0)[...,0] > classification_threshold).astype(int)
 
         if not extract_localizations:
@@ -134,7 +136,7 @@ class UNetSingleParticleTracker(PredictiveModel):
             true_mask[tuple(coords.T)] = True
             markers, _ = ndi.label(true_mask)
             labels = watershed(-distance, markers, mask=mask)
-
+            """
             if debug:
                 plt.title(f"Frame {frame_index}")
                 plt.imshow(frame)
@@ -159,9 +161,16 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 fig.tight_layout()
                 plt.show()
-
-            cs = skimage.measure.regionprops(labels)#(skimage.measure.label(mask))
+            """
+            cs = skimage.measure.regionprops(labels)
+            #cs = skimage.measure.regionprops(skimage.measure.label(mask))
             rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+
+            if debug:
+                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
+                plt.show()
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
@@ -183,24 +192,68 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
-            rough_localizations= np.array(rough_localizations)
-
             if debug:
-                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.title(f"Circle radius and perimeters localizations fix: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(rough_localizations[:,0], rough_localizations[:,1], marker='X', color='red')
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
                 plt.show()
 
-            #By now, rough localizations = refined localizations
-            raw_localizations = rough_localizations.tolist()
-            data += [[frame_index]+p for p in raw_localizations]
-            raw_localizations = np.array(raw_localizations)
+            rough_localizations= np.array(rough_localizations)
+            """
+            for localization_index, rough_localization in enumerate(rough_localizations):
+                try:
+                    center_pixel_x = round(rough_localization[0])
+                    center_pixel_y = round(rough_localization[1])
+                    half_size = (sub_roi_size//2)
+                    roi = frame[center_pixel_y-half_size:center_pixel_y+half_size+1,center_pixel_x-half_size:center_pixel_x+half_size+1]
+                    positions=fit_position_within_image(roi)
+                    rough_localizations[localization_index,0] = rough_localization[0]-half_size+positions[0]
+                    rough_localizations[localization_index,1] = rough_localization[1]-half_size+positions[1]
+                    if debug:
+                        plt.imshow(roi)
+                        plt.scatter([positions[0]], [positions[1]])
+                        plt.show()
+                except:
+                    pass
 
+            if debug:
+                plt.title(f"Gaussian fitting applied: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
+                plt.show()
+            """
             if debug:
                 plt.title(f"Refined localizations from Frame Index: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
+                for rough_localization in rough_localizations:
+                    x_l = round(rough_localization[0])
+                    y_l = round(rough_localization[1])
+
+                    if frame[y_l, x_l] > 250:
+                        plt.scatter([x_l], [y_l], marker='X', color='green')
+                    elif frame[y_l, x_l] < 50:
+                        plt.scatter([x_l], [y_l], marker='X', color='orange')
+                    else:
+                        plt.scatter([x_l], [y_l], marker='X', color='pink')
                 plt.show()
+
+            if intensity_filter:
+                validated_rough_localizations = []
+                for rough_localization in rough_localizations.tolist():
+                    x_l = round(rough_localization[0])
+                    y_l = round(rough_localization[1])
+
+                    if frame[y_l, x_l] > 250:
+                        validated_rough_localizations.append([rough_localization[0]+0.01,rough_localization[1]+0.01])
+                        validated_rough_localizations.append([rough_localization[0]-0.01,rough_localization[1]-0.01])
+                    elif frame[y_l, x_l] < 50:
+                        pass
+                    else:
+                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
+
+                rough_localizations = np.array(validated_rough_localizations)
+            #By now, rough localizations = refined localizations
+            data += [[frame_index]+p for p in rough_localizations.tolist()]
 
         """
         Localizations are multiplied by the pixel size.
