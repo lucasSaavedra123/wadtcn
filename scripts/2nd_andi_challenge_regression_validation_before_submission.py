@@ -69,11 +69,6 @@ for trajectory in trajectories:
     gt_labs[:,1] = trajectory.info['d_t']
     gt_labs[:,2] = trajectory.info['state_t']
 
-    pred_labs = np.zeros((200,3))
-    pred_labs[:,0] = trajectory.info['alpha_t']
-    pred_labs[:,1] = trajectory.info['d_t']
-    pred_labs[:,2] = 2*np.ones(200)
-
     gt_cp = label_continuous_to_list(gt_labs)[0]
     rmse, jcs = single_changepoint_error(gt_cp, np.array(final_breakpoints), threshold = 10)
 
