@@ -207,6 +207,13 @@ for track_path in LIST_OF_TRACK_PATHS:
                             state_mode,
                             int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
+                    elif np.mean(alpha_t[first_break_point:last_break_point]) > 1.90:
+                        prediction_traj_r = [
+                            np.mean(d_t[first_break_point:last_break_point]),
+                            2,
+                            3,
+                            int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
+                        ]
                     elif state_mode == 0:
                         prediction_traj_r = [
                             0,
