@@ -11,8 +11,9 @@ from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingle
 from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
 from Trajectory import Trajectory
 
-cp_network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2ndDataSimulation)
+
 classifier_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation)
+cp_network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2ndDataSimulation)
 d_regression_network = WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation)
 alpha_regression_network = WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation)
 

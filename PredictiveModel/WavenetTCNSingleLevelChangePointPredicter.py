@@ -38,11 +38,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.05}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.05}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -70,8 +70,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
 
-    def predict(self, trajectories):
-        return (self.architecture.predict(self.transform_trajectories_to_input(trajectories)) > 0.5).astype(int)
+    def predict(self, trajectories, apply_threshold=True):
+        predictions = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
+        if apply_threshold:
+            predictions = (predictions > self.hyperparameters['decision_threshold']).astype(int)
+        return predictions
 
     @property
     def type_name(self):
@@ -125,7 +128,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         x = FeedForward(wavenet_filters*5, dff, 0.1)(x)
 
         #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        output = Dense(units=len(self.models_involved_in_predictive_model), activation='sigmoid', name='change_point_detection')(x)
+        output = Dense(units=1, activation='sigmoid', name='change_point_detection')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
 
@@ -150,7 +153,8 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
         """
 
-        self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
+        #self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
+        self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
@@ -188,16 +192,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         def custom_prepare_dataset(batch_size):            
             X, Y = [], []
             while len(X) < batch_size:
-                selected_model = np.random.randint(len(self.models_involved_in_predictive_model))
                 retry = True
                 while retry:
                     trajectory_id = np.random.randint(number_of_training_trajectories)
                     Y_i = np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_cp.npy'))
-                    simple_Y_i = np.unique(np.argmax(Y_i,axis=2))
-                    if selected_model == 2:
-                        retry = not (len(simple_Y_i) == 1 and 2 in simple_Y_i)
-                    else:
-                        retry = not (len(simple_Y_i) == 2 and selected_model in simple_Y_i)
+                    retry = len(np.unique(Y_i)) == 1
 
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_cp.npy')))
                 Y.append(Y_i)
