@@ -5,7 +5,8 @@ from CONSTANTS import VALIDATION_SET_SIZE_PER_EPOCH, ALPHA_ACCEPTANCE_THRESHOLD,
 from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, refine_values_and_states_following_breakpoints
+from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, refine_values_and_states_following_breakpoints, merge_spurious_break_points_by_distance_until_stop
 from andi_datasets.utils_challenge import label_continuous_to_list, single_changepoint_error
 
 trajectories = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_regression_training(VALIDATION_SET_SIZE_PER_EPOCH,200,None,True,'val', ignore_boundary_effects=True)
@@ -20,6 +21,10 @@ alpha_network.load_as_file()
 
 diffusion_coefficient_network = WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation)
 diffusion_coefficient_network.load_as_file()
+"""
+cp_network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2ndDataSimulation)
+cp_network.load_as_file()
+"""
 
 np.random.shuffle(trajectories)
 trajectories = trajectories[:limit]
@@ -32,18 +37,24 @@ for trajectory in trajectories:
     ax[0].set_title('Alpha')
     ax[1].set_title('Diffusion Coefficient')
 
-    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
-
-    if d_result.max() - d_result.min() < 2:
-        d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3, tresH=np.mean(10**d_result)*0.10)
-    else:
-        d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
+    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3)
+    d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3)
 
     #Show final breakpoints
     final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 3)
+    """
+    cp_network_breakpoints = np.where(cp_network.predict([trajectory])[0,:,0] == 1)[0].tolist()
+    cp_network_breakpoints = merge_spurious_break_points_by_distance_until_stop(cp_network_breakpoints, 3)
+    if trajectory.length not in cp_network_breakpoints:
+        cp_network_breakpoints.append(trajectory.length)
+    if 0 in cp_network_breakpoints:
+        cp_network_breakpoints.remove(0)
+
+    final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(cp_network_breakpoints, final_breakpoints, 3)
+    """
     refined_alpha, refined_d, _ = refine_values_and_states_following_breakpoints(alpha_result, d_result, 2*np.ones(200), final_breakpoints)
 
-    ax[0].scatter(range(trajectory.length), alpha_result)
+    ax[0].scatter(range(trajectory.length), alpha_result, color='green')
     ax[0].plot(trajectory.info['alpha_t'])
     ax[0].plot(refined_alpha, color='black')
     ax[0].set_ylim([0,2])
@@ -51,12 +62,12 @@ for trajectory in trajectories:
     if d_result.max() - d_result.min() < 2:
         ax[1].plot(trajectory.info['d_t'])
         ax[1].plot(10**refined_d, color='black')
-        ax[1].scatter(range(trajectory.length), 10**d_result)
+        ax[1].scatter(range(trajectory.length), 10**d_result, color='green')
         ax[1].set_ylabel('Absolute Diffusion Coefficient')
     else:
         ax[1].plot(np.log10(trajectory.info['d_t']))
         ax[1].plot(refined_d, color='black')
-        ax[1].scatter(range(trajectory.length), d_result)
+        ax[1].scatter(range(trajectory.length), d_result, color='green')
         ax[1].set_ylabel('Logarithmic Diffusion Coefficient')
 
     for bkp in alpha_breakpoints:

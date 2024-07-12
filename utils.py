@@ -78,6 +78,23 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
                 return np.mean(self.values)
             else:
                 return mode(self.values)
+        
+        def statically_overlap_with(self, other_window):
+            self_range = [
+                np.mean(self.values) - np.std(self.values),
+                np.mean(self.values) + np.std(self.values)
+            ]
+            other_window_range = [
+                np.mean(other_window.values) - np.std(other_window.values),
+                np.mean(other_window.values) + np.std(other_window.values)
+            ]
+
+            if other_window_range[0] < self_range[0]:
+                self_range, other_window_range = other_window_range, self_range
+
+            #overlap = self_range[0] <= other_window_range[1] and self_range[1] >= other_window_range[0]
+            overlap = max(0, min(self_range[1], other_window_range[1]) - max(self_range[0], other_window_range[0]))
+            return overlap != 0
 
     breakpoints = breakpoints.copy()
     if len(values) not in breakpoints:
@@ -99,7 +116,7 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
 
     while window_index < len(windows) - 1:
         if criterion == 'mean':
-            condition = abs(windows[window_index].representative_value() - windows[window_index+1].representative_value()) < umbral
+            condition = windows[window_index].statically_overlap_with(windows[window_index+1])#abs(windows[window_index].representative_value() - windows[window_index+1].representative_value()) < umbral
         else:
             condition = windows[window_index].representative_value() == windows[window_index+1].representative_value()
         if condition:
@@ -117,10 +134,10 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
         breakpoints.remove(len(values))
     return breakpoints
 
-def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, tresH=0.5, criterion='mean'):
+def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, criterion='mean'):
     #Delete breakpoints
     while True:
-        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps,tresH, criterion)
+        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps, criterion)
         if new_bpks == bkps:
             break
         else:
@@ -153,7 +170,7 @@ a single full iteration is done and a best fit is determined
 @author: jkerssemakers march 2022       
 """
 
-def break_point_detection_with_stepfinder(dataX, distance, tresH=0.15, N_iter=100):
+def break_point_detection_with_stepfinder(dataX, distance, N_iter=100):
     demo = 0.0
     """This is the main, multi-pass loop of the autostepfinder
     @author: jkerssemakers march 2022"""
@@ -166,7 +183,7 @@ def break_point_detection_with_stepfinder(dataX, distance, tresH=0.15, N_iter=10
     bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
 
     bkps = merge_spurious_break_points_by_distance_until_stop(bkps,distance)
-    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,tresH)
+    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps)
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
@@ -204,7 +221,9 @@ def refine_values_and_states_following_breakpoints(alpha, diffusion_coefficient,
     assert len(alpha) == cp[-1]
     assert len(diffusion_coefficient) == cp[-1]
     assert len(state) == cp[-1]
-
+    alpha = alpha.copy()
+    diffusion_coefficient = diffusion_coefficient.copy()
+    state = state.copy()
     last_break_point = 0
 
     for cp_i in range(len(cp)):

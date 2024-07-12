@@ -49,11 +49,8 @@ while True:
 
         fig, ax = plt.subplots(3,1)
 
-        alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, tresH=ALPHA_ACCEPTANCE_THRESHOLD)
-        if d_result.max() - d_result.min() < 2:
-            d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3, tresH=np.mean(10**d_result)*0.10)
-        else:
-            d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, tresH=D_ACCEPTANCE_THRESHOLD)
+        alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3)
+        d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3)
         state_breakpoints = break_point_discrete_detection(state_result,3)
 
         final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(
@@ -97,7 +94,7 @@ while True:
             ax[1].axvline(bkp, color='red', linewidth=2)
             ax[2].axvline(bkp, color='red', linewidth=2)
 
-        gt_labs = np.zeros((200,3))
+        gt_labs = np.zeros((trajectory.length,3))
         gt_labs[:,0] = trajectory.info['alpha_t']
         gt_labs[:,1] = trajectory.info['d_t']
         gt_labs[:,2] = trajectory.info['state_t']
