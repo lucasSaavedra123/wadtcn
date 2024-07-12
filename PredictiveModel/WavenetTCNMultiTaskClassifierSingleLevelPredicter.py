@@ -53,9 +53,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def build_network(self):
         number_of_features = 2
-        wavenet_filters = 64#32
-        dff = 512#320
-        number_of_passes = 4
+        wavenet_filters = 32
+        dff = 320
+        number_of_passes = 2#4
 
         dilation_depth = 8
         initializer = 'he_normal'
