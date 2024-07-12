@@ -196,6 +196,28 @@ def break_point_discrete_detection(dataX, distance):
         bkps.remove(bkps[-2])
     return bkps
 
+"""
+Dado los checkpoints, voy a querer actualizar los valores de
+cada ventana por la media
+"""
+def refine_values_and_states_following_breakpoints(alpha, diffusion_coefficient, state, cp):
+    assert len(alpha) == cp[-1]
+    assert len(diffusion_coefficient) == cp[-1]
+    assert len(state) == cp[-1]
+
+    last_break_point = 0
+
+    for cp_i in range(len(cp)):
+        cp_initial = last_break_point
+        cp_final = cp[cp_i]
+
+        alpha[cp_initial:cp_final] = np.mean(alpha[cp_initial:cp_final])
+        diffusion_coefficient[cp_initial:cp_final] = np.mean(diffusion_coefficient[cp_initial:cp_final])
+        state[cp_initial:cp_final] = mode(state[cp_initial:cp_final])
+        last_break_point = cp_final
+
+    return alpha, diffusion_coefficient, state
+
 def get_trajectories_from_2nd_andi_challenge_tiff_movie(
         tiff_movie,
         unet_network,

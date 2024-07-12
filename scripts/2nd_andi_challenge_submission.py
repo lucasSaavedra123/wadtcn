@@ -23,8 +23,9 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
-from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, break_point_discrete_detection
+from utils import break_point_detection_with_stepfinder, merge_breakpoints_and_delete_spurious_of_different_data, break_point_discrete_detection, refine_values_and_states_following_breakpoints
 from CONSTANTS import D_ACCEPTANCE_THRESHOLD, ALPHA_ACCEPTANCE_THRESHOLD
+from andi_datasets.utils_challenge import label_continuous_to_list, single_changepoint_error
 
 
 PUBLIC_DATA_PATH = './public_data_challenge_v0'
@@ -204,6 +205,13 @@ for track_path in LIST_OF_TRACK_PATHS:
                             np.mean(d_t[first_break_point:last_break_point]),
                             2,
                             state_mode,
+                            int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
+                        ]
+                    elif np.mean(alpha_t[first_break_point:last_break_point]) > 1.90:
+                        prediction_traj_r = [
+                            np.mean(d_t[first_break_point:last_break_point]),
+                            2,
+                            3,
                             int(last_break_point if track_path == PATH_TRACK_2 else time_axis[last_break_point])
                         ]
                     elif state_mode == 0:
