@@ -116,7 +116,8 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
 
     while window_index < len(windows) - 1:
         if criterion == 'mean':
-            condition = windows[window_index].statically_overlap_with(windows[window_index+1])#abs(windows[window_index].representative_value() - windows[window_index+1].representative_value()) < umbral
+            #condition = windows[window_index].statically_overlap_with(windows[window_index+1])
+            condition = abs(windows[window_index].representative_value() - windows[window_index+1].representative_value()) < umbral
         else:
             condition = windows[window_index].representative_value() == windows[window_index+1].representative_value()
         if condition:
@@ -134,10 +135,10 @@ def merge_breakpoints_by_window_criterion(values, breakpoints, umbral=0.5, crite
         breakpoints.remove(len(values))
     return breakpoints
 
-def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, criterion='mean'):
+def merge_breakpoints_by_window_criterion_until_stop(dataX, bkps, umbral=0.5, criterion='mean'):
     #Delete breakpoints
     while True:
-        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps, criterion)
+        new_bpks = merge_breakpoints_by_window_criterion(dataX,bkps,umbral, criterion)
         if new_bpks == bkps:
             break
         else:
@@ -170,7 +171,7 @@ a single full iteration is done and a best fit is determined
 @author: jkerssemakers march 2022       
 """
 
-def break_point_detection_with_stepfinder(dataX, distance, N_iter=100):
+def break_point_detection_with_stepfinder(dataX, distance, umbral=0.5, N_iter=100):
     demo = 0.0
     """This is the main, multi-pass loop of the autostepfinder
     @author: jkerssemakers march 2022"""
@@ -183,7 +184,7 @@ def break_point_detection_with_stepfinder(dataX, distance, N_iter=100):
     bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
 
     bkps = merge_spurious_break_points_by_distance_until_stop(bkps,distance)
-    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps)
+    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,umbral)
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
