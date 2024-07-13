@@ -143,8 +143,8 @@ for track_path in LIST_OF_TRACK_PATHS:
 
             for trajectory in exp_and_fov_trajectories:
                 prediction_traj = [int(trajectory.info['idx'])]
-                alpha_bkps = break_point_detection_with_stepfinder(trajectory.info['alpha_t'], 3, N_iter=1_000)
-                d_bkps = break_point_detection_with_stepfinder(trajectory.info['d_t'], 3, N_iter=1_000)
+                alpha_bkps = break_point_detection_with_stepfinder(trajectory.info['alpha_t'], 3, umbral=0.2, N_iter=1_000)
+                d_bkps = break_point_detection_with_stepfinder(np.log10(trajectory.info['d_t']), 3, umbral=0.25, N_iter=1_000)
                 state_bkps = break_point_discrete_detection(trajectory.info['state_t'], 3)
                 break_points = merge_breakpoints_and_delete_spurious_of_different_data(
                     alpha_bkps,
@@ -192,8 +192,7 @@ for track_path in LIST_OF_TRACK_PATHS:
 
                 # plt.show()
                 #get_time in this challenge is the frame axis
-                time_axis = trajectory.get_time()
-                time_axis -= np.min(time_axis)
+                frame_axis = trajectory.get_time() - np.min(trajectory.get_time()) + 1
 
                 alpha_t, d_t, state_t = refine_values_and_states_following_breakpoints(
                     trajectory.info['alpha_t'],
@@ -207,10 +206,13 @@ for track_path in LIST_OF_TRACK_PATHS:
                 pred_labels[:,1] = d_t
                 pred_labels[:,2] = state_t
 
-                bkps, labels = label_continuous_to_list(pred_labels)
+                bkps, alpha_bkps, D_bkps, states_bkps = label_continuous_to_list(pred_labels)
 
-                for bkp, (alpha_bkp, D_bkp, states_bkp) in zip(bkps, labels):
-                    bkp = time_axis[bkp-1:bkp][0]
+                for bkp_i, bkp in enumerate(bkps):
+                    D_bkp = D_bkps[bkp_i]
+                    states_bkp = states_bkps[bkp_i]
+                    alpha_bkp = alpha_bkps[bkp_i]
+                    bkp = int(frame_axis[bkp-1:bkp][0])
 
                     if states_bkp == 3:
                         prediction_traj += [D_bkp, 2, 3, bkp]
@@ -221,7 +223,7 @@ for track_path in LIST_OF_TRACK_PATHS:
                     else:
                         prediction_traj += [D_bkp, alpha_bkp, states_bkp, bkp]
 
-                assert prediction_traj[-1]==time_axis[-1]+1
+                assert prediction_traj[-1]==frame_axis[-1]
                 formatted_numbers = ','.join(map(str, prediction_traj))
 
                 if track_path == PATH_TRACK_2:
