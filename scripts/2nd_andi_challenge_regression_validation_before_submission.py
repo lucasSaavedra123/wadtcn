@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import ruptures as rpt
 
 from CONSTANTS import VALIDATION_SET_SIZE_PER_EPOCH, ALPHA_ACCEPTANCE_THRESHOLD, D_ACCEPTANCE_THRESHOLD
 from DataSimulation import Andi2ndDataSimulation
@@ -33,12 +34,11 @@ for trajectory in trajectories:
     alpha_result = alpha_network.predict([trajectory])[0,:,0]*2
     d_result = diffusion_coefficient_network.predict([trajectory])[0,:,0]
 
+    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, 0.1)
+    d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, 0.1)
     fig, ax = plt.subplots(2,1)
     ax[0].set_title('Alpha')
     ax[1].set_title('Diffusion Coefficient')
-
-    alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3)
-    d_breakpoints = break_point_detection_with_stepfinder(10**d_result, 3)
 
     #Show final breakpoints
     final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(alpha_breakpoints, d_breakpoints, 3)
