@@ -49,8 +49,8 @@ while True:
 
         fig, ax = plt.subplots(3,1)
 
-        alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, 0.1)
-        d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, 0.1)
+        alpha_breakpoints = break_point_detection_with_stepfinder(alpha_result, 3, ALPHA_ACCEPTANCE_THRESHOLD)
+        d_breakpoints = break_point_detection_with_stepfinder(d_result, 3, D_ACCEPTANCE_THRESHOLD)
         state_breakpoints = break_point_discrete_detection(state_result,3)
 
         final_breakpoints = merge_breakpoints_and_delete_spurious_of_different_data(
