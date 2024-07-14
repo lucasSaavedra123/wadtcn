@@ -176,18 +176,18 @@ def break_point_detection_with_stepfinder(dataX, distance, umbral=0.5, N_iter=10
     demo = 0.0
     """This is the main, multi-pass loop of the autostepfinder
     @author: jkerssemakers march 2022"""
-    #FitX = 0 * dataX
-    #residuX = dataX - FitX
-    #newFitX, _, _, S_curve, best_shot = core.stepfindcore(
-    #    residuX, demo, 0.15, N_iter
-    #)
-    #FitX = st.AppendFitX(newFitX, FitX, dataX)
-    #bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
-    #bkps = merge_spurious_break_points_by_distance_until_stop(bkps,distance)
-    #bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,umbral)
+    FitX = 0 * dataX
+    residuX = dataX - FitX
+    newFitX, _, _, S_curve, best_shot = core.stepfindcore(
+        residuX, demo, 0.15, N_iter
+    )
+    FitX = st.AppendFitX(newFitX, FitX, dataX)
+    bkps = (np.where(np.diff(FitX.flatten())!=0)[0]+1).tolist()
+    bkps = merge_spurious_break_points_by_distance_until_stop(bkps,distance)
+    bkps = merge_breakpoints_by_window_criterion_until_stop(dataX,bkps,umbral)
 
-    alg = rpt.KernelCPD(min_size=2).fit(dataX)
-    bkps = alg.predict(pen=1)[:-1]
+    # alg = rpt.KernelCPD(min_size=2).fit(dataX)
+    # bkps = alg.predict(pen=1)[:-1]
 
     number_of_points = len(dataX)
     if number_of_points not in bkps:
