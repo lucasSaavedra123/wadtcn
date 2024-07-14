@@ -144,7 +144,7 @@ for track_path in LIST_OF_TRACK_PATHS:
             for trajectory in exp_and_fov_trajectories:
                 prediction_traj = [int(trajectory.info['idx'])]
                 alpha_bkps = break_point_detection_with_stepfinder(trajectory.info['alpha_t'], 3, umbral=0.2, N_iter=1_000)
-                d_bkps = break_point_detection_with_stepfinder(np.log10(trajectory.info['d_t']), 3, umbral=0.25, N_iter=1_000)
+                d_bkps = break_point_detection_with_stepfinder(np.log10(trajectory.info['d_t']), 3, umbral=0.2, N_iter=1_000)
                 state_bkps = break_point_discrete_detection(trajectory.info['state_t'], 3)
                 break_points = merge_breakpoints_and_delete_spurious_of_different_data(
                     alpha_bkps,
