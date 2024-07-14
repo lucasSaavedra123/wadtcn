@@ -1,6 +1,6 @@
 from os.path import join
 from os import makedirs, remove
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import pandas as pd
 import numpy as np
@@ -59,7 +59,8 @@ for track_path in LIST_OF_TRACK_PATHS:
 
             for idx in df.traj_idx.unique():
                 df_traj = df[df.traj_idx == idx].sort_values('frame')
-
+                if len(df_traj) < 20:
+                    continue
                 trajectories.append(Trajectory(
                     x = df_traj['x'].tolist(),
                     y = df_traj['y'].tolist(),
@@ -83,8 +84,7 @@ print("Number of trajectories:", len(trajectories))
 #Divide trajectories by length for inference acceleration
 trajectories_by_length = defaultdict(lambda: [])
 for trajectory in trajectories:
-    if trajectory.length > 1:
-        trajectories_by_length[trajectory.length].append(trajectory)
+    trajectories_by_length[trajectory.length].append(trajectory)
 print("Number of lengths:", len(trajectories_by_length.keys()))
 
 #Inference and results stored in trajectories
@@ -249,6 +249,7 @@ for track_path in LIST_OF_TRACK_PATHS:
         complete_info = {
             'd': [],
             'alpha': [],
+            'state': [],
             'duration': []
         }
 
@@ -262,13 +263,15 @@ for track_path in LIST_OF_TRACK_PATHS:
                 for i in range(len(trajectory_info)//4):
                     complete_info['d'].append(trajectory_info[i*4])
                     complete_info['alpha'].append(trajectory_info[(i*4)+1])
+                    complete_info['state'].append(trajectory_info[(i*4)+2])
                     complete_info['duration'].append(trajectory_info[(i*4)+3] - last_bp)
                     last_bp = trajectory_info[(i*4)+3]
-
+            results_file.close()
             if track_path == PATH_TRACK_1:
                 remove(file_path)
 
         dataframe = pd.DataFrame(complete_info)
+        print(Counter(complete_info['state']))
         #dataframe['d'] = np.log10(dataframe['d'])
 
         fig, ax = plt.subplots(1,3)
