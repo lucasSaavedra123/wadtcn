@@ -1,20 +1,31 @@
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
-from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
+from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, Dropout, LayerNormalization, MultiHeadAttention, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
 from keras.models import Model
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-from tensorflow.keras import models
+from tensorflow.keras import models, Sequential
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import * 
 from tensorflow.keras.utils import Sequence
 
 
+def transform_trajectories_into_turning_angle(predictive_model, trajectories, normalize=True):
+    X = np.zeros((len(trajectories), trajectories[0].length-2, 1))
+
+    for index, trajectory in enumerate(trajectories):
+        angles = trajectory.turning_angles(normalized=normalize)
+
+        if len(angles) != 0:
+            X[index, :, 0] = trajectory.turning_angles(normalized=normalize)
+
+    return X
+
 def transform_trajectories_into_displacements(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length-1, 2))
+    X = np.zeros((len(trajectories), trajectories[-1].length-1, 2))
 
     def axis_adaptation_to_net(axis_data, track_length):
         axis_reshaped = np.reshape(axis_data, newshape=[1, len(axis_data)])
@@ -78,7 +89,7 @@ def transform_trajectories_into_squared_differences(predictive_model, trajectori
     return X
 
 def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+    X = np.zeros((len(trajectories), trajectories[0].length, 2))
 
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
@@ -141,7 +152,7 @@ def transform_trajectories_to_hurst_exponent(predictive_model, trajectories):
     return Y
 
 def transform_trajectories_to_single_level_hurst_exponent(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+    Y = np.empty((len(trajectories), trajectories[0].length))
 
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = trajectory.info['alpha_t']
@@ -150,7 +161,7 @@ def transform_trajectories_to_single_level_hurst_exponent(predictive_model, traj
     return Y
 
 def transform_trajectories_to_single_level_diffusion_coefficient(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+    Y = np.empty((len(trajectories), trajectories[0].length))
 
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = trajectory.info['d_t']
@@ -158,8 +169,7 @@ def transform_trajectories_to_single_level_diffusion_coefficient(predictive_mode
     return Y
 
 def transform_trajectories_to_single_level_model(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
-
+    Y = np.zeros((len(trajectories), trajectories[0].length, len(predictive_model.models_involved_in_predictive_model)))
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
@@ -186,19 +196,72 @@ def basic_convolution_block(predictive_model, original_x, filters, kernel_size, 
     x = BatchNormalization()(x)
     return x
 
-def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer):
-    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation='relu', kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
+def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer, activation='relu'):
+    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation=activation, kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
     x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation='relu', kernel_initializer=initializer)(x)
+    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation=activation, kernel_initializer=initializer)(x)
     x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation='relu', kernel_initializer=initializer)(x)
+    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation=activation, kernel_initializer=initializer)(x)
     x = BatchNormalization()(x)
 
-    x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation='relu', kernel_initializer=initializer)(original_x)
+    x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation=activation, kernel_initializer=initializer)(original_x)
     x_skip = BatchNormalization()(x_skip)
 
     x = Add()([x, x_skip])
 
+    return x
+
+#https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
+class BaseAttention(Layer):
+  def __init__(self, **kwargs):
+    super().__init__()
+    self.mha = MultiHeadAttention(**kwargs)
+    self.layernorm = LayerNormalization()
+    self.add = Add()
+
+#https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
+class GlobalSelfAttention(BaseAttention):
+  def call(self, x):
+    attn_output = self.mha(
+        query=x,
+        value=x,
+        key=x)
+    x = self.add([x, attn_output])
+    x = self.layernorm(x)
+    return x
+
+#https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
+class EncoderLayer(Layer):
+  def __init__(self,*, d_model, num_heads, dff, dropout_rate=0.1):
+    super().__init__()
+
+    self.self_attention = GlobalSelfAttention(
+        num_heads=num_heads,
+        key_dim=d_model,
+        dropout=dropout_rate)
+
+    self.ffn = FeedForward(d_model, dff)
+
+  def call(self, x):
+    x = self.self_attention(x)
+    x = self.ffn(x)
+    return x
+
+#https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
+class FeedForward(Layer):
+  def __init__(self, d_model, dff, dropout_rate=0.1):
+    super().__init__()
+    self.seq = Sequential([
+      Dense(dff, activation='relu'),
+      Dense(d_model),
+      Dropout(dropout_rate)
+    ])
+    self.add = Add()
+    self.layer_norm = LayerNormalization()
+
+  def call(self, x):
+    x = self.add([x, self.seq(x)])
+    x = self.layer_norm(x) 
     return x
 
 class WaveNetEncoder(Layer):
@@ -502,7 +565,7 @@ def down_block(x, filters, use_maxpool = True, input_dimension='2d', basic_kerne
     if input_dimension=='2d':
         x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(filters, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -519,7 +582,7 @@ def up_block(x,y, filters, input_dimension='2d', basic_kernel_size=3):
     if input_dimension=='2d':
         x = Conv2D(filters, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(filters, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(filters, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -550,21 +613,21 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None,
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
     if input_dimension=='2d':
         x = Conv2D(16, basic_kernel_size, padding= 'same')(x)
     elif input_dimension=='1d':
-        x = Conv1D(16, basic_kernel_size, padding= 'same')(x)
+        x = Conv1D(16, basic_kernel_size, padding= 'causal')(x)
 
     x = LeakyReLU()(x)
     #x = BatchNormalization()(x)
@@ -573,7 +636,7 @@ def Unet(input_size, input_dimension='2d', basic_kernel_size=3, unet_index=None,
         if input_dimension=='2d':
             output = Conv2D(1, basic_kernel_size, activation= 'sigmoid', padding='same')(x)
         elif input_dimension=='1d':
-            output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'same')(x)
+            output = Conv1D(1, basic_kernel_size, activation= 'sigmoid', padding= 'causal')(x)
     else:
         output = x
     model = models.Model(input, output, name = f'unet_{unet_index}' if unet_index is not None else 'unet')

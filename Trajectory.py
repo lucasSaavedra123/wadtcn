@@ -9,7 +9,13 @@ from sklearn.metrics import r2_score
 import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
 from andi_datasets.datasets_challenge import _defaults_andi2
-
+from matplotlib import cm
+import matplotlib.cbook as cbook
+import matplotlib.colors as colors
+from matplotlib.collections import LineCollection
+import matplotlib.patches as mpatches
+import matplotlib as mpl
+from matplotlib.gridspec import GridSpec
 from scipy.spatial import ConvexHull
 import scipy.stats as st
 import matplotlib.animation as animation
@@ -17,7 +23,7 @@ from collections import defaultdict
 import moviepy.editor as mp
 from moviepy.video.fx.all import crop
 from moviepy.editor import *
-
+from CONSTANTS import *
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -178,6 +184,77 @@ class Trajectory(Document):
                     }
                 )
             )
+
+        return trajectories
+
+    @classmethod
+    def from_models_phenom(cls, trajs, labels):
+        trajectories = []
+
+        for traj_index in range(trajs.shape[1]):
+            sigma = 0 #During simulation, noise is not added in trajectories saving. Instead, It is added during training
+
+            trajectories.append(
+                Trajectory(
+                    x=trajs[:,traj_index,0],
+                    y=trajs[:,traj_index,1],
+                    t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
+                    noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    info={
+                        'alpha_t': labels[:,traj_index,0],
+                        'd_t': labels[:,traj_index,1],
+                        'state_t': labels[:,traj_index,2]
+                    }
+                )
+            )
+
+        return trajectories    
+
+    @classmethod
+    def from_challenge_phenom_dataset(cls, trajs, labels):
+        trajectories = []
+
+        for fov_i, (dataframe, current_labels) in enumerate(zip(trajs, labels)):
+            for traj_idx in dataframe['traj_idx'].unique():
+                traj_dataframe = dataframe[dataframe['traj_idx'] == traj_idx]
+                traj_dataframe = traj_dataframe.sort_values('frame')
+
+                traj_labels = [l for l in current_labels if l[0] == traj_idx][0]
+                traj_labels = traj_labels[1:]
+
+                d = np.zeros(len(traj_dataframe))
+                a = np.zeros(len(traj_dataframe))
+                s = np.zeros(len(traj_dataframe))
+
+                from_c = 0
+                for label_index in range(0, int(len(traj_labels)/4)):
+                    d_i = traj_labels[(label_index*4)]
+                    a_i = traj_labels[(label_index*4)+1]
+                    s_i = traj_labels[(label_index*4)+2]
+                    c_i = traj_labels[(label_index*4)+3]
+
+                    d[from_c:c_i] = d_i
+                    a[from_c:c_i] = a_i
+                    s[from_c:c_i] = s_i
+                    from_c = c_i
+                #assert len(np.unique(d)) != 3
+                #assert len(np.unique(a)) != 3
+                #assert len(np.unique(s)) != 3
+                trajectories.append(
+                    Trajectory(
+                        x=traj_dataframe['x'].tolist(),
+                        y=traj_dataframe['y'].tolist(),
+                        t=(traj_dataframe['frame'] * 0.1).tolist(), #This frame rate was obtained in the website of the Andi Challenge
+                        info={
+                            'alpha_t': a.tolist(),
+                            'd_t': d.tolist(),
+                            'state_t': s.tolist(),
+                            'fov': fov_i
+                        },
+                        noisy=True
+                    )
+                )
 
         return trajectories
 
@@ -417,8 +494,92 @@ class Trajectory(Document):
                 plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
                 if with_noise:
                     plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+            plt.show()
         else:
             self.model_category.plot(self, with_noise=with_noise)
+
+    def plot_andi_2(self, with_noise=True, absolute_d=False):
+        if self.noisy:
+            x, y = self.get_noisy_x(), self.get_noisy_y()
+        else:
+            if with_noise:
+                x, y = self.get_x(), self.get_y()
+            if with_noise:
+                x, y = self.get_noisy_x(), self.get_noisy_y()
+
+        #fig, ax = plt.subplots(1,3)
+        titles = ['State', 'Diffusion Coefficient', 'Anomalous Exponent']
+        labels = ['trap', 'confined', 'free', 'directed']
+        colors = ['red', 'green', 'blue', 'orange']
+        state_to_color = {index:a_color for index, a_color in enumerate(colors)}
+        label_to_color = {label:a_color for label, a_color in zip(labels, colors)}
+
+        fig = plt.figure(layout="constrained")
+        gs = GridSpec(3, 3, figure=fig)
+
+        ax = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+        ax_regression_alpha = fig.add_subplot(gs[1, :])
+        ax_regression_d = fig.add_subplot(gs[2, :])
+
+        """
+        state_to_color = {1:confinement_color, 0:non_confinement_color}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold))
+
+        for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+            plt.plot([x1, x2], [y1, y2], states_as_color[i], alpha=alpha)
+        """
+
+        for i, ax_i in enumerate(ax):
+            ax_i.set_title(titles[i])
+
+            if i==0:
+                states_as_color = np.vectorize(state_to_color.get)(self.info['state_t'])
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], states_as_color[i], alpha=1)
+                patches = [mpatches.Patch(color=label_to_color[label], label=label.capitalize()) for label in label_to_color]
+                ax_i.legend(handles=patches)
+            elif i==1:
+                norm = plt.Normalize(-12, 1)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(np.log10(self.info['d_t'][i]))), alpha=1)
+            elif i==2:
+                norm = plt.Normalize(0, 2)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(self.info['alpha_t'][i])), alpha=1)
+            x_lim = ax_i.get_xlim()
+            y_lim = ax_i.get_ylim()
+
+            x_width = x_lim[1]-x_lim[0]
+            y_height = y_lim[1]-y_lim[0]
+
+            if x_width > y_height:
+                y_middle = y_lim[0] + (y_height/2)
+                ax_i.set_ylim([y_middle-(x_width/2),y_middle+(x_width/2)])
+            else:
+                x_middle = x_lim[0] + (x_width/2)
+                ax_i.set_xlim([x_middle-(y_height/2),x_middle+(y_height/2)])
+
+            ax_i.set_aspect('equal', adjustable='box')
+
+        ax_regression_d.set_ylabel(r'$D_{i}$')
+        ax_regression_d.set_xlabel(r'$i$')
+
+        if not absolute_d:
+            ax_regression_d.plot(np.log10(self.info['d_t']))
+            ax_regression_d.set_ylim([-12,6])
+        else:
+            ax_regression_d.plot(self.info['d_t'])
+
+        ax_regression_alpha.plot(self.info['alpha_t'])
+
+        ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
+        #ax_regression_alpha.set_xlabel(r'$i$')
+        ax_regression_alpha.set_ylim([0,2])
+        #manager = plt.get_current_fig_manager()
+        #manager.full_screen_toggle()
+        plt.show()
 
     def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
         fig, ax = plt.subplots()

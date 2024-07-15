@@ -8,12 +8,16 @@ import pandas as pd
 import skimage
 import math
 import trackpy
+trackpy.quiet()
 import deeptrack as dt
-
 from .PredictiveModel import PredictiveModel
 from CONSTANTS import *
 from .model_utils import ImageGenerator, Unet
 from Trajectory import Trajectory
+from utils import fit_position_within_image
+from scipy import ndimage as ndi
+from skimage.segmentation import watershed
+from skimage.feature import peak_local_max
 
 
 class UNetSingleParticleTracker(PredictiveModel):
@@ -99,17 +103,23 @@ class UNetSingleParticleTracker(PredictiveModel):
             image_array,
             extract_trajectories=True,
             extract_localizations=True,
+            extract_trajectories_as_dataframe=False,
+            extract_trajectories_as_trajectories=False,
             pixel_size=100e-9,
             classification_threshold = 0.5,
             spt_max_distance_tolerance = 1000e-9,
+            spt_max_number_of_empty_frames = 9,
+            spt_adaptive_stop = 100e-9,
             debug=False,
             plot_trajectories=False,
+            intensity_filter=False,
+            #sub_roi_size=9
         ):
-
+        #assert sub_roi_size % 2 == 1
         import matplotlib
         matplotlib.use('TkAgg')
-
-        unet_result = (self.architecture.predict(image_array/255)[...,0] > classification_threshold).astype(int)
+        image_array = image_array.copy()
+        unet_result = (self.architecture.predict(image_array/255, verbose=0)[...,0] > classification_threshold).astype(int)
 
         if not extract_localizations:
             return unet_result
@@ -120,6 +130,13 @@ class UNetSingleParticleTracker(PredictiveModel):
         for frame_index, (mask, frame) in enumerate(zip(unet_result, image_array)):
             rough_localizations = []
 
+            distance = ndi.distance_transform_edt(mask)
+            coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=mask)
+            true_mask = np.zeros(distance.shape, dtype=bool)
+            true_mask[tuple(coords.T)] = True
+            markers, _ = ndi.label(true_mask)
+            labels = watershed(-distance, markers, mask=mask)
+            """
             if debug:
                 plt.title(f"Frame {frame_index}")
                 plt.imshow(frame)
@@ -129,8 +146,31 @@ class UNetSingleParticleTracker(PredictiveModel):
                 plt.imshow(mask)
                 plt.show()
 
-            cs = skimage.measure.regionprops(skimage.measure.label(mask))
+                fig, axes = plt.subplots(ncols=3, figsize=(9, 3), sharex=True, sharey=True)
+                ax = axes.ravel()
+
+                ax[0].imshow(mask, cmap=plt.cm.gray)
+                ax[0].set_title('Overlapping objects')
+                ax[1].imshow(-distance, cmap=plt.cm.gray)
+                ax[1].set_title('Distances')
+                ax[2].imshow(labels, cmap=plt.cm.nipy_spectral)
+                ax[2].set_title('Separated objects')
+
+                for a in ax:
+                    a.set_axis_off()
+
+                fig.tight_layout()
+                plt.show()
+            """
+            cs = skimage.measure.regionprops(labels)
+            #cs = skimage.measure.regionprops(skimage.measure.label(mask))
             rough_localizations = [list(c["Centroid"])[::-1] for c in cs if c['perimeter']/(np.pi*2) <= self.extra_parameters['circle_radius']]
+
+            if debug:
+                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
+                plt.show()
 
             for props in [ci for ci in cs if ci['perimeter']/(np.pi*2) > self.extra_parameters['circle_radius']]:
                 y0, x0 = props.centroid
@@ -152,34 +192,74 @@ class UNetSingleParticleTracker(PredictiveModel):
 
                 rough_localizations += [[new_x_1, new_y_1], [new_x_2, new_y_2]]
 
-            rough_localizations= np.array(rough_localizations)
-
             if debug:
-                plt.title(f"Rough localizations from Frame Index: {frame_index}")
+                plt.title(f"Circle radius and perimeters localizations fix: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(rough_localizations[:,0], rough_localizations[:,1], marker='X', color='red')
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
                 plt.show()
 
-            #By now, rough localizations = refined localizations
-            raw_localizations = rough_localizations.tolist()
-            data += [[frame_index]+p for p in raw_localizations]
-            raw_localizations = np.array(raw_localizations)
+            rough_localizations= np.array(rough_localizations)
+            """
+            for localization_index, rough_localization in enumerate(rough_localizations):
+                try:
+                    center_pixel_x = round(rough_localization[0])
+                    center_pixel_y = round(rough_localization[1])
+                    half_size = (sub_roi_size//2)
+                    roi = frame[center_pixel_y-half_size:center_pixel_y+half_size+1,center_pixel_x-half_size:center_pixel_x+half_size+1]
+                    positions=fit_position_within_image(roi)
+                    rough_localizations[localization_index,0] = rough_localization[0]-half_size+positions[0]
+                    rough_localizations[localization_index,1] = rough_localization[1]-half_size+positions[1]
+                    if debug:
+                        plt.imshow(roi)
+                        plt.scatter([positions[0]], [positions[1]])
+                        plt.show()
+                except:
+                    pass
 
+            if debug:
+                plt.title(f"Gaussian fitting applied: {frame_index}")
+                plt.imshow(frame)
+                plt.scatter(np.array(rough_localizations)[:,0], np.array(rough_localizations)[:,1], marker='X', color='red')
+                plt.show()
+            """
             if debug:
                 plt.title(f"Refined localizations from Frame Index: {frame_index}")
                 plt.imshow(frame)
-                plt.scatter(raw_localizations[:,0], raw_localizations[:,1], marker='X', color='red')
+                for rough_localization in rough_localizations:
+                    x_l = round(rough_localization[0])
+                    y_l = round(rough_localization[1])
+
+                    if frame[y_l, x_l] > 250:
+                        plt.scatter([x_l], [y_l], marker='X', color='green')
+                    elif frame[y_l, x_l] < 50:
+                        plt.scatter([x_l], [y_l], marker='X', color='orange')
+                    else:
+                        plt.scatter([x_l], [y_l], marker='X', color='pink')
                 plt.show()
+
+            if intensity_filter:
+                validated_rough_localizations = []
+                for rough_localization in rough_localizations.tolist():
+                    x_l = round(rough_localization[0])
+                    y_l = round(rough_localization[1])
+
+                    if frame[y_l, x_l] > 250:
+                        validated_rough_localizations.append([rough_localization[0]+0.01,rough_localization[1]+0.01])
+                        validated_rough_localizations.append([rough_localization[0]-0.01,rough_localization[1]-0.01])
+                    elif frame[y_l, x_l] < 50:
+                        pass
+                    else:
+                        validated_rough_localizations.append([rough_localization[0],rough_localization[1]])
+
+                rough_localizations = np.array(validated_rough_localizations)
+            #By now, rough localizations = refined localizations
+            data += [[frame_index]+p for p in rough_localizations.tolist()]
 
         """
         Localizations are multiplied by the pixel size.
-        The origin of the axis is positioned to the 
-        left-bottom corner of the movie.
         """
         data = np.array(data)
         data[:,1:] *= pixel_size
-        data[:,2] *= -1
-        data[:,2] += image_array.shape[2] * pixel_size
 
         dataset = pd.DataFrame({'frame': data[:,0],'x': data[:,1],'y': data[:,2]})
 
@@ -188,17 +268,31 @@ class UNetSingleParticleTracker(PredictiveModel):
 
         grouped_dataset = dataset.groupby(dataset.frame)
         tr_datasets = [grouped_dataset.get_group(frame_value).reset_index(drop=True) for frame_value in dataset['frame'].unique()]
-        tr = trackpy.link_df_iter(tr_datasets, spt_max_distance_tolerance, pos_columns=['x', 'y'], t_column='frame')
+        """
+        This part was based on https://github.com/GanzingerLab/SPIT
+        Also, check https://soft-matter.github.io/trackpy/v0.3.0/tutorial/subnets.html
+        """
+        tr = trackpy.link_df_iter(
+            tr_datasets,
+            search_range=spt_max_distance_tolerance,
+            memory=spt_max_number_of_empty_frames,
+            pos_columns=['x', 'y'],
+            t_column='frame',
+            link_strategy='auto',
+            adaptive_stop=spt_adaptive_stop,
+            adaptive_step=0.95
+        )
         dataset = pd.concat(tr)
 
-        dataset = dataset.rename(columns={'particle': 'track_id'})
+        dataset = dataset.rename(columns={'particle': 'traj_idx'})
+        dataset = dataset.reset_index(drop=True)
 
-        track_ids = dataset['track_id'].unique()
+        track_ids = dataset['traj_idx'].unique()
         trajectories = []
 
         for track_id in track_ids:
-            track_dataframe = dataset[dataset['track_id'] == track_id].sort_values('frame')
-            
+            track_dataframe = dataset[dataset['traj_idx'] == track_id].sort_values('frame')
+
             new_trajectory = Trajectory(
                 x=track_dataframe['x'].tolist(),
                 y=track_dataframe['y'].tolist(),
@@ -214,7 +308,12 @@ class UNetSingleParticleTracker(PredictiveModel):
         if plot_trajectories:
             plt.show()
 
-        return trajectories
+        if extract_trajectories_as_dataframe and extract_trajectories_as_trajectories:
+            return trajectories, dataset
+        elif extract_trajectories_as_dataframe:
+            return dataset
+        elif extract_trajectories_as_trajectories:
+            return trajectories
 
     @property
     def type_name(self):

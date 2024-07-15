@@ -1,12 +1,15 @@
-from random import shuffle
-from numpy.random import choice
+import sys
+import os
+
 import numpy as np
 import pandas as pd
-import os
-from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2
-from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 import tqdm
+import ray
+from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2, challenge_phenom_dataset
+from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
+
 from Trajectory import Trajectory
+
 
 class DataSimulation():
     STRING_LABEL = 'default'
@@ -15,11 +18,11 @@ class DataSimulation():
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
-            selected_model_class = choice(model_classes)
+            selected_model_class = np.random.choice(model_classes)
             new_trajectory = selected_model_class.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=self.andi)
             trajectories.append(new_trajectory)
 
-        shuffle(trajectories)
+        np.random.shuffle(trajectories)
 
         return trajectories
 
@@ -27,12 +30,12 @@ class DataSimulation():
         trajectories = []
 
         while len(trajectories) != number_of_trajectories:
-            selected_category = categories[choice(list(range(0,len(categories))))]
-            selected_model_class = choice(selected_category)
+            selected_category = categories[np.random.choice(list(range(0,len(categories))))]
+            selected_model_class = np.random.choice(selected_category)
             new_trajectory = selected_model_class.create_random_instance().simulate_trajectory(trajectory_length, trajectory_time, from_andi=self.andi)
             trajectories.append(new_trajectory)
 
-        shuffle(trajectories)
+        np.random.shuffle(trajectories)
 
         return trajectories
 
@@ -51,7 +54,6 @@ class AndiDataSimulation(DataSimulation):
     def simulate_segmentated_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time):
         _, _, _, _, X, Y = challenge_theory_dataset(number_of_trajectories, min_T=trajectory_length, max_T=trajectory_length+1, tasks=3, dimensions=2)
         trajectories = []
-
 
         for trajectory_index in range(number_of_trajectories):
             x = X[1][trajectory_index][:trajectory_length]
@@ -93,7 +95,7 @@ class Andi2ndDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = True
 
-    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False):
+    def __generate_dict_for_model(self, model_label, trajectory_length, number_of_trajectories, force_directed=False, ignore_boundary_effects=True, L=128):
         assert 1 <= model_label <= 5
         """
         1: single state
@@ -102,157 +104,341 @@ class Andi2ndDataSimulation(DataSimulation):
         4: dimerization
         5: confinement
         """
-        custom_dic = {}
-        D_possible_values = np.logspace(np.log10(models_phenom().bound_D[0]), np.log10(models_phenom().bound_D[1]), num=1000)
-        ALPHA_possible_values = np.linspace(models_phenom().bound_alpha[0], models_phenom().bound_alpha[1], num=1000)
+        #Initial settings
+        TRAJECTORY_DENSITY = 50/((1.5*128)**2)
+        TRAP_DENSITY = 10/((128)**2)
+        CONFINEMENTS_DENSITY = 10/((1.5*128)**2)
 
+        MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
+        MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+        custom_dic = {}
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+
+        """
+        If boundary effects are ignored, we set a relative high L value
+        """
+        if not ignore_boundary_effects:
+            custom_dic['L'] = L
+        else:
+            if model_label in [1,2]:
+                custom_dic['L'] = None
+            else:
+                custom_dic['L'] = int(512)
+
+        """
+        We set D and alpha for models 1 and 3
+        """
         if model_label in [1,3]:
             D = np.random.choice(D_possible_values)
             ALPHA = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            custom_dic.update(
-                {
-                    'Ds': [D, D*0.01], # mean and variance for D
-                    'alphas': np.array([ALPHA, 0.01])
-                }
-            )
+            custom_dic.update({ 'Ds': [D, D*0.01], 'alphas': [ALPHA, 0.01]})
 
-        if model_label in [2,4,5]:
+        """
+        For model 2, transition matrix is created between
+        2 and 5 different states.
+        """
+        if model_label == 2:
+            n = np.random.randint(2,5)
+            transition_matrix = np.zeros((n,n))
+
+            for i in range(n):
+                for j in range(n):
+                    transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
+
+            similar_order_magnitude = np.random.choice([False, True])
+            if similar_order_magnitude:
+                ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
+                magnitude_order = int(np.log10(ds_values[0]))
+                minimum_magnitude_order = max(magnitude_order-1,-12)
+                maximum_magnitude_order = min(magnitude_order+1,6)
+                for ds_value_i in range(1,n):
+                    ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+            else:
+                ds_values = np.random.choice(D_possible_values, size=n, replace=False)
+
+            as_values = np.random.choice(ALPHA_possible_values, size=n, replace=False)
+
+            custom_dic.update({
+                'model': datasets_phenom().avail_models_name[1],
+                'M': transition_matrix, #transition matrix
+                'return_state_num': True,
+                'Ds': np.array([[d, d*0.01] for d in ds_values]),
+                'alphas': np.array([[a, a*0.01] for a in as_values]),
+            })
+
+        if model_label in [4,5]:
             fast_D = np.random.choice(D_possible_values)
-            slow_D = fast_D*np.random.rand()
 
+            similar_order_magnitude = np.random.choice([False, True])
+            if similar_order_magnitude:
+                magnitude_order = int(np.log10(fast_D))
+                minimum_magnitude_order = max(magnitude_order-1,-12)
+                maximum_magnitude_order = np.log10(fast_D)
+                slow_D = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+            else:
+                slow_D = np.random.choice(D_possible_values[D_possible_values<=fast_D])
+
+            assert slow_D <= fast_D
             alpha1 = models_phenom().bound_alpha[1] if force_directed else np.random.choice(ALPHA_possible_values)
-            alpha2 = alpha1*np.random.rand()
+            alpha2 = np.random.uniform(MIN_A, 1.8)
 
             custom_dic.update({
                 'Ds': np.array([[fast_D, fast_D*0.01], [slow_D, slow_D*0.01]]),
                 'alphas': np.array([[alpha1, 0.01], [alpha2, 0.01]])
             })
-        """
-        # Particle/trap radius and ninding and unbinding probs for dimerization and immobilization
+
+        custom_dic.update({'model': datasets_phenom().avail_models_name[model_label-1]})
+
         if model_label in [3,4]:
-            custom_dic.update({'Pu': np.random.uniform(0.01,0.05),                           # Unbinding probability
-                        'Pb': np.random.uniform(0.75,1.00)})                             # Binding probabilitiy
+            custom_dic.update({
+                'Pu': np.random.uniform(0,0.05), # Unbinding probability
+                'Pb': np.random.uniform(0.95,1.00)  # Binding probability
+            })
 
-        if model_label == 1:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[0],
-                        'dim': 2})
-
-        if model_label == 2:
-            p_1 = np.random.uniform(0.50,1.00)
-            p_2 = np.random.uniform(0.50,1.00)
-            custom_dic.update({'model': datasets_phenom().avail_models_name[1],
-                        'M': np.array([[p_1, 1-p_1],            # Transition Matrix
-                                    [1-p_2, p_2]]),
-                        'return_state_num': True              # To get the state numeration back, , hence labels.shape = TxNx4
-                    })
-        
         if model_label == 3:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[2],
-                        'Nt': 300,            # Number of traps (density = 1 currently)
-                        'r': 0.4}             # Size of trap
-                    )
+            custom_dic.update({
+                'Nt': int((custom_dic['L']**2)*TRAP_DENSITY), # Number of traps
+                'r': np.random.uniform(0.5,1.0)
+            })
+
         if model_label == 4:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[3],
-                        'r': 0.6,                 # Size of particles
-                        'return_state_num': True  # To get the state numeration back, hence labels.shape = TxNx4
-                    })
+            custom_dic.update({
+                'r': np.random.uniform(0.5,1.0), # Size of particles
+                'return_state_num': True         # To get the state numeration back, hence labels.shape = TxNx4
+            })
 
         if model_label == 5:
-            custom_dic.update({'model': datasets_phenom().avail_models_name[4],
-                        'r': 5,
-                        'Nc': 30,
-                        'trans': 0.1})
-        """
+            custom_dic.update({
+                'r': np.random.uniform(5,20),
+                'Nc': int((custom_dic['L']**2)*CONFINEMENTS_DENSITY),
+                'trans':np.random.uniform(0,0.50)
+            })
+
         dic = _get_dic_andi2(model_label)
         dic['T'] = trajectory_length
-        dic['N'] = number_of_trajectories
+        dic['N'] = number_of_trajectories if number_of_trajectories is not None else int((custom_dic['L']**2)*TRAJECTORY_DENSITY)
 
         for key in custom_dic:
             dic[key] = custom_dic[key]
-
+        #print(dic)
         return dic
 
-    def simulate_phenomenological_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label=''):
-        FILE_NAME = f't_{file_label}_{trajectory_length}_{number_of_trajectories}.cache'
+    def get_trayectories_from_file(self, file_name):
+        trajectories = []
+        dataframe = pd.read_csv(file_name)
+        for unique_id in dataframe['id'].unique():
+            t_dataframe = dataframe[dataframe['id'] == unique_id]
+            trajectories.append(Trajectory(
+                x=t_dataframe['x_noisy'].tolist(),
+                y=t_dataframe['y_noisy'].tolist(),
+                t=t_dataframe['t'].tolist(),
+                info={
+                    'alpha_t': t_dataframe['alpha_t'].tolist(),
+                    'd_t': t_dataframe['d_t'].tolist(),
+                    'state_t': t_dataframe['state_t'].tolist()
+                },
+                noisy=True
+            ))
+        return trajectories
+
+    def save_trajectories(self, trajectories, file_name):
+        data = {
+            'id':[],
+            't':[],
+            'x_noisy':[],
+            'y_noisy':[],
+            'd_t':[],
+            'alpha_t':[],
+            'state_t':[]
+        }
+
+        for i, t in enumerate(trajectories):
+            data['id'] += [i] * t.length
+            data['t'] += t.get_time().tolist()
+            data['x_noisy'] += t.get_noisy_x().tolist()
+            data['y_noisy'] += t.get_noisy_y().tolist()
+            data['d_t'] += list(t.info['d_t'])
+            data['alpha_t'] += list(t.info['alpha_t'])
+            data['state_t'] += list(t.info['state_t'])
+
+        pd.DataFrame(data).to_csv(file_name, index=False)
+
+    def simulate_phenomenological_trajectories_for_regression_training(
+            self,
+            number_of_trajectories,
+            trajectory_length,
+            trajectory_time, # For MINFLUX I'm going to modify this variable
+            get_from_cache=False,
+            file_label='',
+            ignore_boundary_effects=True,
+        ):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
+
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = []
-
-            dataframe = pd.read_csv(FILE_NAME)
-
-            for unique_id in dataframe['id'].unique():
-                t_dataframe = dataframe[dataframe['id'] == unique_id]
-                trajectories.append(Trajectory(
-                    x=t_dataframe['x_noisy'].tolist(),
-                    y=t_dataframe['y_noisy'].tolist(),
-                    t=t_dataframe['t'].tolist(),
-                    info={
-                        'alpha_t': t_dataframe['alpha_t'].tolist(),
-                        'd_t': t_dataframe['d_t'].tolist(),
-                        'state_t': t_dataframe['state_t'].tolist()
-                    },
-                    noisy=True
-                ))
+            trajectories = self.get_trayectories_from_file(FILE_NAME)
         else:
-            NUM_FOVS = 1
-
-            parameter_simulation_setup = [
-                #{'model': 1, 'force_directed': True},
-                {'model': 1, 'force_directed': False},
-                #{'model': 2, 'force_directed': True},
-                {'model': 2, 'force_directed': False},
-                #{'model': 3, 'force_directed': True},
-                {'model': 3, 'force_directed': False},
-                #{'model': 4, 'force_directed': True},
-                {'model': 4, 'force_directed': False},
-            ]
-
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 while len(trajectories) < number_of_trajectories:
-                    simulation_setup = np.random.choice(parameter_simulation_setup)
-                    retry = True
-                    while retry:
-                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 10, force_directed=simulation_setup['force_directed'])
+                    MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
+                    MIN_ALPHA, MAX_ALPHA = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+                    custom_dic = {}
 
-                        def include_trajectory(trajectory): #We want a diverse number of characteristics
-                            return len(np.unique(trajectory.info['d_t'])) > 1
+                    D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
 
-                        for _ in range(NUM_FOVS):
-                            trajs, labels = datasets_phenom().create_dataset(dics = dic)
-                            new_trajectories = [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)][:1]
+                    n = np.random.randint(2,5)
+                    transition_matrix = np.zeros((n,n))
+                    p = np.random.uniform(0.80, 1)
+                    for i in range(n):
+                        for j in range(n):
+                            transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
 
-                            if len(new_trajectories) > 0:
-                                retry = False
-                                pbar.update(len(new_trajectories))
-                                trajectories += new_trajectories
+                    similar_order_magnitude = np.random.choice([False, True])
+                    if similar_order_magnitude:
+                        ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
+                        magnitude_order = int(np.log10(ds_values[0]))
+                        minimum_magnitude_order = max(magnitude_order-1,-12)
+                        maximum_magnitude_order = min(magnitude_order+1,6)
+                        for ds_value_i in range(1,n):
+                            ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
+                    else:
+                        ds_values = np.random.choice(D_possible_values, size=n, replace=False)
 
-            shuffle(trajectories)
+                    custom_dic.update({
+                        'T': trajectory_length,
+                        'N': 5,
+                        'L': None,
+                        'M': transition_matrix, #transition matrix
+                        'return_state_num': True,
+                        'Ds': np.array([[d, d*0.01] for d in ds_values]),
+                        'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
+                    })
+
+                    sim_dic = _get_dic_andi2(2)
+
+                    for key in custom_dic:
+                        sim_dic[key] = custom_dic[key]
+
+                    def include_trajectory(trajectory): #We want a diverse number of characteristics
+                        segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
+                        return len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
+
+                    sim_dic.pop('model')
+                    trajs, labels = models_phenom().multi_state(**sim_dic)
+                    new_list_of_trajectories = [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)][:2]
+                    trajectories += new_list_of_trajectories
+                    pbar.update(len(new_list_of_trajectories))
+
+            np.random.shuffle(trajectories)
             trajectories = trajectories[:number_of_trajectories]
 
             if get_from_cache:
-                data = {
-                    'id':[],
-                    #'x':[],
-                    #'y':[],
-                    't':[],
-                    'x_noisy':[],
-                    'y_noisy':[],
-                    'd_t':[],
-                    'alpha_t':[],
-                    'state_t':[]
-                }
+                self.save_trajectories(trajectories, FILE_NAME)
 
-                for i, t in enumerate(trajectories):
-                    data['id'] += [i] * t.length
-                    #data['x'] += t.get_x().tolist()
-                    #data['y'] += t.get_y().tolist()
-                    data['t'] += t.get_time().tolist()
-                    data['x_noisy'] += t.get_noisy_x().tolist()
-                    data['y_noisy'] += t.get_noisy_y().tolist()
-                    data['d_t'] += list(t.info['d_t'])
-                    data['alpha_t'] += list(t.info['alpha_t'])
-                    data['state_t'] += list(t.info['state_t'])
+        return trajectories
 
-                pd.DataFrame(data).to_csv(FILE_NAME, index=False)
+    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False):
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
+        if get_from_cache and os.path.exists(FILE_NAME):
+            trajectories = self.get_trayectories_from_file(FILE_NAME)
+        else:
+            trajectories = []
+            with tqdm.tqdm(total=number_of_trajectories) as pbar:
+                def generate_trayectory(limit):
+                    parameter_simulation_setup = [
+                        {'model': 1, 'force_directed': False},
+                        {'model': 2, 'force_directed': False},
+                        #{'model': 3, 'force_directed': False},
+                        {'model': 4, 'force_directed': False},
+                    ]
 
-        return trajectories[:number_of_trajectories]
+                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
+                    retry = True
+                    while retry:
+                        dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects, L=512)
+
+                        def include_trajectory(trajectory): #We want a diverse number of characteristics
+                            segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
+                            x_diff = np.max(trajectory.get_noisy_x()) - np.min(trajectory.get_noisy_x())
+                            y_diff = np.max(trajectory.get_noisy_y()) - np.min(trajectory.get_noisy_y())
+                            within_roi = x_diff <= 128 and y_diff <= 128
+                            return within_roi and len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
+                        new_trajectories = []
+                        if type_of_simulation == 'create_dataset':
+                            trajs, labels = datasets_phenom().create_dataset(dics = dic)
+                            new_trajectories += [ti for ti in Trajectory.from_datasets_phenom(trajs, labels) if include_trajectory(ti)]
+                        elif type_of_simulation == 'challenge_phenom_dataset':
+                            try:
+                                trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 5, dics = [dic], repeat_exp=False)
+                                new_trajectories += [ti for ti in Trajectory.from_challenge_phenom_dataset(trajs, labels) if include_trajectory(ti)]
+                            except ValueError:
+                                pass
+                        elif type_of_simulation == 'models_phenom':
+                            function_to_use = {
+                                1: models_phenom().single_state,
+                                2: models_phenom().multi_state,
+                                3: models_phenom().immobile_traps,
+                                4: models_phenom().dimerization,
+                                5: models_phenom().confinement
+                            }[simulation_setup['model']+1]
+
+                            dic.pop('model')
+                            trajs, labels = function_to_use(**dic)
+                            new_trajectories += [ti for ti in Trajectory.from_models_phenom(trajs, labels) if include_trajectory(ti)]
+                        else:
+                            raise Exception(f'type_of_simulation={type_of_simulation} is not possible')
+                        if len(new_trajectories) > 0:
+                            new_trajectories = new_trajectories[:limit]
+                            retry = False
+                    return new_trajectories
+ 
+                if enable_parallelism:
+                    @ray.remote
+                    def generate_trayectory_to_use(limit):
+                        return generate_trayectory(limit)
+                    ray.init()
+                    while len(trajectories) < number_of_trajectories:
+                        new_list_of_trajectories = ray.get([generate_trayectory_to_use.remote(5) for _ in range(100)])
+                        new_trajectories = []
+                        for t_list in new_list_of_trajectories:
+                            new_trajectories += t_list
+                        trajectories += new_trajectories
+                        pbar.update(len(new_trajectories))
+                    ray.shutdown()
+                else:
+                    while len(trajectories) < number_of_trajectories:
+                        new_trajectories = generate_trayectory(5)
+                        trajectories += new_trajectories
+                        pbar.update(len(new_trajectories))
+
+            np.random.shuffle(trajectories)
+            trajectories = trajectories[:number_of_trajectories]
+
+            if get_from_cache:
+                self.save_trajectories(trajectories, FILE_NAME)
+        return trajectories
+
+    def simulate_challenge_trajectories(self, filter=False):
+        parameter_simulation_setup = [
+            {'model': 0, 'force_directed': False},
+            {'model': 1, 'force_directed': False},
+            {'model': 2, 'force_directed': False},
+            #{'model': 3, 'force_directed': False},
+            {'model': 4, 'force_directed': False},
+        ]
+
+        simulation_setup = np.random.choice(parameter_simulation_setup)
+        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
+        dfs_traj, labs_traj, _ = challenge_phenom_dataset(
+            save_data = False,
+            dics = [dic],
+            return_timestep_labs = True, get_video = False, 
+            num_fovs = 5,
+        )
+        #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
+        trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
+        if simulation_setup['model'] >= 2 and filter:
+            trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
+        return trajectories
