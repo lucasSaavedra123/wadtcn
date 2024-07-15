@@ -11,7 +11,7 @@ network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2nd
 network.load_as_file()
 
 ts = []
-for i in range(5):
+for i in range(1):
    ts += Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(TRAINING_SET_SIZE_PER_EPOCH,200,None,True,f'train_{i}', ignore_boundary_effects=True, enable_parallelism=True, type_of_simulation='models_phenom')
 
 pred = network.predict(ts, apply_threshold=False).flatten()

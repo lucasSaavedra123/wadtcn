@@ -38,11 +38,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.05}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.05}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -67,7 +67,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         return output
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
         return X
 
     def predict(self, trajectories, apply_threshold=True):
