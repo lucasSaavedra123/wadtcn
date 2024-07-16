@@ -1,5 +1,5 @@
 import math
-
+from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
@@ -8,9 +8,22 @@ from scipy.optimize import curve_fit
 from sklearn.metrics import r2_score
 import ruptures as rpt
 from mongoengine import Document, FloatField, ListField, DictField, BooleanField
+from andi_datasets.datasets_challenge import _defaults_andi2
+from matplotlib import cm
+import matplotlib.cbook as cbook
+import matplotlib.colors as colors
+from matplotlib.collections import LineCollection
+import matplotlib.patches as mpatches
+import matplotlib as mpl
+from matplotlib.gridspec import GridSpec
 from scipy.spatial import ConvexHull
 import scipy.stats as st
+import matplotlib.animation as animation
 from collections import defaultdict
+import moviepy.editor as mp
+from moviepy.video.fx.all import crop
+from moviepy.editor import *
+from CONSTANTS import *
 #Example about how to read trajectories from .mat
 """
 from scipy.io import loadmat
@@ -150,6 +163,102 @@ class Trajectory(Document):
         return trajectories
 
     @classmethod
+    def from_datasets_phenom(cls, trajs, labels):
+        trajectories = []
+
+        for traj_index in range(trajs.shape[1]):
+            selected_snr = np.random.uniform(0.5,5)
+            sigma = np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+
+            trajectories.append(
+                Trajectory(
+                    x=trajs[:,traj_index,0],
+                    y=trajs[:,traj_index,1],
+                    t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
+                    noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#defaults_andi2().sigma_noise,
+                    info={
+                        'alpha_t': labels[:,traj_index,0],
+                        'd_t': labels[:,traj_index,1],
+                        'state_t': labels[:,traj_index,2]
+                    }
+                )
+            )
+
+        return trajectories
+
+    @classmethod
+    def from_models_phenom(cls, trajs, labels):
+        trajectories = []
+
+        for traj_index in range(trajs.shape[1]):
+            sigma = 0 #During simulation, noise is not added in trajectories saving. Instead, It is added during training
+
+            trajectories.append(
+                Trajectory(
+                    x=trajs[:,traj_index,0],
+                    y=trajs[:,traj_index,1],
+                    t=np.arange(0, len(trajs[:,traj_index,1])) * 0.1, #This frame rate was obtained in the website of the Andi Challenge
+                    noise_x=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    noise_y=np.random.randn(trajs.shape[0])*sigma,#_defaults_andi2().sigma_noise,
+                    info={
+                        'alpha_t': labels[:,traj_index,0],
+                        'd_t': labels[:,traj_index,1],
+                        'state_t': labels[:,traj_index,2]
+                    }
+                )
+            )
+
+        return trajectories    
+
+    @classmethod
+    def from_challenge_phenom_dataset(cls, trajs, labels):
+        trajectories = []
+
+        for fov_i, (dataframe, current_labels) in enumerate(zip(trajs, labels)):
+            for traj_idx in dataframe['traj_idx'].unique():
+                traj_dataframe = dataframe[dataframe['traj_idx'] == traj_idx]
+                traj_dataframe = traj_dataframe.sort_values('frame')
+
+                traj_labels = [l for l in current_labels if l[0] == traj_idx][0]
+                traj_labels = traj_labels[1:]
+
+                d = np.zeros(len(traj_dataframe))
+                a = np.zeros(len(traj_dataframe))
+                s = np.zeros(len(traj_dataframe))
+
+                from_c = 0
+                for label_index in range(0, int(len(traj_labels)/4)):
+                    d_i = traj_labels[(label_index*4)]
+                    a_i = traj_labels[(label_index*4)+1]
+                    s_i = traj_labels[(label_index*4)+2]
+                    c_i = traj_labels[(label_index*4)+3]
+
+                    d[from_c:c_i] = d_i
+                    a[from_c:c_i] = a_i
+                    s[from_c:c_i] = s_i
+                    from_c = c_i
+                #assert len(np.unique(d)) != 3
+                #assert len(np.unique(a)) != 3
+                #assert len(np.unique(s)) != 3
+                trajectories.append(
+                    Trajectory(
+                        x=traj_dataframe['x'].tolist(),
+                        y=traj_dataframe['y'].tolist(),
+                        t=(traj_dataframe['frame'] * 0.1).tolist(), #This frame rate was obtained in the website of the Andi Challenge
+                        info={
+                            'alpha_t': a.tolist(),
+                            'd_t': d.tolist(),
+                            'state_t': s.tolist(),
+                            'fov': fov_i
+                        },
+                        noisy=True
+                    )
+                )
+
+        return trajectories
+
+    @classmethod
     def ensemble_average_mean_square_displacement(cls, trajectories, number_of_points_for_msd=50, bin_width=None, alpha=0.95):
         """
         trajectories = [trajectory for trajectory in trajectories if trajectory.length > number_of_points_for_msd + 1]
@@ -163,8 +272,8 @@ class Trajectory(Document):
             positions[:,1] = trajectory.get_noisy_y()
 
             for index in range(0, number_of_points_for_msd):
-                ea_msd[j_index, index] = np.linalg.norm(positions[index+1]-positions[0]) ** 2
-                mu_t[j_index, index] = np.linalg.norm(positions[index+1]-positions[0])
+                ea_msd[j_index, index] = np.sum(np.abs((positions[1+index] - positions[0]) ** 2))
+                mu_t[j_index, index] = np.sum(np.abs((positions[1+index] - positions[0])))
 
         ea_msd = np.mean(ea_msd, axis=0)
         mu_t = np.mean(mu_t, axis=0)
@@ -376,19 +485,144 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, axis='xy'):
-        plt.title(self)
-        if axis == 'x':
-            plt.plot(self.get_x(), marker="X")
-            plt.plot(self.get_noisy_x(), marker="X")
-        elif axis == 'y':
-            plt.plot(self.get_y(), marker="X")
-            plt.plot(self.get_noisy_y(), marker="X")        
-        elif axis == 'xy':
-            plt.plot(self.get_x(), self.get_y(), marker="X")
-            plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X")
+    def plot(self, with_noise=True):
+        if self.model_category is None:
 
+            if self.noisy:
+                plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
+            else:
+                plt.plot(self.get_x(), self.get_y(), marker="X", color='black')
+                if with_noise:
+                    plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='red')
+            plt.show()
+        else:
+            self.model_category.plot(self, with_noise=with_noise)
+
+    def plot_andi_2(self, with_noise=True, absolute_d=False):
+        if self.noisy:
+            x, y = self.get_noisy_x(), self.get_noisy_y()
+        else:
+            if with_noise:
+                x, y = self.get_x(), self.get_y()
+            if with_noise:
+                x, y = self.get_noisy_x(), self.get_noisy_y()
+
+        #fig, ax = plt.subplots(1,3)
+        titles = ['State', 'Diffusion Coefficient', 'Anomalous Exponent']
+        labels = ['trap', 'confined', 'free', 'directed']
+        colors = ['red', 'green', 'blue', 'orange']
+        state_to_color = {index:a_color for index, a_color in enumerate(colors)}
+        label_to_color = {label:a_color for label, a_color in zip(labels, colors)}
+
+        fig = plt.figure(layout="constrained")
+        gs = GridSpec(3, 3, figure=fig)
+
+        ax = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+        ax_regression_alpha = fig.add_subplot(gs[1, :])
+        ax_regression_d = fig.add_subplot(gs[2, :])
+
+        """
+        state_to_color = {1:confinement_color, 0:non_confinement_color}
+        states_as_color = np.vectorize(state_to_color.get)(self.confinement_states(v_th=v_th, window_size=window_size, transition_fix_threshold=transition_fix_threshold))
+
+        for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+            plt.plot([x1, x2], [y1, y2], states_as_color[i], alpha=alpha)
+        """
+
+        for i, ax_i in enumerate(ax):
+            ax_i.set_title(titles[i])
+
+            if i==0:
+                states_as_color = np.vectorize(state_to_color.get)(self.info['state_t'])
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], states_as_color[i], alpha=1)
+                patches = [mpatches.Patch(color=label_to_color[label], label=label.capitalize()) for label in label_to_color]
+                ax_i.legend(handles=patches)
+            elif i==1:
+                norm = plt.Normalize(-12, 1)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(np.log10(self.info['d_t'][i]))), alpha=1)
+            elif i==2:
+                norm = plt.Normalize(0, 2)
+                Blues = plt.get_cmap('viridis')
+                for i,(x1, x2, y1,y2) in enumerate(zip(x, x[1:], y, y[1:])):
+                    ax_i.plot([x1, x2], [y1, y2], c=Blues(norm(self.info['alpha_t'][i])), alpha=1)
+            x_lim = ax_i.get_xlim()
+            y_lim = ax_i.get_ylim()
+
+            x_width = x_lim[1]-x_lim[0]
+            y_height = y_lim[1]-y_lim[0]
+
+            if x_width > y_height:
+                y_middle = y_lim[0] + (y_height/2)
+                ax_i.set_ylim([y_middle-(x_width/2),y_middle+(x_width/2)])
+            else:
+                x_middle = x_lim[0] + (x_width/2)
+                ax_i.set_xlim([x_middle-(y_height/2),x_middle+(y_height/2)])
+
+            ax_i.set_aspect('equal', adjustable='box')
+
+        ax_regression_d.set_ylabel(r'$D_{i}$')
+        ax_regression_d.set_xlabel(r'$i$')
+
+        if not absolute_d:
+            ax_regression_d.plot(np.log10(self.info['d_t']))
+            ax_regression_d.set_ylim([-12,6])
+        else:
+            ax_regression_d.plot(self.info['d_t'])
+
+        ax_regression_alpha.plot(self.info['alpha_t'])
+
+        ax_regression_alpha.set_ylabel(r'$\alpha_{i}$')
+        #ax_regression_alpha.set_xlabel(r'$i$')
+        ax_regression_alpha.set_ylim([0,2])
+        #manager = plt.get_current_fig_manager()
+        #manager.full_screen_toggle()
         plt.show()
+
+    def animate_plot(self, roi_size=None, save_animation=False, title='animation'):
+        fig, ax = plt.subplots()
+        line = ax.plot(self.get_noisy_x()[0], self.get_noisy_y()[0])[0]
+
+        if roi_size is None:
+            ax.set(xlim=[np.min(self.get_noisy_x()), np.max(self.get_noisy_x())], ylim=[np.min(self.get_noisy_y()), np.max(self.get_noisy_y())], xlabel='X', ylabel='Y')
+        else:
+            xlim = [np.min(self.get_noisy_x()), np.max(self.get_noisy_x())]
+            ylim = [np.min(self.get_noisy_y()), np.max(self.get_noisy_y())]
+            x_difference = xlim[1]-xlim[0]
+            y_difference = ylim[1]-ylim[0]
+            x_offset = (roi_size - x_difference)/2
+            y_offset = (roi_size - y_difference)/2
+            xlim = [xlim[0]-x_offset, xlim[1]+x_offset]
+            ylim = [ylim[0]-y_offset, ylim[1]+y_offset]
+            ax.set(xlim=xlim, ylim=ylim, xlabel='X', ylabel='Y')
+        def update(frame):
+            # for each frame, update the data stored on each artist.
+            x_f = self.get_noisy_x()[:frame]
+            y_f = self.get_noisy_y()[:frame]
+
+            if self.t is not None:
+                time = (self.get_time() - self.get_time()[0])[frame]
+                time = np.round(time, 6)
+                ax.set_title(f'{time}s')
+            #voronoi_plot_2d(Voronoi(self.model_category.voronoi_centroids), show_points=False, show_vertices=False, line_colors='grey', ax=ax)
+            # update the scatter plot:
+            #data = np.stack([x, y]).T
+            # update the line plot:
+            line.set_xdata(x_f[:frame])
+            line.set_ydata(y_f[:frame])
+            plt.tight_layout()
+            return (line)
+
+        ani = animation.FuncAnimation(fig=fig, func=update, frames=self.length, interval=1)
+
+        if not save_animation:
+            plt.show()
+        else:
+            ani.save(f'DELETE.gif', writer=animation.PillowWriter(fps=30), dpi=300)
+            clip = mp.VideoFileClip(f'DELETE.gif')
+            clip.write_videofile(f'./animations_plus/{title}.mp4')
 
     def plot_confinement_states(
         self,
@@ -494,10 +728,25 @@ class Trajectory(Document):
                     noisy=noisy
                 )
         
+        BTX_NOMENCLATURE = 'BTX680R'
+        CHOL_NOMENCLATURE = 'fPEG-Chol'
+
         if 'dcr' in self.info:
             new_trajectory.info['dcr'] = self.info['dcr'][initial_index:final_index]
         if 'intensity' in self.info:
             new_trajectory.info['intensity'] = self.info['intensity'][initial_index:final_index]
+        if 'dataset' in self.info:
+            new_trajectory.info['dataset'] = self.info['dataset']
+        if 'roi' in self.info:
+            new_trajectory.info['roi'] = self.info['roi']
+        if 'file' in self.info:
+            new_trajectory.info['file'] = self.info['file']
+        if 'classified_experimental_condition' in self.info:
+            new_trajectory.info['classified_experimental_condition'] = self.info['classified_experimental_condition']
+        if f'{BTX_NOMENCLATURE}_single_intersections' in self.info:
+            new_trajectory.info[f'{BTX_NOMENCLATURE}_single_intersections'] = self.info[f'{BTX_NOMENCLATURE}_single_intersections'][initial_index:final_index]
+        if f'{CHOL_NOMENCLATURE}_single_intersections' in self.info:
+            new_trajectory.info[f'{CHOL_NOMENCLATURE}_single_intersections'] = self.info[f'{CHOL_NOMENCLATURE}_single_intersections'][initial_index:final_index]
 
         return new_trajectory
 
@@ -676,3 +925,54 @@ class Trajectory(Document):
             min_size=min_size,
             return_break_points=return_break_points
         )
+
+    def mean_turning_angle(self):
+        """
+        This is meanDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(normalized_angles)
+
+    def correlated_turning_angle(self):
+        """
+        This is corrDP in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])==np.sign(normalized_angles[:-1]))
+
+    def directional_persistance(self):
+        """
+        This is AvgSignDp in
+
+        Deep learning assisted single particle tracking for
+        automated correlation between diffusion and
+        function
+        """
+        normalized_angles = turning_angles(
+            self.length,
+            self.get_noisy_x(),
+            self.get_noisy_y(),
+            normalized=True,
+            steps_lag=1
+        )
+        return np.nanmean(np.sign(normalized_angles[1:])>0)
