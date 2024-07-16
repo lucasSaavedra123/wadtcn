@@ -8,6 +8,7 @@ from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import W
 
 for network_class in [
     WavenetTCNMultiTaskClassifierSingleLevelPredicter,
+    WavenetTCNSingleLevelChangePointPredicter,
     WavenetTCNSingleLevelAlphaPredicter,
     WavenetTCNSingleLevelDiffusionCoefficientPredicter,
 ]:
