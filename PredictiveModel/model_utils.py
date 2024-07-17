@@ -264,6 +264,30 @@ class FeedForward(Layer):
     x = self.layer_norm(x) 
     return x
 
+class Transformer(Layer):
+    def __init__(self, number_of_passes, number_of_heads, d_model, dff):
+        self.encoder_layers = [EncoderLayer(d_model=d_model, num_heads=4, dff=dff, dropout_rate=0.1) for _ in range(number_of_passes)]
+        self.feed_forward_1 = FeedForward(d_model, dff, 0.1)
+        self.feed_forward_2 = FeedForward(d_model, dff, 0.1)
+
+    def call(self, inputs):
+        x = inputs
+        x_1 = x
+        for i in range(len(self.encoder_layers)):
+            x = self.encoder_layers[i](x)
+
+        x = Add()([x_1, x])
+
+        x = LayerNormalization()(x)
+        x_1 = x
+        x = self.feed_forward_1(x)
+        x = Add()([x_1, x])
+        x = LayerNormalization()(x)
+
+        x = self.feed_forward_2(x)
+
+        return x
+
 class WaveNetEncoder(Layer):
     def __init__(self, filters, dilation_depth, initializer='he_normal'):
         super().__init__()

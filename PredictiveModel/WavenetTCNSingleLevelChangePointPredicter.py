@@ -113,19 +113,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x_1 = x
-        #Following code is similar to Requena, 2023.
-        for _ in range(number_of_passes):
-            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=dff, dropout_rate=0.1)(x)
-        x = Add()([x_1, x])
-        
-        x = LayerNormalization()(x)
-        x_1 = x
-        x = FeedForward(wavenet_filters*5, dff, 0.1)(x)
-        x = Add()([x_1, x])
-        x = LayerNormalization()(x)
-        
-        x = FeedForward(wavenet_filters*5, dff, 0.1)(x)
+        x = Transformer(2,4,wavenet_filters*5,320)(x)
 
         #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=1, activation='sigmoid', name='change_point_detection')(x)
