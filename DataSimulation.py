@@ -78,12 +78,12 @@ class AndiDataSimulation(DataSimulation):
                     simulation_result['x'],
                     simulation_result['y'],
                     t=simulation_result['t'],
-                    noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
                     exponent_type=simulation_result['exponent_type'],
                     exponent=simulation_result['exponent'],
-                    model_category=self,
                     info=simulation_result['info'],
+                    noisy=True
                 )
             )
 
