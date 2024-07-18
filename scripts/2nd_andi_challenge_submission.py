@@ -288,7 +288,7 @@ for track_path in LIST_OF_TRACK_PATHS:
         retry = True
         while retry:
             try:
-                number_of_states = int(input('How many "peaks" do you see?'))
+                number_of_states = int(input(f'How many "peaks" do you see for TRACK:{track_path}, EXP:{exp}?'))
                 retry = False
             except:
                 retry = True
