@@ -66,13 +66,22 @@ class AndiDataSimulation(DataSimulation):
                 'exponent_type': None,
                 'exponent': None,
                 'info': {
-                    'change_point_time': Y[1][trajectory_index][1],
+                    'change_point_time': int(Y[1][trajectory_index][1]),
                     'model_first_segment': Y[1][trajectory_index][2],
                     'alpha_first_segment': Y[1][trajectory_index][3],
                     'model_second_segment': Y[1][trajectory_index][4],
                     'alpha_second_segment': Y[1][trajectory_index][5],
                     }
             }
+
+            alpha_t = np.full(simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['alpha_first_segment']).tolist()
+            alpha_t += np.full(trajectory_length-simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['alpha_second_segment']).tolist()
+
+            state_t = np.full(simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['model_first_segment']).tolist()
+            state_t += np.full(trajectory_length-simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['model_second_segment']).tolist()
+
+            simulation_result['info']['state_t'] = state_t
+            simulation_result['info']['alpha_t'] = alpha_t
 
             trajectories.append(Trajectory(
                     simulation_result['x'],
