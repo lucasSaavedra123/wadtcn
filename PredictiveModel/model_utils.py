@@ -266,9 +266,12 @@ class FeedForward(Layer):
 
 class Transformer(Layer):
     def __init__(self, number_of_passes, number_of_heads, d_model, dff):
+        super().__init__()
         self.encoder_layers = [EncoderLayer(d_model=d_model, num_heads=4, dff=dff, dropout_rate=0.1) for _ in range(number_of_passes)]
         self.feed_forward_1 = FeedForward(d_model, dff, 0.1)
         self.feed_forward_2 = FeedForward(d_model, dff, 0.1)
+        self.norm_layer_1 = LayerNormalization()
+        self.norm_layer_2 = LayerNormalization()
 
     def call(self, inputs):
         x = inputs
@@ -278,11 +281,11 @@ class Transformer(Layer):
 
         x = Add()([x_1, x])
 
-        x = LayerNormalization()(x)
+        x = self.norm_layer_1(x)
         x_1 = x
         x = self.feed_forward_1(x)
         x = Add()([x_1, x])
-        x = LayerNormalization()(x)
+        x = self.norm_layer_2(x)
 
         x = self.feed_forward_2(x)
 
