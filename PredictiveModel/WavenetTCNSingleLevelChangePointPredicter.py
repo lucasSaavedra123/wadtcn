@@ -58,13 +58,19 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         return ['No Change', 'Change']
 
     def transform_trajectories_to_output(self, trajectories):
-        d = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
-        m = transform_trajectories_to_single_level_model_as_number(self, trajectories)
-        h = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
-        output = np.zeros(d.shape)
-        output[:,1:] = np.diff(d) + np.diff(m) + np.diff(h)
-        output = (output != 0).astype(float)
-        return output
+        if self.simulator.STRING_LABEL == 'andi2':
+            d = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
+            m = transform_trajectories_to_single_level_model_as_number(self, trajectories)
+            h = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
+            output = np.zeros(d.shape)
+            output[:,1:] = np.diff(d) + np.diff(m) + np.diff(h)
+            output = (output != 0).astype(float)
+            return output
+        elif self.simulator.STRING_LABEL == 'andi':
+            output = np.zeros((len(trajectories), trajectories[0].length))
+            for ti, t in enumerate(trajectories):
+                output[ti,:] = [0] * int(t.info['change_point_time']-1) + [1] + [0] * int(t.length - t.info['change_point_time'])
+            return output
 
     def transform_trajectories_to_input(self, trajectories):
         X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
@@ -145,10 +151,16 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
-        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+        if self.simulator.STRING_LABEL == 'andi2':
+            trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+        elif self.simulator.STRING_LABEL == 'andi':
+            trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+    """
     def fit(self):
+        if self.simulator.STRING_LABEL == 'andi':
+            super().fit()
 
         if not self.trained:
             self.build_network()
@@ -210,7 +222,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         else:
             self.history_training_info = history_training_info
             self.trained = True
-
+    """
     def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:
             trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
