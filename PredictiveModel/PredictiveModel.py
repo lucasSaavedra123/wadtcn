@@ -71,6 +71,20 @@ class PredictiveModel(Document):
 
     @classmethod
     def analyze_hyperparameters(cls, trajectory_length, trajectory_time, initial_epochs=10, steps=10, **kwargs):
+        """
+        network_object = cls(trajectory_length, trajectory_time, **kwargs)
+
+        tuner = kt.BayesianOptimization(
+            PredictiveModelTuner(network_object, [50, 100]),
+            objective='val_loss',
+            max_trials=50)
+
+        X, Y = network_object.prepare_dataset(100000)
+
+        tuner.search(X, Y, epochs=5, validation_split=0.2)
+
+        return None
+        """
         # Stack names and lists position
         hyperparameters_to_analyze = cls.default_hyperparameters_analysis()
 
