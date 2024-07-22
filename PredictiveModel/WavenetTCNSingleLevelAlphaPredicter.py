@@ -60,17 +60,17 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
 
         x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
 
-        x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
-        x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
-        x3 = convolutional_block(self, x, wavenet_filters, x3_kernel, [1,2,4], initializer)
-        x4 = convolutional_block(self, x, wavenet_filters, x4_kernel, [1,4,8], initializer)
+        x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer, original_skip_connection=False)
+        x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer, original_skip_connection=False)
+        x3 = convolutional_block(self, x, wavenet_filters, x3_kernel, [1,2,4], initializer, original_skip_connection=False)
+        x4 = convolutional_block(self, x, wavenet_filters, x4_kernel, [1,4,8], initializer, original_skip_connection=False)
 
         x5 = Conv1D(filters=wavenet_filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
         x5 = BatchNormalization()(x5)
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x = Transformer(2,4,wavenet_filters*5, 320)(x)
+        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
 
         #alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         alpha_regression = Dense(units=1, activation='sigmoid', name='alpha_regression_output')(x)#(alpha_regression)

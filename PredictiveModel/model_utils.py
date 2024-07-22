@@ -196,19 +196,20 @@ def basic_convolution_block(predictive_model, original_x, filters, kernel_size, 
     x = BatchNormalization()(x)
     return x
 
-def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer, activation='relu'):
-    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation=activation, kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
-    x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation=activation, kernel_initializer=initializer)(x)
-    x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation=activation, kernel_initializer=initializer)(x)
-    x = BatchNormalization()(x)
+def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer, activation='relu', original_skip_connection=True):
+    x1 = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation=activation, kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
+    x1 = BatchNormalization()(x1)
+    x2 = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation=activation, kernel_initializer=initializer)(x1)
+    x2 = BatchNormalization()(x2)
+    x3 = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation=activation, kernel_initializer=initializer)(x2)
+    x3 = BatchNormalization()(x3)
 
-    x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation=activation, kernel_initializer=initializer)(original_x)
-    x_skip = BatchNormalization()(x_skip)
-
-    x = Add()([x, x_skip])
-
+    if original_skip_connection:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation=activation, kernel_initializer=initializer)(original_x)
+        x_skip = BatchNormalization()(x_skip)
+        x = Add()([x3, x_skip])
+    else:
+        x = Add()([x1, x2, x3])
     return x
 
 #https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
