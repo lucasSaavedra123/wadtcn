@@ -12,6 +12,7 @@ import pandas as pd
 import glob as glob
 from andi_datasets.datasets_challenge import _defaults_andi2
 import os
+import random
 
 
 from .PredictiveModel import PredictiveModel
@@ -38,11 +39,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.075}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -69,7 +70,9 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         elif self.simulator.STRING_LABEL == 'andi':
             output = np.zeros((len(trajectories), trajectories[0].length))
             for ti, t in enumerate(trajectories):
-                output[ti,:] = [0] * int(t.info['change_point_time']-1) + [1] + [0] * int(t.length - t.info['change_point_time'])
+                #output[ti,:] = [0] * int(t.info['change_point_time']-1) + [1] + [0] * int(t.length - t.info['change_point_time'])
+                output[ti,:] = [0] * int(t.info['change_point_time']) + [1] * int(t.length - t.info['change_point_time'])
+
             return output
 
     def transform_trajectories_to_input(self, trajectories):
@@ -147,8 +150,8 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
         """
 
-        #self.architecture.compile(optimizer= optimizer, loss=BinaryFocalCrossentropy(from_logits=False, apply_class_balancing=True), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
-        self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])#, metrics=[weighted_binary_crossentropy])
+        self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
+        #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
         if self.simulator.STRING_LABEL == 'andi2':

@@ -45,7 +45,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         X = np.hstack([np.zeros((len(trajectories), 1, 2)), X])
         return X
 
-    def build_network(self):
+    def build_network(self, hp=None):
         number_of_features = 2
         wavenet_filters = 32
         dilation_depth = 8
@@ -69,42 +69,43 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         x5 = BatchNormalization()(x5)
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
-        x_1 = x
-        #Following code is similar to Requena, 2023.
-        for _ in range(2):
-            x = EncoderLayer(d_model=wavenet_filters*5, num_heads=4, dff=320, dropout_rate=0.1)(x)
-        x = Add()([x_1, x])
 
-        x = LayerNormalization()(x)
-        x_1 = x
-        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
-        x = Add()([x_1, x])
-        x = LayerNormalization()(x)
-
-        x = FeedForward(wavenet_filters*5, 320, 0.1)(x)
-
-        def custom_tanh_1(x):
-            return (K.tanh(x)+1)/2
+        x = Transformer(2,4,wavenet_filters*5, 320)(x)
 
         #alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        alpha_regression = Dense(units=1, activation=custom_tanh_1, name='alpha_regression_output')(x)#(alpha_regression)
+        alpha_regression = Dense(units=1, activation='sigmoid', name='alpha_regression_output')(x)#(alpha_regression)
 
         self.architecture = Model(inputs=inputs, outputs=alpha_regression)
-        optimizer = Adam(
-            learning_rate=self.hyperparameters['lr'],
-            epsilon=self.hyperparameters['epsilon'],
-            amsgrad=self.hyperparameters['amsgrad']
-        )
+
+        if hp is not None:
+            hyperparameter_search_range = self.__class__.default_hyperparameters_analysis()
+            optimizer = Adam(
+                learning_rate=hp.Choice('learning_rate', values=hyperparameter_search_range['lr']),
+                epsilon=hp.Choice('epsilon', values=hyperparameter_search_range['epsilon']),
+                amsgrad=hp.Choice('amsgrad', values=hyperparameter_search_range['amsgrad'])
+            )
+        else:
+            optimizer = Adam(
+                learning_rate=self.hyperparameters['lr'],
+                epsilon=self.hyperparameters['epsilon'],
+                amsgrad=self.hyperparameters['amsgrad']
+            )
 
         self.architecture.compile(optimizer=optimizer, loss='mae' , metrics='mae')
+        return self.architecture
+
     @property
     def type_name(self):
         return 'wavenet_single_level_inference_alpha'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
-        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+        if self.simulator.STRING_LABEL == 'andi2':
+            trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
+        elif self.simulator.STRING_LABEL == 'andi':
+            trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
+        return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
+    """
     def fit(self):
 
         if not self.trained:
@@ -163,7 +164,7 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         else:
             self.history_training_info = history_training_info
             self.trained = True
-
+    """
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
