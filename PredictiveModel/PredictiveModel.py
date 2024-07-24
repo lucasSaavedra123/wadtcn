@@ -88,7 +88,7 @@ class PredictiveModel(Document):
 
         X, Y = network_object.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
 
-        tuner.search(X, Y, epochs=5, validation_split=0.2)
+        tuner.search(X, Y, epochs=2, validation_split=0.2)
         """
         # Stack names and lists position
         hyperparameters_to_analyze = cls.default_hyperparameters_analysis()
