@@ -9,7 +9,7 @@ from .model_utils import transform_trajectories_to_categorical_vector
 from .randi_utils import *
 from .PredictiveModel import PredictiveModel
 
-class LSTMTheoreticalModelClassifier(PredictiveModel):
+class LSTMTheoreticalModelSegmentClassification2(PredictiveModel):
 
     @classmethod
     def selected_hyperparameters(self):
