@@ -35,7 +35,7 @@ class LSTMTheoreticalModelSwitchTimeAndExponent(PredictiveModel):
 
     def predict(self, trajectories):
         inf_seg = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
-        pred_t = my_atan(pred_t[:,2],pred_t[:,3])*200/(2*np.pi)
+        pred_t = my_atan(inf_seg[:,2],inf_seg[:,3])*200/(2*np.pi)
 
         first_exponents = inf_seg[:,0]
         second_exponents = inf_seg[:,1]
