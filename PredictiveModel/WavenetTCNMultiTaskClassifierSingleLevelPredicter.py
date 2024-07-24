@@ -16,6 +16,7 @@ from keras.callbacks import EarlyStopping
 from tensorflow import device, config
 import keras.backend as K
 from andi_datasets.datasets_challenge import _defaults_andi2
+from TheoreticalModels import ANDI_MODELS
 
 
 class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
@@ -39,7 +40,10 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     @property
     def models_involved_in_predictive_model(self):
-        return ['trap', 'confined', 'free', 'directed']
+        if self.simulator.STRING_LABEL == 'andi2':
+            return ['trap', 'confined', 'free', 'directed']
+        elif self.simulator.STRING_LABEL == 'andi':
+            return ANDI_MODELS
 
     def predict(self, trajectories):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
@@ -113,7 +117,11 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return 'wavenet_single_level_classifier_model'
 
     def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+        if self.simulator.STRING_LABEL == 'andi2':
+            trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+        elif self.simulator.STRING_LABEL == 'andi':
+            trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
+
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
 
     def fit(self):
