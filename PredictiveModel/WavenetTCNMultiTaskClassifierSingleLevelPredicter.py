@@ -55,7 +55,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
 
-    def build_network(self, hp):
+    def build_network(self, hp=None):
         number_of_features = 2
         wavenet_filters = 64
 
