@@ -23,11 +23,11 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -119,7 +119,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
-
+    """
     def fit(self):
 
         if not self.trained:
@@ -187,7 +187,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         else:
             self.history_training_info = history_training_info
             self.trained = True
-
+    """
     def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:
             trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
