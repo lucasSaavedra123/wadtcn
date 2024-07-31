@@ -1,8 +1,8 @@
 from keras.layers import Dense, Input, Average, Conv1D, TimeDistributed
 from keras.models import Model
 from keras.losses import BinaryCrossentropy, BinaryCrossentropy, BinaryFocalCrossentropy 
-from keras.metrics.accuracy_metrics import CategoricalAccuracy
-from keras.metrics.confusion_metrics import AUC, Recall, Precision
+#from keras.metrics.accuracy_metrics import CategoricalAccuracy
+#from keras.metrics.confusion_metrics import AUC, Recall, Precision
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.losses import MeanSquaredError
 import tensorflow as tf
@@ -39,11 +39,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.10}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.018836623}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.10}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.018836623}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -153,7 +153,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         def loss(t,o):
             #return weighted_binary_crossentropy(t,o,weights=[1/(200*2), 199/(200*2)])
             return weighted_binary_crossentropy(t,o,weights=[1,5])
-        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[AUC()])
+        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=['auc'])
         #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
         #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
