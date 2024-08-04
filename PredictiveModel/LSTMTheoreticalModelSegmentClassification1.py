@@ -35,7 +35,7 @@ class LSTMTheoreticalModelSegmentClassification1(PredictiveModel):
 
     def predict(self, trajectories):
         result = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
-        return np.argmax(result)
+        return result
 
     def transform_trajectories_to_input(self, trajectories):
         N = len(trajectories)
