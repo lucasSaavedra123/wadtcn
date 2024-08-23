@@ -153,7 +153,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         def loss(t,o):
             #return weighted_binary_crossentropy(t,o,weights=[1/(200*2), 199/(200*2)])
             return weighted_binary_crossentropy(t,o,weights=[1,5])
-        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=['auc'])
+        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[AUC()])
         #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
         #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
@@ -164,7 +164,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
-    """
+
     def fit(self):
         if self.simulator.STRING_LABEL == 'andi':
             super().fit()
@@ -207,7 +207,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
 
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_cp.npy')))
                 Y.append(Y_i)
-                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
+                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0,1.5) * _defaults_andi2().sigma_noise
 
             X = np.concatenate(X)
             Y = np.concatenate(Y)
@@ -229,7 +229,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         else:
             self.history_training_info = history_training_info
             self.trained = True
-    """
+
     def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:
             if self.simulator.STRING_LABEL == 'andi2':
