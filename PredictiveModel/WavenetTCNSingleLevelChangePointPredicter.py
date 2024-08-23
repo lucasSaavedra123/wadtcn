@@ -39,11 +39,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.18241207}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999, 'decision_threshold':0.18241207}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -81,8 +81,11 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
 
     def predict(self, trajectories, apply_threshold=True):
         predictions = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
+
+        decision_threshold = 0.019174019 if self.simulator.STRING_LABEL == 'andi' else 0.031339474
+
         if apply_threshold:
-            predictions = (predictions > self.hyperparameters['decision_threshold']).astype(int)
+            predictions = (predictions > decision_threshold).astype(int)
         return predictions
 
     @property
@@ -153,7 +156,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         def loss(t,o):
             #return weighted_binary_crossentropy(t,o,weights=[1/(200*2), 199/(200*2)])
             return weighted_binary_crossentropy(t,o,weights=[1,5])
-        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=[AUC()])
+        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=['auc'])
         #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
         #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
