@@ -8,12 +8,12 @@ from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
-#from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
+from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
 from Trajectory import Trajectory
 
 
 classifier_network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(200, None, simulator=Andi2ndDataSimulation)
-#cp_network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2ndDataSimulation)
+cp_network = WavenetTCNSingleLevelChangePointPredicter(200, None, simulator=Andi2ndDataSimulation)
 d_regression_network = WavenetTCNSingleLevelDiffusionCoefficientPredicter(200, None, simulator=Andi2ndDataSimulation)
 alpha_regression_network = WavenetTCNSingleLevelAlphaPredicter(200, None, simulator=Andi2ndDataSimulation)
 
@@ -45,9 +45,9 @@ for cache_i, cache_file_path in enumerate(classification_cache_files):
         np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_X_classifier.npy'), X_train)
         np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y_classifier.npy'), Y_train)
 
-        #X_train, Y_train = cp_network.transform_trajectories_to_input([trajectory]), cp_network.transform_trajectories_to_output([trajectory])
-        #np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_X_cp.npy'), X_train)
-        #np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y_cp.npy'), Y_train)
+        X_train, Y_train = cp_network.transform_trajectories_to_input([trajectory]), cp_network.transform_trajectories_to_output([trajectory])
+        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_X_cp.npy'), X_train)
+        np.save(os.path.join(DEST_DIRECTORY, f'{trajectory_counter}_Y_cp.npy'), Y_train)
 
         trajectory_counter += 1
 
