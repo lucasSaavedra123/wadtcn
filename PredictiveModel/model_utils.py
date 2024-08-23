@@ -216,7 +216,7 @@ def convolutional_block(predictive_model, original_x, filters, kernel_size, dila
 class BaseAttention(Layer):
   def __init__(self, **kwargs):
     super().__init__()
-    self.mha = MultiHeadAttention(**kwargs)
+    self.mha = MultiHeadAttention(**kwargs, kernel_initializer='he_normal')
     self.layernorm = LayerNormalization()
     self.add = Add()
 
@@ -253,8 +253,8 @@ class FeedForward(Layer):
   def __init__(self, d_model, dff, dropout_rate=0.1):
     super().__init__()
     self.seq = Sequential([
-      Dense(dff, activation='relu'),
-      Dense(d_model),
+      Dense(dff, activation='relu',kernel_initializer='he_normal'),
+      Dense(d_model,kernel_initializer='he_normal'),
       Dropout(dropout_rate)
     ])
     self.add = Add()
