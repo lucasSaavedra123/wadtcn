@@ -393,7 +393,7 @@ class PredictiveModel(Document):
     def model_to_label(self, model):
         return self.models_involved_in_predictive_model.index(model.__class__)
 
-    def save_as_file(self):
+    def save_as_file(self, selected_name=None):
         if self.architecture is not None:
             if self.db_persistance:
                 if self.model_weights.get() is not None:
@@ -401,11 +401,11 @@ class PredictiveModel(Document):
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
             else:
-                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5" if selected_name is None else selected_name))
         else:
             print(f"As architecture is not defined, {self} architecture will not be persisted")
 
-    def load_as_file(self):
+    def load_as_file(self, selected_name=None):
         self.build_network()
         if self.db_persistance:
             weights = pickle.loads(self.model_weights.read())
@@ -413,7 +413,7 @@ class PredictiveModel(Document):
             if weights is not None:
                 self.architecture.set_weights(weights)
         else:
-            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5" if selected_name is None else selected_name))
 
     def save(self):
         self.save_as_file()
