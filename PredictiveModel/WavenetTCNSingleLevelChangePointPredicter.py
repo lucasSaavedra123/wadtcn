@@ -155,7 +155,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
 
         def loss(t,o):
             #return weighted_binary_crossentropy(t,o,weights=[1/(200*2), 199/(200*2)])
-            return weighted_binary_crossentropy(t,o,weights=[1,5])
+            return weighted_binary_crossentropy(t,o,weights=[1,199])
         self.architecture.compile(optimizer= optimizer, loss=loss, metrics=['auc'])
         #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
         #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
@@ -195,7 +195,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
 
         for X_val_i in range(X_val.shape[0]):
-            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
+            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0,2) * _defaults_andi2().sigma_noise
 
         number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_cp.npy'))
 
@@ -210,7 +210,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
 
                 X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_cp.npy')))
                 Y.append(Y_i)
-                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0,1.5) * _defaults_andi2().sigma_noise
+                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0,2) * _defaults_andi2().sigma_noise
 
             X = np.concatenate(X)
             Y = np.concatenate(Y)
