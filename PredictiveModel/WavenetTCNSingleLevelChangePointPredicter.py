@@ -171,6 +171,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     def fit(self):
         if self.simulator.STRING_LABEL == 'andi':
             super().fit()
+            return
 
         if not self.trained:
             self.build_network()
