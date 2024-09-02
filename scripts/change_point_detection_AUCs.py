@@ -11,7 +11,7 @@ FROM_ANDI_2 = True
 
 if FROM_ANDI_2:
     alias_to_file = {
-        'BCE 1/5': 'wavenet_changepoint_detector_200_None_andi2.h5',
+        'BCE 1/199': 'wavenet_changepoint_detector_200_None_andi2.h5',
     }
 else:
     alias_to_file = {
@@ -19,6 +19,7 @@ else:
         'BCE 1/10': 'wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_10.h5',
         'BCE 1/20': 'wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_20.h5',
         'BCE 1/50': 'wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_50.h5',
+        'BCE 1/999': 'wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_999.h5',
         'Regularized BCE': 'wavenet_changepoint_detector_200_200.0_andi_with_bce_regularized.h5',
         'Penalized BCE': 'wavenet_changepoint_detector_200_200.0_andi_with_penalized_bce.h5',
     }

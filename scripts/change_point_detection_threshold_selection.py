@@ -11,7 +11,7 @@ simulators = [AndiDataSimulation, Andi2ndDataSimulation]
 for simulator in simulators:
     network = WavenetTCNSingleLevelChangePointPredicter(200, 200, simulator=simulator)
     if simulator.STRING_LABEL == 'andi':
-        network.load_as_file(selected_name='wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_5.h5')
+        network.load_as_file(selected_name='wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_999.h5')
         ts = simulator().simulate_segmentated_trajectories(12_500, 200, 200)
     else:
         network.load_as_file(selected_name='wavenet_changepoint_detector_200_None_andi2.h5')

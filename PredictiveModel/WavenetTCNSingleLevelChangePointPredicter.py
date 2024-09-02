@@ -82,7 +82,7 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     def predict(self, trajectories, apply_threshold=True):
         predictions = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
 
-        decision_threshold = 0.019174019 if self.simulator.STRING_LABEL == 'andi' else 0.031339474
+        decision_threshold = 0.48332304 if self.simulator.STRING_LABEL == 'andi' else 0.031339474
 
         if apply_threshold:
             predictions = (predictions > decision_threshold).astype(int)
