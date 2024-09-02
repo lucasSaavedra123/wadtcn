@@ -39,13 +39,16 @@ results = {
 for work_label in networks:
     for net_label in networks[work_label]:
         if net_label == 'cp':
-            networks[work_label][net_label].load_as_file(selected_name='wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_50.h5')
+            networks[work_label][net_label].load_as_file(selected_name='wavenet_changepoint_detector_200_200.0_andi_with_weighted_bce_999.h5')
         else:
             networks[work_label][net_label].load_as_file()
 #Predict
 for work_label in networks:
     for net_label in networks[work_label]:
-        results[work_label][net_label] = networks[work_label][net_label].predict(trajectories)
+        if net_label == 'cp':
+            results[work_label][net_label] = networks[work_label][net_label].predict(trajectories, apply_threshold=False)
+        else:
+            results[work_label][net_label] = networks[work_label][net_label].predict(trajectories)
 #Generate metrics
 metrics = {
     'distance_of_real_cp' : {
@@ -83,9 +86,9 @@ def moving_average(a, n=3):
 for t_i in range(len(trajectories)):
     alphas = results['tcn']['alpha'][t_i,:,0]
     models = np.argmax(results['tcn']['model'][t_i,:],axis=1)
-
+    """
     #tcp_cp = np.mean(np.where(results['tcn']['cp'][t_i,:,0]==1)[0])
-    
+
     cps = np.where(results['tcn']['cp'][t_i,:,0]==1)[0]
 
     if len(cps) > 1:
@@ -99,6 +102,12 @@ for t_i in range(len(trajectories)):
     else:
         tcp_cp = np.argmax(networks['tcn']['cp'].predict([trajectories[t_i]], apply_threshold=False)[0,:,0])
     tcp_cp = int(tcp_cp)
+    """
+    tcp_cp = np.argmax(results['tcn']['cp'][t_i,:,0])
+    if tcp_cp == 0:
+        tcp_cp = 1
+    elif tcp_cp == 199:
+        tcp_cp = 198
 
     lstm_cp = results['lstm']['time_exponent'][1][t_i]
     real_cp = trajectories[t_i].info['change_point_time']
