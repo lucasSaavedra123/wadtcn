@@ -133,7 +133,7 @@ class Andi2ndDataSimulation(DataSimulation):
             if model_label in [1,2]:
                 custom_dic['L'] = None
             else:
-                custom_dic['L'] = int(512)
+                custom_dic['L'] = 1024
 
         """
         We set D and alpha for models 1 and 3
@@ -255,8 +255,8 @@ class Andi2ndDataSimulation(DataSimulation):
         data = {
             'id':[],
             't':[],
-            'x_noisy':[],
-            'y_noisy':[],
+            'x':[],
+            'y':[],
             'd_t':[],
             'alpha_t':[],
             'state_t':[]
@@ -265,8 +265,8 @@ class Andi2ndDataSimulation(DataSimulation):
         for i, t in enumerate(trajectories):
             data['id'] += [i] * t.length
             data['t'] += t.get_time().tolist()
-            data['x_noisy'] += t.get_noisy_x().tolist()
-            data['y_noisy'] += t.get_noisy_y().tolist()
+            data['x'] += t.get_x().tolist()
+            data['y'] += t.get_y().tolist()
             data['d_t'] += list(t.info['d_t'])
             data['alpha_t'] += list(t.info['alpha_t'])
             data['state_t'] += list(t.info['state_t'])
@@ -325,7 +325,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         {'model': 4, 'force_directed': False},
                     ]
 
-                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
+                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.25, (0.75)/2, (0.75)/2])
                     retry = True
                     while retry:
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects, L=512)
@@ -334,7 +334,7 @@ class Andi2ndDataSimulation(DataSimulation):
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
                             x_diff = np.max(trajectory.get_noisy_x()) - np.min(trajectory.get_noisy_x())
                             y_diff = np.max(trajectory.get_noisy_y()) - np.min(trajectory.get_noisy_y())
-                            within_roi = x_diff <= 128 and y_diff <= 128
+                            within_roi = x_diff <= 512 and y_diff <= 512 if not ignore_boundary_effects else x_diff <= 1000 and y_diff <= 1000
                             return within_roi and len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
