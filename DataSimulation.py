@@ -335,6 +335,7 @@ class Andi2ndDataSimulation(DataSimulation):
                             x_diff = np.max(trajectory.get_noisy_x()) - np.min(trajectory.get_noisy_x())
                             y_diff = np.max(trajectory.get_noisy_y()) - np.min(trajectory.get_noisy_y())
                             within_roi = x_diff <= 512 and y_diff <= 512 if not ignore_boundary_effects else x_diff <= 1000 and y_diff <= 1000
+                            within_roi = within_roi or np.all(trajectory.info['state_t'] == 2)
                             return within_roi and len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
