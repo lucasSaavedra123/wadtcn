@@ -119,10 +119,10 @@ class Andi2ndDataSimulation(DataSimulation):
         CONFINEMENTS_DENSITY = 10/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
-        MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+        MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
-        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
-        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=10000)[1:]
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=10000)
 
         """
         If boundary effects are ignored, we set a relative high L value
@@ -150,10 +150,10 @@ class Andi2ndDataSimulation(DataSimulation):
         if model_label == 2:
             n = np.random.randint(2,5)
             transition_matrix = np.zeros((n,n))
-
+            p = np.random.uniform(0.80,1)
             for i in range(n):
                 for j in range(n):
-                    transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
+                    transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
 
             similar_order_magnitude = np.random.choice([False, True])
             if similar_order_magnitude:
@@ -290,45 +290,7 @@ class Andi2ndDataSimulation(DataSimulation):
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 while len(trajectories) < number_of_trajectories:
-                    MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
-                    MIN_ALPHA, MAX_ALPHA = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
-                    custom_dic = {}
-
-                    D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
-
-                    n = np.random.randint(2,5)
-                    transition_matrix = np.zeros((n,n))
-                    p = np.random.uniform(0.80, 1)
-                    for i in range(n):
-                        for j in range(n):
-                            transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
-
-                    similar_order_magnitude = np.random.choice([False, True])
-                    if similar_order_magnitude:
-                        ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
-                        magnitude_order = int(np.log10(ds_values[0]))
-                        minimum_magnitude_order = max(magnitude_order-1,-12)
-                        maximum_magnitude_order = min(magnitude_order+1,6)
-                        for ds_value_i in range(1,n):
-                            ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
-                    else:
-                        ds_values = np.random.choice(D_possible_values, size=n, replace=False)
-
-                    custom_dic.update({
-                        'T': trajectory_length,
-                        'N': 5,
-                        'L': None,
-                        'M': transition_matrix, #transition matrix
-                        'return_state_num': True,
-                        'Ds': np.array([[d, d*0.01] for d in ds_values]),
-                        'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
-                    })
-
-                    sim_dic = _get_dic_andi2(2)
-
-                    for key in custom_dic:
-                        sim_dic[key] = custom_dic[key]
+                    sim_dic = self.__generate_dict_for_model(2, trajectory_length, 5, ignore_boundary_effects=True)
 
                     def include_trajectory(trajectory): #We want a diverse number of characteristics
                         segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
