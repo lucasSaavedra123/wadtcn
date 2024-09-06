@@ -18,6 +18,7 @@ import random
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
+from Trajectory import Trajectory
 from tensorflow import device, config
 
 
@@ -160,79 +161,34 @@ class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
         #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
         #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
-    def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
+    @property
+    def dataset_type(self):
+        return 'classifier'
+
+    def prepare_dataset(self, set_size, files=None):
         if self.simulator.STRING_LABEL == 'andi2':
-            trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(set_size, self.trajectory_length, self.trajectory_time, get_from_cache=get_from_cache, file_label=file_label, enable_parallelism=True, type_of_simulation='models_phenom')
+            trajectories = np.random.choice(files,size=set_size, replace=False).tolist()
+            for i in range(len(trajectories)):
+                df = pd.read_csv(trajectories[i])
+                df = df.sort_values('t', ascending=True)
+
+                sigma = np.random.uniform(0,2)
+
+                trajectories[i] = Trajectory(
+                    x=df['x'].tolist(),
+                    y=df['y'].tolist(),
+                    noise_x=np.random.randn(len(df)) * sigma,
+                    noise_y=np.random.randn(len(df)) * sigma,
+                    info={
+                        'd_t':df['d_t'].tolist(),
+                        'alpha_t':df['alpha_t'].tolist(),
+                        'state_t':df['state_t'].tolist()
+                    }
+                )
         elif self.simulator.STRING_LABEL == 'andi':
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
-
-    def fit(self):
-        if self.simulator.STRING_LABEL == 'andi':
-            super().fit()
-            return
-
-        if not self.trained:
-            self.build_network()
-            real_epochs = self.hyperparameters['epochs']
-        else:
-            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
-
-        self.architecture.summary()
-
-        if self.early_stopping:
-            callbacks = [EarlyStopping(
-                monitor="val_loss",
-                min_delta=1e-3,
-                patience=5,
-                verbose=1,
-                mode="min")]
-        else:
-            callbacks = []
-
-        device_name = '/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
-
-        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
-
-        for X_val_i in range(X_val.shape[0]):
-            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0,2) * _defaults_andi2().sigma_noise
-
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_cp.npy'))
-
-        def custom_prepare_dataset(batch_size):            
-            X, Y = [], []
-            while len(X) < batch_size:
-                retry = True
-                while retry:
-                    trajectory_id = np.random.randint(number_of_training_trajectories)
-                    Y_i = np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_cp.npy'))
-                    retry = len(np.unique(Y_i)) == 1
-
-                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_cp.npy')))
-                Y.append(Y_i)
-                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0,2) * _defaults_andi2().sigma_noise
-
-            X = np.concatenate(X)
-            Y = np.concatenate(Y)
-            return X, Y
-
-        with device(device_name):
-            history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),
-                epochs=real_epochs,
-                callbacks=callbacks,
-                batch_size=self.hyperparameters['batch_size'],
-                validation_data=[X_val, Y_val],
-                shuffle=True
-            ).history
-
-        if self.trained:
-            for dict_key in history_training_info:
-                self.history_training_info[dict_key] += history_training_info[dict_key]
-        else:
-            self.history_training_info = history_training_info
-            self.trained = True
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:

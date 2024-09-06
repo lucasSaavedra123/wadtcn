@@ -1,3 +1,4 @@
+import glob
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, Dropout, LayerNormalization, MultiHeadAttention, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
@@ -11,6 +12,45 @@ from tensorflow.keras import models, Sequential
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import * 
 from tensorflow.keras.utils import Sequence
+import signal
+
+class SafelyStopTrainingCallback(Callback):
+    """
+    Safely stop a model from training using Ctrl+C keyboard interrupts.
+    The first Ctrl+C will initiate a stop at the end of the current epoch.
+    The second Ctrl+C will stop training immediately after the current batch.
+    Subsequent Ctrl+C will be returned to the current signal handler.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.stopping = False
+        self.prev_signal_handler = signal.SIG_DFL
+
+    def _restore_previous_signal_handler(self):
+        if signal.getsignal(signal.SIGINT) != self._signal_handler:
+            return
+        signal.signal(signal.SIGINT, self.prev_signal_handler)
+
+    def _signal_handler(self, sig, frame):
+        if not self.stopping:
+            self.stopping = True
+            print("\nStopping training at the end of this epoch...")
+            return
+        print("\nStopping now...")
+        self.model.stop_training = True
+        self._restore_previous_signal_handler()
+
+    def on_epoch_end(self, epoch: int, logs=None):
+        if self.stopping:
+            self.model.stop_training = True
+
+    def on_train_begin(self, logs=None):
+        print("Press Ctrl+C to stop training at the end of the epoch. Press again to stop immediately.")
+        self.stopping = False
+        self.prev_signal_handler = signal.signal(signal.SIGINT, self._signal_handler)
+
+    def on_train_end(self, logs=None):
+        self._restore_previous_signal_handler()
 
 
 def transform_trajectories_into_turning_angle(predictive_model, trajectories, normalize=True):
@@ -531,13 +571,23 @@ class ThreadedTrackGenerator(Sequence):
         return self.batches
 
 class TrackGenerator(Sequence):
-    def __init__(self, batches, batch_size, dataset_function):
+    def __init__(self, network, batches, batch_size, dataset_function, label):
+        self.network = network
         self.batches = batches
         self.batch_size = batch_size
         self.dataset_function = dataset_function
+        self.label = label
+
+        if self.network.simulator.STRING_LABEL == 'andi2':
+            val_files = glob.glob(f'./2ndAndiTrajectories_val/*_{self.network.dataset_type}.csv')
+            train_files = glob.glob(f'./2ndAndiTrajectories/*_{self.network.dataset_type}.csv')
+            self.files = val_files if label=='val' else train_files
 
     def __getitem__(self, item):
-        tracks, classes = self.dataset_function(self.batch_size)
+        if self.network.simulator.STRING_LABEL == 'andi':
+            tracks, classes = self.dataset_function(self.batch_size)
+        else:
+            tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes
 
     def __len__(self):

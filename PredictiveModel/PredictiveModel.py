@@ -21,7 +21,7 @@ from PredictiveModel.PredictiveModelTuner import PredictiveModelTuner
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH, NETWORKS_DIRECTORY
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation, Andi2ndDataSimulation
-from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
+from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier, SafelyStopTrainingCallback
 
 class CustomCallback(Callback):
     def __init__(self, thread_queue):
@@ -443,6 +443,7 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
+        callbacks += [SafelyStopTrainingCallback()]
         """
         callbacks += [CustomCallback(trajectories_queue)]
 
@@ -462,10 +463,10 @@ class PredictiveModel(Document):
         if self.wadnet_tcn_encoder is None:
             with device(device_name):
                 history_training_info = self.architecture.fit(
-                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    TrackGenerator(self, TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset, 'train'),
                     epochs=real_epochs,
                     callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    validation_data=TrackGenerator(self, VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset, 'val'),
                     shuffle=True
                 ).history
         else:
