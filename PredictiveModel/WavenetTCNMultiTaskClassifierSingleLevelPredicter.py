@@ -17,6 +17,7 @@ from tensorflow import device, config
 import keras.backend as K
 from andi_datasets.datasets_challenge import _defaults_andi2
 from TheoreticalModels import ANDI_MODELS
+#from keras.metrics.confusion_metrics import AUC
 
 
 class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
@@ -104,7 +105,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                 amsgrad=self.hyperparameters['amsgrad']
             )
 
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy', 'auc'])
         #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.75/3, 0.75/3, 0.25, 0.75/3]), metrics=['categorical_accuracy'])
         return self.architecture
 
