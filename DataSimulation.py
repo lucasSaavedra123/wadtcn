@@ -1,11 +1,11 @@
-import sys
+import glob
 import os
 
 import numpy as np
 import pandas as pd
 import tqdm
 import ray
-from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2, challenge_phenom_dataset
+from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, challenge_phenom_dataset
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 
 from Trajectory import Trajectory
@@ -392,7 +392,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 self.save_trajectories(trajectories, FILE_NAME)
         return trajectories
 
-    def simulate_challenge_trajectories(self, filter=False):
+    def simulate_challenge_trajectories(self, number_of_exps, filter=False):
         parameter_simulation_setup = [
             {'model': 0, 'force_directed': False},
             {'model': 1, 'force_directed': False},
@@ -401,16 +401,30 @@ class Andi2ndDataSimulation(DataSimulation):
             {'model': 4, 'force_directed': False},
         ]
 
-        simulation_setup = np.random.choice(parameter_simulation_setup)
-        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
-        dfs_traj, labs_traj, _ = challenge_phenom_dataset(
-            save_data = False,
-            dics = [dic],
-            return_timestep_labs = True, get_video = False, 
-            num_fovs = 5,
-        )
+        for exp_index in range(number_of_exps):
+            retry = True
+            while retry:
+                try:
+                    simulation_setup = np.random.choice(parameter_simulation_setup)
+                    simulation_dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
+                    dfs_traj, labs_traj, _ = challenge_phenom_dataset(
+                        experiments = 1,
+                        save_data = True,
+                        dics = [simulation_dic],
+                        return_timestep_labs = True, get_video = False,
+                        num_fovs = 5,
+                        path='./2ndAndiTrajectories_Challenge_Test/',
+                        prefix=str(exp_index)
+                    )
+                    retry = False
+                except ValueError as e:
+                    print(f"Simulation failed: {e}")
+                    for file_path in glob.glob(f'./2ndAndiTrajectories_Challenge_Test/{exp_index}*'):
+                        os.remove(file_path)
+                    retry = True
+
         #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
-        trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
-        if simulation_setup['model'] >= 2 and filter:
-            trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
-        return trajectories
+        #trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
+        #if simulation_setup['model'] >= 2 and filter:
+        #    trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
+        #return trajectories
