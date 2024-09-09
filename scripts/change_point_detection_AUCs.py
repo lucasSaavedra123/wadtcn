@@ -46,7 +46,7 @@ if FROM_ANDI_2:
         ))
 else:
     simulator = AndiDataSimulation
-    ts = simulator().simulate_segmentated_trajectories(12_000, 200, 200)
+    ts = simulator().simulate_segmentated_trajectories(12_500, 200, 200)
 ax = None
 
 for alias in alias_to_file:
