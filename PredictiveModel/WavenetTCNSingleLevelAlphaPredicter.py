@@ -9,6 +9,8 @@ from .model_utils import *
 from CONSTANTS import *
 from keras.callbacks import EarlyStopping
 from tensorflow import device
+import pandas as pd
+from Trajectory import Trajectory
 import keras.backend as K
 from utils import break_point_detection_with_stepfinder
 from andi_datasets.datasets_challenge import _defaults_andi2
@@ -48,6 +50,9 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
     def build_network(self, hp=None):
         number_of_features = 2
         wavenet_filters = 32
+        dff = 320
+        number_of_passes = 2
+
         dilation_depth = 8
         initializer = 'he_normal'
         x1_kernel = 4
@@ -56,21 +61,23 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
         x4_kernel = 10
         x5_kernel = 20
 
+        dilation_depth = 8
+
         inputs = Input(shape=(None, number_of_features))
 
         x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
 
-        x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer, original_skip_connection=False)
-        x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer, original_skip_connection=False)
-        x3 = convolutional_block(self, x, wavenet_filters, x3_kernel, [1,2,4], initializer, original_skip_connection=False)
-        x4 = convolutional_block(self, x, wavenet_filters, x4_kernel, [1,4,8], initializer, original_skip_connection=False)
+        x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
+        x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
+        x3 = convolutional_block(self, x, wavenet_filters, x3_kernel, [1,2,4], initializer)
+        x4 = convolutional_block(self, x, wavenet_filters, x4_kernel, [1,4,8], initializer)
 
         x5 = Conv1D(filters=wavenet_filters, kernel_size=x5_kernel, padding='same', activation='relu', kernel_initializer=initializer)(x)
         x5 = BatchNormalization()(x5)
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        x = Transformer(2,4,wavenet_filters*5,320)(x)
 
         #alpha_regression = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         alpha_regression = Dense(units=1, activation='sigmoid', name='alpha_regression_output')(x)#(alpha_regression)
@@ -98,73 +105,32 @@ class WavenetTCNSingleLevelAlphaPredicter(PredictiveModel):
     def type_name(self):
         return 'wavenet_single_level_inference_alpha'
 
-    def prepare_dataset(self, set_size, file_label='', get_from_cache=False):
-        if self.simulator.STRING_LABEL == 'andi2':
-            trajectories = self.simulator().simulate_phenomenological_trajectories_for_regression_training(set_size,self.trajectory_length,None,get_from_cache,file_label, ignore_boundary_effects=True)
-        elif self.simulator.STRING_LABEL == 'andi':
-            trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
+    @property
+    def dataset_type(self):
+        return 'regression'
+
+    def prepare_dataset(self, set_size, files):
+        trajectories = np.random.choice(files,size=set_size, replace=False).tolist()
+        for i in range(len(trajectories)):
+            df = pd.read_csv(trajectories[i])
+            df = df.sort_values('t', ascending=True)
+
+            sigma = np.random.uniform(0,2)
+
+            trajectories[i] = Trajectory(
+                x=df['x'].tolist(),
+                y=df['y'].tolist(),
+                noise_x=np.random.randn(len(df)) * sigma,
+                noise_y=np.random.randn(len(df)) * sigma,
+                info={
+                    'd_t':df['d_t'].tolist(),
+                    'alpha_t':df['alpha_t'].tolist(),
+                    'state_t':df['state_t'].tolist()
+                }
+            )
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)
-    """
-    def fit(self):
 
-        if not self.trained:
-            self.build_network()
-            real_epochs = self.hyperparameters['epochs']
-        else:
-            real_epochs = self.hyperparameters['epochs'] - len(self.history_training_info['loss'])
-
-        self.architecture.summary()
-
-        if self.early_stopping:
-            callbacks = [EarlyStopping(
-                monitor="val_loss",
-                min_delta=1e-3,
-                patience=5,
-                verbose=1,
-                mode="min")]
-        else:
-            callbacks = []
-
-        device_name = '/cpu:0'#'/gpu:0' if len(config.list_physical_devices('GPU')) == 1 else '/cpu:0'
-
-        X_val, Y_val = self.prepare_dataset(VALIDATION_SET_SIZE_PER_EPOCH, file_label='val', get_from_cache=True)
-        Y1_val = Y_val
-
-        for X_val_i in range(X_val.shape[0]):
-            X_val[X_val_i] += np.random.randn(*X_val[X_val_i].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
-
-        number_of_training_trajectories = len(glob.glob('./2ndAndiTrajectories/*_X_A_regression.npy'))
-
-        def custom_prepare_dataset(batch_size):            
-            trajectories_ids = np.random.randint(number_of_training_trajectories, size=batch_size)
-            X, Y = [], []
-            for trajectory_id in trajectories_ids:
-                X.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_X_A_regression.npy')))
-                Y.append(np.load(os.path.join('./2ndAndiTrajectories', f'{trajectory_id}_Y_A_regression.npy')))
-                X[-1] += np.random.randn(*X[-1].shape) * np.random.uniform(0.5,1.5) * _defaults_andi2().sigma_noise
-
-            X = np.concatenate(X)
-            Y = np.concatenate(Y)
-            return X, Y
-
-        with device(device_name):
-            history_training_info = self.architecture.fit(
-                TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], custom_prepare_dataset),
-                epochs=real_epochs,
-                callbacks=callbacks,
-                batch_size=self.hyperparameters['batch_size'],
-                validation_data=[X_val, Y1_val],#[Y1_val, Y2_val]],
-                shuffle=True
-            ).history
-
-        if self.trained:
-            for dict_key in history_training_info:
-                self.history_training_info[dict_key] += history_training_info[dict_key]
-        else:
-            self.history_training_info = history_training_info
-            self.trained = True
-    """
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
