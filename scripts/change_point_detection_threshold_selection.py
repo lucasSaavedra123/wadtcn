@@ -4,6 +4,7 @@ from DataSimulation import Andi2ndDataSimulation, AndiDataSimulation
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
+from Trajectory import Trajectory
 
 
 simulators = [AndiDataSimulation, Andi2ndDataSimulation]
@@ -15,7 +16,19 @@ for simulator in simulators:
         ts = simulator().simulate_segmentated_trajectories(12_500, 200, 200)
     else:
         network.load_as_file(selected_name='wavenet_changepoint_detector_200_None_andi2.h5')
-        ts = simulator().simulate_phenomenological_trajectories_for_classification_training(12_500, 200, 200, get_from_cache=False, enable_parallelism=True)  
+        ts = []
+        simulation_ts = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(12_500, 200, 200, True, 'val',enable_parallelism=True)
+
+        for t in simulation_ts:
+            sigma = np.random.uniform(0,2)
+
+            ts.append(Trajectory(
+                x=t.get_x().tolist(),
+                y=t.get_y().tolist(),
+                noise_x=np.random.randn(t.length) * sigma,
+                noise_y=np.random.randn(t.length) * sigma,
+                info=t.info,
+            ))
 
     pred = network.predict(ts, apply_threshold=False).flatten()
     true = network.transform_trajectories_to_output(ts).flatten()
