@@ -1,5 +1,10 @@
+from collections import defaultdict
 import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.metrics import RocCurveDisplay, roc_curve, auc
+import glob
+import numpy as np
+from Trajectory import Trajectory
 
 from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
 from CONSTANTS import *
@@ -24,11 +29,21 @@ else:
         'Penalized BCE': 'wavenet_changepoint_detector_200_200.0_andi_with_penalized_bce.h5',
     }
 
-print("Generate trajectories...")
-
 if FROM_ANDI_2:
     simulator = Andi2ndDataSimulation
-    ts = simulator().simulate_phenomenological_trajectories_for_classification_training(12_500, 200, 200, get_from_cache=False, enable_parallelism=True)
+    ts = []
+    simulation_ts = Andi2ndDataSimulation().simulate_phenomenological_trajectories_for_classification_training(12_500, 200, 200, True, 'val',enable_parallelism=True)
+
+    for t in simulation_ts:
+        sigma = np.random.uniform(0,2)
+
+        ts.append(Trajectory(
+            x=t.get_x().tolist(),
+            y=t.get_y().tolist(),
+            noise_x=np.random.randn(t.length) * sigma,
+            noise_y=np.random.randn(t.length) * sigma,
+            info=t.info,
+        ))
 else:
     simulator = AndiDataSimulation
     ts = simulator().simulate_segmentated_trajectories(12_000, 200, 200)
