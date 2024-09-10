@@ -239,15 +239,14 @@ class Andi2ndDataSimulation(DataSimulation):
         for unique_id in dataframe['id'].unique():
             t_dataframe = dataframe[dataframe['id'] == unique_id]
             trajectories.append(Trajectory(
-                x=t_dataframe['x_noisy'].tolist(),
-                y=t_dataframe['y_noisy'].tolist(),
+                x=t_dataframe['x'].tolist(),
+                y=t_dataframe['y'].tolist(),
                 t=t_dataframe['t'].tolist(),
                 info={
                     'alpha_t': t_dataframe['alpha_t'].tolist(),
                     'd_t': t_dataframe['d_t'].tolist(),
                     'state_t': t_dataframe['state_t'].tolist()
                 },
-                noisy=True
             ))
         return trajectories
 
