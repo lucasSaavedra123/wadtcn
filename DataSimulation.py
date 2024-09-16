@@ -233,10 +233,12 @@ class Andi2ndDataSimulation(DataSimulation):
         #print(dic)
         return dic
 
-    def get_trayectories_from_file(self, file_name):
+    def get_trayectories_from_file(self, file_name, limit=float('inf')):
         trajectories = []
         dataframe = pd.read_csv(file_name)
-        for unique_id in dataframe['id'].unique():
+        for i, unique_id in enumerate(dataframe['id'].unique()):
+            if i > limit-1:
+                break
             t_dataframe = dataframe[dataframe['id'] == unique_id]
             trajectories.append(Trajectory(
                 x=t_dataframe['x'].tolist(),
@@ -280,11 +282,12 @@ class Andi2ndDataSimulation(DataSimulation):
             get_from_cache=False,
             file_label='',
             ignore_boundary_effects=True,
+            read_limit=float('inf')
         ):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
 
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = self.get_trayectories_from_file(FILE_NAME)
+            trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
@@ -309,10 +312,10 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False):
+    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False, read_limit=float('inf')):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = self.get_trayectories_from_file(FILE_NAME)
+            trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
