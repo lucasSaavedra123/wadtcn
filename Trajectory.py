@@ -484,8 +484,8 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, with_noise=True):
-        if self.model_category is None:
+    def plot(self, with_noise=True, ignore_model_category_plotter=True):
+        if ignore_model_category_plotter:
 
             if self.noisy:
                 plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
