@@ -74,8 +74,8 @@ def transform_trajectories_into_displacements(predictive_model, trajectories, no
         return axis_diff
 
     for index, trajectory in enumerate(trajectories):
-        X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), predictive_model.trajectory_length)
-        X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), predictive_model.trajectory_length)
+        X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), trajectories[-1].length)
+        X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), trajectories[-1].length)
 
         if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = (X[index, :, 0] - np.mean(X[index, :, 0]))/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
