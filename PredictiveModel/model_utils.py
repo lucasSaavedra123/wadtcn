@@ -584,7 +584,7 @@ class TrackGenerator(Sequence):
             self.files = val_files if label=='val' else train_files
 
     def __getitem__(self, item):
-        if self.network.simulator.STRING_LABEL == 'andi':
+        if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
             tracks, classes = self.dataset_function(self.batch_size)
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
