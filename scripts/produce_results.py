@@ -6,7 +6,7 @@ from Trajectory import Trajectory
 from collections import Counter
 
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+DatabaseHandler.connect_over_network(None, None, '192.168.0.174', 'anomalous_diffusion_analysis')
 all_trajectories = [trajectory for trajectory in Trajectory.objects() if 'prediction' in trajectory.info]
 DatabaseHandler.disconnect()
 
@@ -19,7 +19,7 @@ for label in ['BTX', 'mAb']:
 
         number_of_tracks = len(predictions)
 
-        model_strings = [class_model.STRING_LABEL for class_model in ALL_MODELS]
+        model_strings = ['attm', 'sbm', 'fbm', 'ctrw', 'lw', 'od', 'id']
         count = np.zeros((len(model_strings))).tolist()
         pc = 1 - np.percentile(classification_accuracies, 5)
 
