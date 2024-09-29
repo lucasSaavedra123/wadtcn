@@ -407,9 +407,11 @@ def build_wavenet_tcn_classifier_from_encoder_for(predictive_model, input_size):
 
 def build_wavenet_tcn_segmenter_from_encoder_for(predictive_model, input_size):
     inputs = Input(shape=(input_size))
-    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(inputs)
-    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
-    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    #dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(inputs)
+    #dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    #output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    x = Transformer(2,4,32*5,320)(inputs)
+    output_network = Dense(units=1, activation='sigmoid')(x)
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
 def build_segmentator_for(predictive_model, with_wadnet=False, number_of_features=2, filters=32, input_size=None, with_skip_connections=False):
@@ -515,9 +517,12 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
 
     x5 = GlobalAveragePooling1D()(x5)
     x_concat = concatenate(inputs=[x1, x2, x3, x4, x5])
-    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
-    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
-    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+
+    #dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
+    #dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    #output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    x = Transformer(2,4,filters_size*5,320)(x_concat)
+    output_network = Dense(units=1, activation='sigmoid')(x)
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
