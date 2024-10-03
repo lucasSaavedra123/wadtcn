@@ -53,15 +53,15 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
 
     def build_network(self):
         if self.wadnet_tcn_encoder is None:
-            build_segmentator_for(self, with_wadnet=True, number_of_features=3, filters=64, input_size=self.trajectory_length-1, with_skip_connections=True)
+            build_segmentator_for(self, with_wadnet=True, number_of_features=2, filters=32, input_size=self.trajectory_length, with_skip_connections=True)
         else:
-            build_wavenet_tcn_segmenter_from_encoder_for(self, 320)
+            build_wavenet_tcn_segmenter_from_encoder_for(self, 64)
 
         optimizer = Adam(lr=self.hyperparameters['lr'],
                          epsilon=self.hyperparameters['epsilon'],
                          amsgrad=self.hyperparameters['amsgrad'])
 
-        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae'])
+        self.architecture.compile(optimizer=optimizer, loss='mse', metrics=['mse', 'mae', 'accuracy'])
 
     def predict(self, trajectories, apply_threshold=True):
         X = self.transform_trajectories_to_input(trajectories)
@@ -76,7 +76,8 @@ class ImmobilizedTrajectorySegmentator(PredictiveModel):
         return transform_trajectories_into_states(self, trajectories)
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_displacements_with_time(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
+        #X = transform_trajectories_into_displacements_with_time(self, trajectories)
 
         if self.wadnet_tcn_encoder is not None:
             X = self.wadnet_tcn_encoder.predict(X, verbose=0)

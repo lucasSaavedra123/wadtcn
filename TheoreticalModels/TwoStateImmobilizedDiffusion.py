@@ -53,6 +53,8 @@ class TwoStateImmobilizedDiffusion(Model):
             'exponent_type': 'anomalous',
             'exponent': 1,
             'info': {
+                'state': state,
+                'switching': switching,
                 'diffusion_coefficient': self.diffusion_coefficient
             }
         }
