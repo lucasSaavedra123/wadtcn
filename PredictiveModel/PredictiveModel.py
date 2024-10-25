@@ -543,6 +543,8 @@ class PredictiveModel(Document):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
+        #plt.savefig(f"{str(self)}.jpeg")
+        #plt.clf()
 
     @property
     def models_involved_in_predictive_model(self):

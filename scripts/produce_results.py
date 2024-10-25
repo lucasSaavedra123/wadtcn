@@ -110,3 +110,17 @@ for label in ['BTX', 'mAb']:
             with open(f"anomalous_exponents_{label}_{experimental_condition}_{theoretical_model}.txt", 'w') as a_file:
                 for prediction in predictions:
                     a_file.write(f"{prediction}\n")
+
+for label in ['BTX', 'mAb']:
+    for experimental_condition in ['Control', 'CDx', 'CDx-Chol']:
+        filtered_trajectories = [trajectory for trajectory in all_trajectories if trajectory.info['experimental_condition'] == experimental_condition and trajectory.info['label'] == label]
+        filtered_trajectories = [trajectory for trajectory in filtered_trajectories if 'prediction' in trajectory.info and trajectory.info['prediction']['classified_model'] == 'id']
+
+        with open(f"segment_residence_time_{label}_{experimental_condition}.txt", 'w') as a_file:
+            for t in filtered_trajectories:
+                t_segmentation = np.array(t.info['prediction']['segmentation'])[:,0]
+                ts = t.sub_trajectories_trajectories_from_confinement_states(states=t_segmentation)
+
+                for sub_t in ts[1]:
+                    if sub_t.duration != 0:
+                        a_file.write(f"{sub_t.duration}\n")
