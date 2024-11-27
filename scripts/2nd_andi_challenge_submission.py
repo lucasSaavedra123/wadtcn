@@ -28,12 +28,12 @@ from CONSTANTS import D_ACCEPTANCE_THRESHOLD, ALPHA_ACCEPTANCE_THRESHOLD
 from andi_datasets.utils_challenge import label_continuous_to_list, single_changepoint_error
 
 
-PUBLIC_DATA_PATH = './public_data_challenge_v0'
-RESULT_PATH = './2nd_andi_challenge_results'
+PUBLIC_DATA_PATH = './public_data_challenge_v0'#'./andi2_benchmark_dataset'
+RESULT_PATH = './2nd_andi_challenge_results'#'./2nd_andi_challenge_benchmark
 PATH_TRACK_1, PATH_TRACK_2 = './track_1', './track_2'
 
 SPECIFIC_N_EXP = None
-EXPS = list(range(12)) if SPECIFIC_N_EXP is None else SPECIFIC_N_EXP
+EXPS = list(range(12)) if SPECIFIC_N_EXP is None else SPECIFIC_N_EXP#list(range(1,10)) if SPECIFIC_N_EXP is None else SPECIFIC_N_EXP
 
 SPECIFIC_N_FOV = None
 FOVS = list(range(30)) if SPECIFIC_N_FOV is None else SPECIFIC_N_FOV

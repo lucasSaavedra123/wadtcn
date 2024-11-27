@@ -5,15 +5,16 @@ import tqdm
 from PredictiveModel.UNetSingleParticleTracker import UNetSingleParticleTracker
 from utils import tiff_movie_path_to_numpy_array, get_trajectories_from_2nd_andi_challenge_tiff_movie
 
-PUBLIC_DATA_PATH = './public_data_challenge_v0'
+PUBLIC_DATA_PATH = './public_data_challenge_v0'#'./andi2_benchmark_dataset'
 PATH_TRACK_1 = './track_1'
 
-N_EXP = 12
+N_EXP = 12#10
 N_FOVS = 30
 
 unet_network = UNetSingleParticleTracker(128,128,2)
 unet_network.load_as_file()
 
+#for exp in tqdm.tqdm(list(range(1,N_EXP))):
 for exp in tqdm.tqdm(list(range(N_EXP))):
     for fov in range(N_FOVS):
         print(exp,fov)
