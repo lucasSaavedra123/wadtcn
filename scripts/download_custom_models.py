@@ -17,10 +17,11 @@ def download_networks(class_name, simulator_class, layer_index):
     networks = sorted(networks, key=lambda net: (net.trajectory_length, -net.trajectory_time))
 
     for index, network in tqdm.tqdm(list(enumerate(networks))):
-        if index == 0:
-            reference_network = network   
-        else:
-            network.set_wadnet_tcn_encoder(reference_network, layer_index)
+        if layer_index is not None:
+            if index == 0:
+                reference_network = network   
+            else:
+                network.set_wadnet_tcn_encoder(reference_network, layer_index)
 
         network.enable_database_persistance()
         network.load_as_file()
@@ -58,7 +59,7 @@ print("Downloading SBM Sub-Classification Networks...")
 download_networks(WaveNetTCNSBMModelClassifier, CustomDataSimulation, -4)
 
 print("Downloading ID Segmenter Networks...")
-download_networks(ImmobilizedTrajectorySegmentator, CustomDataSimulation, -4)
+download_networks(ImmobilizedTrajectorySegmentator, CustomDataSimulation, None)
 
 print("Downloading DIffusion Coefficient Networks...")
 download_networks(WavenetTCNWithLSTMDiffusionCoefficientFBMPredicter, CustomDataSimulation, -4)

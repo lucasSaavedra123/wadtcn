@@ -7,7 +7,7 @@ from DataSimulation import CustomDataSimulation
 from CONSTANTS import IMMOBILE_THRESHOLD
 from Trajectory import Trajectory
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+DatabaseHandler.connect_over_network(None, None, '192.168.0.174', 'anomalous_diffusion_analysis')
 
 print("Loading trajectories...")
 filtered_trajectories = [trajectory for trajectory in Trajectory.objects() if not trajectory.is_immobile(IMMOBILE_THRESHOLD) and trajectory.length >= 25]

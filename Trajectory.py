@@ -167,8 +167,7 @@ class Trajectory(Document):
         trajectories = []
 
         for traj_index in range(trajs.shape[1]):
-            selected_snr = np.random.uniform(0.5,5)
-            sigma = np.std(np.append(np.diff(trajs[:,traj_index,0]), np.diff(trajs[:,traj_index,1]))) / selected_snr
+            sigma = 0
 
             trajectories.append(
                 Trajectory(
@@ -485,8 +484,8 @@ class Trajectory(Document):
     def hurst_exponent(self):
         return self.anomalous_exponent / 2
 
-    def plot(self, with_noise=True):
-        if self.model_category is None:
+    def plot(self, with_noise=True, ignore_model_category_plotter=True):
+        if ignore_model_category_plotter:
 
             if self.noisy:
                 plt.plot(self.get_noisy_x(), self.get_noisy_y(), marker="X", color='black')
@@ -688,8 +687,11 @@ class Trajectory(Document):
     def is_immobile(self, threshold):
         return self.normalized_ratio <= threshold
 
-    def sub_trajectories_trajectories_from_confinement_states(self, v_th=11, window_size=3, transition_fix_threshold=9, use_info=False):
-        confinement_states = self.confinement_states(return_intervals=False, v_th=v_th, transition_fix_threshold=transition_fix_threshold, window_size=window_size) if not use_info else self.info['analysis']['confinement-states']
+    def sub_trajectories_trajectories_from_confinement_states(self, v_th=11, window_size=3, transition_fix_threshold=9, use_info=False, states=None):
+        if states is None:
+            confinement_states = self.confinement_states(return_intervals=False, v_th=v_th, transition_fix_threshold=transition_fix_threshold, window_size=window_size) if not use_info else self.info['analysis']['confinement-states']
+        else:
+            confinement_states = states
 
         trajectories = {
             0: [],

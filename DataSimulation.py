@@ -1,11 +1,11 @@
-import sys
+import glob
 import os
 
 import numpy as np
 import pandas as pd
 import tqdm
 import ray
-from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, _defaults_andi2, challenge_phenom_dataset
+from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_andi2, challenge_phenom_dataset
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 
 from Trajectory import Trajectory
@@ -66,7 +66,7 @@ class AndiDataSimulation(DataSimulation):
                 'exponent_type': None,
                 'exponent': None,
                 'info': {
-                    'change_point_time': Y[1][trajectory_index][1],
+                    'change_point_time': int(Y[1][trajectory_index][1]),
                     'model_first_segment': Y[1][trajectory_index][2],
                     'alpha_first_segment': Y[1][trajectory_index][3],
                     'model_second_segment': Y[1][trajectory_index][4],
@@ -74,16 +74,25 @@ class AndiDataSimulation(DataSimulation):
                     }
             }
 
+            alpha_t = np.full(simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['alpha_first_segment']).tolist()
+            alpha_t += np.full(trajectory_length-simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['alpha_second_segment']).tolist()
+
+            state_t = np.full(simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['model_first_segment']).tolist()
+            state_t += np.full(trajectory_length-simulation_result['info']['change_point_time'], fill_value=simulation_result['info']['model_second_segment']).tolist()
+
+            simulation_result['info']['state_t'] = state_t
+            simulation_result['info']['alpha_t'] = alpha_t
+
             trajectories.append(Trajectory(
                     simulation_result['x'],
                     simulation_result['y'],
                     t=simulation_result['t'],
-                    noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
                     exponent_type=simulation_result['exponent_type'],
                     exponent=simulation_result['exponent'],
-                    model_category=self,
                     info=simulation_result['info'],
+                    noisy=True
                 )
             )
 
@@ -110,10 +119,10 @@ class Andi2ndDataSimulation(DataSimulation):
         CONFINEMENTS_DENSITY = 10/((1.5*128)**2)
 
         MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
-        MIN_A, MAX_A = 0.2,2#models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
+        MIN_A, MAX_A = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
         custom_dic = {}
-        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=1000)
-        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
+        ALPHA_possible_values = np.linspace(MIN_A, MAX_A, num=10000)[1:]
+        D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=10000)
 
         """
         If boundary effects are ignored, we set a relative high L value
@@ -124,7 +133,7 @@ class Andi2ndDataSimulation(DataSimulation):
             if model_label in [1,2]:
                 custom_dic['L'] = None
             else:
-                custom_dic['L'] = int(512)
+                custom_dic['L'] = 1024
 
         """
         We set D and alpha for models 1 and 3
@@ -141,10 +150,10 @@ class Andi2ndDataSimulation(DataSimulation):
         if model_label == 2:
             n = np.random.randint(2,5)
             transition_matrix = np.zeros((n,n))
-
+            p = np.random.uniform(0.80,1)
             for i in range(n):
                 for j in range(n):
-                    transition_matrix[i, j] = 0.98 if i==j else (1-0.98)/(n-1)
+                    transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
 
             similar_order_magnitude = np.random.choice([False, True])
             if similar_order_magnitude:
@@ -224,21 +233,22 @@ class Andi2ndDataSimulation(DataSimulation):
         #print(dic)
         return dic
 
-    def get_trayectories_from_file(self, file_name):
+    def get_trayectories_from_file(self, file_name, limit=float('inf')):
         trajectories = []
         dataframe = pd.read_csv(file_name)
-        for unique_id in dataframe['id'].unique():
+        for i, unique_id in enumerate(dataframe['id'].unique()):
+            if i > limit-1:
+                break
             t_dataframe = dataframe[dataframe['id'] == unique_id]
             trajectories.append(Trajectory(
-                x=t_dataframe['x_noisy'].tolist(),
-                y=t_dataframe['y_noisy'].tolist(),
+                x=t_dataframe['x'].tolist(),
+                y=t_dataframe['y'].tolist(),
                 t=t_dataframe['t'].tolist(),
                 info={
                     'alpha_t': t_dataframe['alpha_t'].tolist(),
                     'd_t': t_dataframe['d_t'].tolist(),
                     'state_t': t_dataframe['state_t'].tolist()
                 },
-                noisy=True
             ))
         return trajectories
 
@@ -246,8 +256,8 @@ class Andi2ndDataSimulation(DataSimulation):
         data = {
             'id':[],
             't':[],
-            'x_noisy':[],
-            'y_noisy':[],
+            'x':[],
+            'y':[],
             'd_t':[],
             'alpha_t':[],
             'state_t':[]
@@ -256,8 +266,8 @@ class Andi2ndDataSimulation(DataSimulation):
         for i, t in enumerate(trajectories):
             data['id'] += [i] * t.length
             data['t'] += t.get_time().tolist()
-            data['x_noisy'] += t.get_noisy_x().tolist()
-            data['y_noisy'] += t.get_noisy_y().tolist()
+            data['x'] += t.get_x().tolist()
+            data['y'] += t.get_y().tolist()
             data['d_t'] += list(t.info['d_t'])
             data['alpha_t'] += list(t.info['alpha_t'])
             data['state_t'] += list(t.info['state_t'])
@@ -272,54 +282,17 @@ class Andi2ndDataSimulation(DataSimulation):
             get_from_cache=False,
             file_label='',
             ignore_boundary_effects=True,
+            read_limit=float('inf')
         ):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_boundary_{ignore_boundary_effects}_regression.cache'
 
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = self.get_trayectories_from_file(FILE_NAME)
+            trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
                 while len(trajectories) < number_of_trajectories:
-                    MIN_D, MAX_D = models_phenom().bound_D[0], models_phenom().bound_D[1]
-                    MIN_ALPHA, MAX_ALPHA = models_phenom().bound_alpha[0], models_phenom().bound_alpha[1]
-                    custom_dic = {}
-
-                    D_possible_values = np.logspace(np.log10(MIN_D), np.log10(MAX_D), num=1000)
-                    ALPHA_possible_values = np.linspace(MIN_ALPHA, MAX_ALPHA, num=1000)[1:]
-
-                    n = np.random.randint(2,5)
-                    transition_matrix = np.zeros((n,n))
-                    p = np.random.uniform(0.80, 1)
-                    for i in range(n):
-                        for j in range(n):
-                            transition_matrix[i, j] = p if i==j else (1-p)/(n-1)
-
-                    similar_order_magnitude = np.random.choice([False, True])
-                    if similar_order_magnitude:
-                        ds_values = [np.random.choice(D_possible_values)] + [None] * (n-1)
-                        magnitude_order = int(np.log10(ds_values[0]))
-                        minimum_magnitude_order = max(magnitude_order-1,-12)
-                        maximum_magnitude_order = min(magnitude_order+1,6)
-                        for ds_value_i in range(1,n):
-                            ds_values[ds_value_i] = 10**np.random.uniform(minimum_magnitude_order,maximum_magnitude_order)
-                    else:
-                        ds_values = np.random.choice(D_possible_values, size=n, replace=False)
-
-                    custom_dic.update({
-                        'T': trajectory_length,
-                        'N': 5,
-                        'L': None,
-                        'M': transition_matrix, #transition matrix
-                        'return_state_num': True,
-                        'Ds': np.array([[d, d*0.01] for d in ds_values]),
-                        'alphas': np.array([[a, a*0.01] for a in np.random.choice(ALPHA_possible_values, size=n, replace=False)])
-                    })
-
-                    sim_dic = _get_dic_andi2(2)
-
-                    for key in custom_dic:
-                        sim_dic[key] = custom_dic[key]
+                    sim_dic = self.__generate_dict_for_model(2, trajectory_length, 5, ignore_boundary_effects=True)
 
                     def include_trajectory(trajectory): #We want a diverse number of characteristics
                         segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
@@ -339,10 +312,10 @@ class Andi2ndDataSimulation(DataSimulation):
 
         return trajectories
 
-    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False):
+    def simulate_phenomenological_trajectories_for_classification_training(self, number_of_trajectories, trajectory_length, trajectory_time, get_from_cache=False, file_label='', type_of_simulation='models_phenom', ignore_boundary_effects=True, enable_parallelism=False, read_limit=float('inf')):
         FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_mode_{type_of_simulation}_classification.cache'
         if get_from_cache and os.path.exists(FILE_NAME):
-            trajectories = self.get_trayectories_from_file(FILE_NAME)
+            trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             trajectories = []
             with tqdm.tqdm(total=number_of_trajectories) as pbar:
@@ -354,7 +327,7 @@ class Andi2ndDataSimulation(DataSimulation):
                         {'model': 4, 'force_directed': False},
                     ]
 
-                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.05, (0.95)/2, (0.95)/2])
+                    simulation_setup = np.random.choice(parameter_simulation_setup, p=[0.25, (0.75)/2, (0.75)/2])
                     retry = True
                     while retry:
                         dic = self.__generate_dict_for_model(simulation_setup['model']+1, trajectory_length, 50, force_directed=simulation_setup['force_directed'], ignore_boundary_effects=ignore_boundary_effects, L=512)
@@ -363,7 +336,8 @@ class Andi2ndDataSimulation(DataSimulation):
                             segments_lengths = np.diff(np.where(np.diff(trajectory.info['d_t']) != 0))
                             x_diff = np.max(trajectory.get_noisy_x()) - np.min(trajectory.get_noisy_x())
                             y_diff = np.max(trajectory.get_noisy_y()) - np.min(trajectory.get_noisy_y())
-                            within_roi = x_diff <= 128 and y_diff <= 128
+                            within_roi = x_diff <= 512 and y_diff <= 512 if not ignore_boundary_effects else x_diff <= 1000 and y_diff <= 1000
+                            within_roi = within_roi or np.all(trajectory.info['state_t'] == 2)
                             return within_roi and len(np.unique(trajectory.info['d_t'])) > 1 and trajectory.length == trajectory_length and not np.any(segments_lengths < 3)
                         new_trajectories = []
                         if type_of_simulation == 'create_dataset':
@@ -420,7 +394,7 @@ class Andi2ndDataSimulation(DataSimulation):
                 self.save_trajectories(trajectories, FILE_NAME)
         return trajectories
 
-    def simulate_challenge_trajectories(self, filter=False):
+    def simulate_challenge_trajectories(self, number_of_exps, filter=False):
         parameter_simulation_setup = [
             {'model': 0, 'force_directed': False},
             {'model': 1, 'force_directed': False},
@@ -429,16 +403,30 @@ class Andi2ndDataSimulation(DataSimulation):
             {'model': 4, 'force_directed': False},
         ]
 
-        simulation_setup = np.random.choice(parameter_simulation_setup)
-        dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
-        dfs_traj, labs_traj, _ = challenge_phenom_dataset(
-            save_data = False,
-            dics = [dic],
-            return_timestep_labs = True, get_video = False, 
-            num_fovs = 5,
-        )
+        for exp_index in range(number_of_exps):
+            retry = True
+            while retry:
+                try:
+                    simulation_setup = np.random.choice(parameter_simulation_setup)
+                    simulation_dic = self.__generate_dict_for_model(simulation_setup['model']+1, 200, None, ignore_boundary_effects=False, L=1024)
+                    dfs_traj, labs_traj, _ = challenge_phenom_dataset(
+                        experiments = 1,
+                        save_data = True,
+                        dics = [simulation_dic],
+                        return_timestep_labs = True, get_video = False,
+                        num_fovs = 5,
+                        path='./2ndAndiTrajectories_Challenge_Test/',
+                        prefix=str(exp_index)
+                    )
+                    retry = False
+                except ValueError as e:
+                    print(f"Simulation failed: {e}")
+                    for file_path in glob.glob(f'./2ndAndiTrajectories_Challenge_Test/{exp_index}*'):
+                        os.remove(file_path)
+                    retry = True
+
         #trajs, labels, _ = challenge_phenom_dataset(experiments = 1, num_fovs = 1, dics = [dic], repeat_exp=False)
-        trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
-        if simulation_setup['model'] >= 2 and filter:
-            trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
-        return trajectories
+        #trajectories = Trajectory.from_challenge_phenom_dataset(dfs_traj, labs_traj)
+        #if simulation_setup['model'] >= 2 and filter:
+        #    trajectories = [t for t in trajectories if len(np.unique(t.info['state_t'])) > 1]
+        #return trajectories

@@ -1,34 +1,50 @@
-import os
-import numpy as np
-from keras.layers import Dense, Input, TimeDistributed
+from keras.layers import Dense, Input, Average, Conv1D, TimeDistributed
 from keras.models import Model
+from keras.losses import BinaryCrossentropy, BinaryCrossentropy, BinaryFocalCrossentropy 
+#from keras.metrics.accuracy_metrics import CategoricalAccuracy
+#from keras.metrics.confusion_metrics import AUC, Recall, Precision
 from tensorflow.keras.optimizers.legacy import Adam
-import glob
-from tensorflow.keras.losses import MeanSquaredLogarithmicError
-#from tensorflow.keras.losses import CategoricalFocalCrossentropy
+from tensorflow.keras.losses import MeanSquaredError
+import tensorflow as tf
+from keras.callbacks import EarlyStopping
 from sklearn.metrics import confusion_matrix, f1_score
-from Trajectory import Trajectory
+import pandas as pd
+import glob as glob
+from andi_datasets.datasets_challenge import _defaults_andi2
+import os
+import random
+
+
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
 from CONSTANTS import *
-import pandas as pd
-from keras.callbacks import EarlyStopping
+from Trajectory import Trajectory
 from tensorflow import device, config
-import keras.backend as K
-from andi_datasets.datasets_challenge import _defaults_andi2
-from TheoreticalModels import ANDI_MODELS
-#from keras.metrics.confusion_metrics import AUC
 
 
-class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
+#https://medium.com/the-owl/weighted-binary-cross-entropy-losses-in-keras-e3553e28b8db
+def weighted_binary_crossentropy(target, output, weights=[1,10]):
+    target = tf.convert_to_tensor(tf.reshape(target, [-1]))
+    output = tf.convert_to_tensor(tf.reshape(output, [-1]))
+    weights = tf.convert_to_tensor(weights, dtype=target.dtype)
+
+    epsilon_ = tf.constant(tf.keras.backend.epsilon(), output.dtype.base_dtype)
+    output = tf.clip_by_value(output, epsilon_, 1.0 - epsilon_)
+
+    # Compute cross entropy from probabilities.
+    bce = weights[1] * target * tf.math.log(output + epsilon_)
+    bce += weights[0] * (1 - target) * tf.math.log(1 - output + epsilon_)
+    return tf.reduce_mean(-bce,axis=-1)
+
+class WavenetTCNSingleLevelChangePointPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 128, 'amsgrad': False, 'epsilon': 1e-06, 'epochs':999}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -41,24 +57,50 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     @property
     def models_involved_in_predictive_model(self):
-        if self.simulator.STRING_LABEL == 'andi2':
-            return ['trap', 'confined', 'free', 'directed']
-        elif self.simulator.STRING_LABEL == 'andi':
-            return ANDI_MODELS
-
-    def predict(self, trajectories):
-        return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
+        return ['No Change', 'Change']
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_single_level_model(self, trajectories)
+        if self.simulator.STRING_LABEL == 'andi2':
+            d = transform_trajectories_to_single_level_diffusion_coefficient(self, trajectories)
+            m = transform_trajectories_to_single_level_model_as_number(self, trajectories)
+            h = transform_trajectories_to_single_level_hurst_exponent(self, trajectories)
+            output = np.zeros(d.shape)
+            output[:,1:] = np.diff(d) + np.diff(m) + np.diff(h)
+            output = (output != 0).astype(float)
+            return output
+        elif self.simulator.STRING_LABEL == 'andi':
+            output = np.zeros((len(trajectories), trajectories[0].length))
+            for ti, t in enumerate(trajectories):
+                output[ti,:] = [0] * int(t.info['change_point_time']-1) + [1] + [0] * int(t.length - t.info['change_point_time'])
+                #output[ti,:] = [0] * int(t.info['change_point_time']) + [1] * int(t.length - t.info['change_point_time'])
+
+            return output
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories, normalize=True)
         return X
 
-    def build_network(self, hp=None):
+    def predict(self, trajectories, apply_threshold=True):
+        predictions = self.architecture.predict(self.transform_trajectories_to_input(trajectories))
+
+        decision_threshold = 0.48332304 if self.simulator.STRING_LABEL == 'andi' else 0.8464712
+
+        if apply_threshold:
+            predictions = (predictions > decision_threshold).astype(int)
+        return predictions
+
+    @property
+    def type_name(self):
+        return 'wavenet_changepoint_detector'
+
+    def __str__(self):
+        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
+
+    def build_network(self):
         number_of_features = 2
         wavenet_filters = 32
+        dff = 320
+        number_of_passes = 2
 
         dilation_depth = 8
         initializer = 'he_normal'
@@ -84,34 +126,40 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        x = Transformer(2,4,wavenet_filters*5,320)(x)
 
         #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
+        output = Dense(units=1, activation='sigmoid', name='change_point_detection')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
 
-        if hp is not None:
-            hyperparameter_search_range = self.__class__.default_hyperparameters_analysis()
-            optimizer = Adam(
-                learning_rate=hp.Choice('learning_rate', values=hyperparameter_search_range['lr']),
-                epsilon=hp.Choice('epsilon', values=hyperparameter_search_range['epsilon']),
-                amsgrad=hp.Choice('amsgrad', values=hyperparameter_search_range['amsgrad'])
-            )
-        else:
-            optimizer = Adam(
-                learning_rate=self.hyperparameters['lr'],
-                epsilon=self.hyperparameters['epsilon'],
-                amsgrad=self.hyperparameters['amsgrad']
-            )
+        optimizer = Adam(
+            learning_rate=self.hyperparameters['lr'],
+            epsilon=self.hyperparameters['epsilon'],
+            amsgrad=self.hyperparameters['amsgrad']
+        )
 
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy', 'auc'])
-        #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.75/3, 0.75/3, 0.25, 0.75/3]), metrics=['categorical_accuracy'])
-        return self.architecture
+        """
+        from tensorflow import reduce_mean, square, reshape, abs
+        def custom_mse(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(square(y_true - y_pred))
 
-    @property
-    def type_name(self):
-        return 'wavenet_single_level_classifier_model'
+        def custom_mae(y_true, y_pred):
+            y_true = reshape(y_true, [-1])
+            y_pred = reshape(y_pred, [-1])
+            return reduce_mean(abs(y_true - y_pred))
+
+        self.architecture.compile(optimizer=optimizer, loss=custom_mse, metrics=[custom_mse, custom_mae])
+        """
+
+        def loss(t,o):
+            #return weighted_binary_crossentropy(t,o,weights=[1/(200*2), 199/(200*2)])
+            return weighted_binary_crossentropy(t,o,weights=[1,199])
+        self.architecture.compile(optimizer= optimizer, loss=loss, metrics=['auc'])
+        #self.architecture.compile(optimizer= optimizer, loss=BinaryCrossentropy(from_logits=False), metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
+        #self.architecture.compile(optimizer= optimizer, loss='categorical_crossentropy', metrics=[CategoricalAccuracy(), AUC(), Recall(), Precision()])
 
     @property
     def dataset_type(self):
@@ -144,21 +192,23 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def plot_confusion_matrix(self, trajectories=None, normalized=True, sigma=0):
         if trajectories is None:
-            trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
+            if self.simulator.STRING_LABEL == 'andi2':
+                trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val', type_of_simulation='models_phenom')
+            elif self.simulator.STRING_LABEL == 'andi':
+                trajectories = self.simulator().simulate_segmentated_trajectories(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time)
 
         for t in trajectories:
             t.x = (np.array(t.x) + np.random.randn(t.length)*sigma).tolist()
             t.y = (np.array(t.y) + np.random.randn(t.length)*sigma).tolist()
 
         result = self.predict(trajectories)
-        result = np.argmax(result,axis=2)
 
         ground_truth = []
         predicted = []
 
         for i, ti in enumerate(trajectories):
-            ground_truth += np.argmax(self.transform_trajectories_to_output([ti]), axis=2)[0].tolist()
-            predicted += result[i,:].tolist()
+            ground_truth += self.transform_trajectories_to_output([ti])[0].tolist()
+            predicted += result[i,:,0].tolist()
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
 
@@ -176,9 +226,6 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
-
-    def __str__(self):
-        return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
     def plot_single_level_prediction(self, limit=10, sigma=0):
         trajectories = self.simulator().simulate_phenomenological_trajectories_for_classification_training(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, get_from_cache=True, file_label='val')

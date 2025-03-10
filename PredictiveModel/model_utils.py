@@ -1,3 +1,4 @@
+import glob
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, Dropout, LayerNormalization, MultiHeadAttention, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
@@ -11,6 +12,45 @@ from tensorflow.keras import models, Sequential
 from tensorflow.keras.optimizers import *
 from tensorflow.keras.callbacks import * 
 from tensorflow.keras.utils import Sequence
+import signal
+
+class SafelyStopTrainingCallback(Callback):
+    """
+    Safely stop a model from training using Ctrl+C keyboard interrupts.
+    The first Ctrl+C will initiate a stop at the end of the current epoch.
+    The second Ctrl+C will stop training immediately after the current batch.
+    Subsequent Ctrl+C will be returned to the current signal handler.
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.stopping = False
+        self.prev_signal_handler = signal.SIG_DFL
+
+    def _restore_previous_signal_handler(self):
+        if signal.getsignal(signal.SIGINT) != self._signal_handler:
+            return
+        signal.signal(signal.SIGINT, self.prev_signal_handler)
+
+    def _signal_handler(self, sig, frame):
+        if not self.stopping:
+            self.stopping = True
+            print("\nStopping training at the end of this epoch...")
+            return
+        print("\nStopping now...")
+        self.model.stop_training = True
+        self._restore_previous_signal_handler()
+
+    def on_epoch_end(self, epoch: int, logs=None):
+        if self.stopping:
+            self.model.stop_training = True
+
+    def on_train_begin(self, logs=None):
+        print("Press Ctrl+C to stop training at the end of the epoch. Press again to stop immediately.")
+        self.stopping = False
+        self.prev_signal_handler = signal.signal(signal.SIGINT, self._signal_handler)
+
+    def on_train_end(self, logs=None):
+        self._restore_previous_signal_handler()
 
 
 def transform_trajectories_into_turning_angle(predictive_model, trajectories, normalize=True):
@@ -34,8 +74,8 @@ def transform_trajectories_into_displacements(predictive_model, trajectories, no
         return axis_diff
 
     for index, trajectory in enumerate(trajectories):
-        X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), predictive_model.trajectory_length)
-        X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), predictive_model.trajectory_length)
+        X[index, :, 0] = axis_adaptation_to_net(trajectory.get_noisy_x(), trajectories[-1].length)
+        X[index, :, 1] = axis_adaptation_to_net(trajectory.get_noisy_y(), trajectories[-1].length)
 
         if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = (X[index, :, 0] - np.mean(X[index, :, 0]))/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
@@ -176,7 +216,7 @@ def transform_trajectories_to_single_level_model(predictive_model, trajectories)
     return Y
 
 def transform_trajectories_to_single_level_model_as_number(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+    Y = np.empty((len(trajectories), trajectories[0].length))
 
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = trajectory.info['state_t']
@@ -196,26 +236,27 @@ def basic_convolution_block(predictive_model, original_x, filters, kernel_size, 
     x = BatchNormalization()(x)
     return x
 
-def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer, activation='relu'):
-    x = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation=activation, kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
-    x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation=activation, kernel_initializer=initializer)(x)
-    x = BatchNormalization()(x)
-    x = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation=activation, kernel_initializer=initializer)(x)
-    x = BatchNormalization()(x)
+def convolutional_block(predictive_model, original_x, filters, kernel_size, dilation_rates, initializer, activation='relu', original_skip_connection=True):
+    x1 = Conv1D(filters=filters, kernel_size=kernel_size, padding='causal', activation=activation, kernel_initializer=initializer, dilation_rate=dilation_rates[0])(original_x)
+    x1 = BatchNormalization()(x1)
+    x2 = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[1], padding='causal', activation=activation, kernel_initializer=initializer)(x1)
+    x2 = BatchNormalization()(x2)
+    x3 = Conv1D(filters=filters, kernel_size=kernel_size, dilation_rate=dilation_rates[2], padding='causal', activation=activation, kernel_initializer=initializer)(x2)
+    x3 = BatchNormalization()(x3)
 
-    x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation=activation, kernel_initializer=initializer)(original_x)
-    x_skip = BatchNormalization()(x_skip)
-
-    x = Add()([x, x_skip])
-
+    if original_skip_connection:
+        x_skip = Conv1D(filters=filters, kernel_size=1, padding='same', activation=activation, kernel_initializer=initializer)(original_x)
+        x_skip = BatchNormalization()(x_skip)
+        x = Add()([x3, x_skip])
+    else:
+        x = Add()([x1, x2, x3])
     return x
 
 #https://www.tensorflow.org/text/tutorials/transformer#the_feed_forward_network
 class BaseAttention(Layer):
   def __init__(self, **kwargs):
     super().__init__()
-    self.mha = MultiHeadAttention(**kwargs)
+    self.mha = MultiHeadAttention(**kwargs, kernel_initializer='he_normal')
     self.layernorm = LayerNormalization()
     self.add = Add()
 
@@ -252,8 +293,8 @@ class FeedForward(Layer):
   def __init__(self, d_model, dff, dropout_rate=0.1):
     super().__init__()
     self.seq = Sequential([
-      Dense(dff, activation='relu'),
-      Dense(d_model),
+      Dense(dff, activation='relu',kernel_initializer='he_normal'),
+      Dense(d_model,kernel_initializer='he_normal'),
       Dropout(dropout_rate)
     ])
     self.add = Add()
@@ -263,6 +304,33 @@ class FeedForward(Layer):
     x = self.add([x, self.seq(x)])
     x = self.layer_norm(x) 
     return x
+
+class Transformer(Layer):
+    def __init__(self, number_of_passes, number_of_heads, d_model, dff):
+        super().__init__()
+        self.encoder_layers = [EncoderLayer(d_model=d_model, num_heads=4, dff=dff, dropout_rate=0.1) for _ in range(number_of_passes)]
+        self.feed_forward_1 = FeedForward(d_model, dff, 0.1)
+        self.feed_forward_2 = FeedForward(d_model, dff, 0.1)
+        self.norm_layer_1 = LayerNormalization()
+        self.norm_layer_2 = LayerNormalization()
+
+    def call(self, inputs):
+        x = inputs
+        x_1 = x
+        for i in range(len(self.encoder_layers)):
+            x = self.encoder_layers[i](x)
+
+        x = Add()([x_1, x])
+
+        x = self.norm_layer_1(x)
+        x_1 = x
+        x = self.feed_forward_1(x)
+        x = Add()([x_1, x])
+        x = self.norm_layer_2(x)
+
+        x = self.feed_forward_2(x)
+
+        return x
 
 class WaveNetEncoder(Layer):
     def __init__(self, filters, dilation_depth, initializer='he_normal'):
@@ -339,9 +407,11 @@ def build_wavenet_tcn_classifier_from_encoder_for(predictive_model, input_size):
 
 def build_wavenet_tcn_segmenter_from_encoder_for(predictive_model, input_size):
     inputs = Input(shape=(input_size))
-    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(inputs)
-    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
-    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    #dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(inputs)
+    #dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    #output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    x = Transformer(1,1,32*5,64)(inputs)
+    output_network = Dense(units=1, activation='sigmoid')(x)
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
 def build_segmentator_for(predictive_model, with_wadnet=False, number_of_features=2, filters=32, input_size=None, with_skip_connections=False):
@@ -360,7 +430,7 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
     inputs = Input(shape=(input_size, number_of_features))
 
     if with_wadnet:
-        x = WaveNetEncoder(filters_size, 8, initializer=initializer)(inputs)
+        x = WaveNetEncoder(filters_size, 2, initializer=initializer)(inputs)
     else:
         x = inputs
 
@@ -381,7 +451,7 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
         x_skip = BatchNormalization()(x_skip)
         x1 = Add()([x1, x_skip])
 
-    x1 = GlobalAveragePooling1D()(x1)
+    #x1 = GlobalAveragePooling1D()(x1)
     x2 = Conv1D(filters=filters_size, kernel_size=x2_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
     x2 = BatchNormalization()(x2)
@@ -399,7 +469,7 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
         x_skip = BatchNormalization()(x_skip)
         x2 = Add()([x2, x_skip])
 
-    x2 = GlobalAveragePooling1D()(x2)
+    #x2 = GlobalAveragePooling1D()(x2)
     x3 = Conv1D(filters=filters_size, kernel_size=x3_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
     x3 = BatchNormalization()(x3)
@@ -417,7 +487,7 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
         x_skip = BatchNormalization()(x_skip)
         x3 = Add()([x3, x_skip])
 
-    x3 = GlobalAveragePooling1D()(x3)
+    #x3 = GlobalAveragePooling1D()(x3)
     x4 = Conv1D(filters=filters_size, kernel_size=x4_kernel_size, padding='causal', activation='relu',
                 kernel_initializer=initializer)(x)
     x4 = BatchNormalization()(x4)
@@ -435,7 +505,7 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
         x_skip = BatchNormalization()(x_skip)
         x4 = Add()([x4, x_skip])
 
-    x4 = GlobalAveragePooling1D()(x4)
+    #x4 = GlobalAveragePooling1D()(x4)
     x5 = Conv1D(filters=filters_size, kernel_size=x5_kernel_size, padding='same', activation='relu',
                 kernel_initializer=initializer)(x)
     x5 = BatchNormalization()(x5)
@@ -445,11 +515,14 @@ def build_segmentator_for(predictive_model, with_wadnet=False, number_of_feature
         x_skip = BatchNormalization()(x_skip)
         x5 = Add()([x5, x_skip])
 
-    x5 = GlobalAveragePooling1D()(x5)
+    #x5 = GlobalAveragePooling1D()(x5)
     x_concat = concatenate(inputs=[x1, x2, x3, x4, x5])
-    dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
-    dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
-    output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+
+    #dense_1 = Dense(units=(predictive_model.trajectory_length * 2), activation='relu')(x_concat)
+    #dense_2 = Dense(units=predictive_model.trajectory_length, activation='relu')(dense_1)
+    #output_network = Dense(units=predictive_model.trajectory_length, activation='sigmoid')(dense_2)
+    x = Transformer(1,1,filters_size*5,64)(x_concat)
+    output_network = Dense(units=1, activation='sigmoid')(x)
 
     predictive_model.architecture = Model(inputs=inputs, outputs=output_network)
 
@@ -503,13 +576,23 @@ class ThreadedTrackGenerator(Sequence):
         return self.batches
 
 class TrackGenerator(Sequence):
-    def __init__(self, batches, batch_size, dataset_function):
+    def __init__(self, network, batches, batch_size, dataset_function, label):
+        self.network = network
         self.batches = batches
         self.batch_size = batch_size
         self.dataset_function = dataset_function
+        self.label = label
+
+        if self.network.simulator.STRING_LABEL == 'andi2':
+            val_files = glob.glob(f'./2ndAndiTrajectories_val/*_{self.network.dataset_type}.csv')
+            train_files = glob.glob(f'./2ndAndiTrajectories/*_{self.network.dataset_type}.csv')
+            self.files = val_files if label=='val' else train_files
 
     def __getitem__(self, item):
-        tracks, classes = self.dataset_function(self.batch_size)
+        if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
+            tracks, classes = self.dataset_function(self.batch_size)
+        else:
+            tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes
 
     def __len__(self):

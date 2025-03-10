@@ -2,11 +2,13 @@ import json
 
 from DataSimulation import Andi2ndDataSimulation
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
+from PredictiveModel.WavenetTCNSingleLevelChangePointPredicter import WavenetTCNSingleLevelChangePointPredicter
 from PredictiveModel.WavenetTCNSingleLevelAlphaPredicter import WavenetTCNSingleLevelAlphaPredicter
 from PredictiveModel.WavenetTCNSingleLevelDiffusionCoefficientPredicter import WavenetTCNSingleLevelDiffusionCoefficientPredicter
 
 for network_class in [
     WavenetTCNMultiTaskClassifierSingleLevelPredicter,
+    WavenetTCNSingleLevelChangePointPredicter,
     WavenetTCNSingleLevelAlphaPredicter,
     WavenetTCNSingleLevelDiffusionCoefficientPredicter,
 ]:

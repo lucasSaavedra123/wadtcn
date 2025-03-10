@@ -15,11 +15,13 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import confusion_matrix, f1_score, mean_absolute_error
 import matplotlib.patches as mpatches
+import keras_tuner as kt
 
+from PredictiveModel.PredictiveModelTuner import PredictiveModelTuner
 from CONSTANTS import TRAINING_SET_SIZE_PER_EPOCH, VALIDATION_SET_SIZE_PER_EPOCH, NETWORKS_DIRECTORY
 from TheoreticalModels import ALL_MODELS, ANDI_MODELS
 from DataSimulation import CustomDataSimulation, AndiDataSimulation, Andi2ndDataSimulation
-from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier
+from .model_utils import ThreadedTrackGenerator, TrackGenerator, get_encoder_from_classifier, SafelyStopTrainingCallback
 
 class CustomCallback(Callback):
     def __init__(self, thread_queue):
@@ -71,6 +73,23 @@ class PredictiveModel(Document):
 
     @classmethod
     def analyze_hyperparameters(cls, trajectory_length, trajectory_time, initial_epochs=10, steps=10, **kwargs):
+        network_object = cls(trajectory_length, trajectory_time, **kwargs)
+
+        class CustomTuner(kt.tuners.BayesianOptimization):
+            def run_trial(self, trial, *args, **kwargs):
+                kwargs['batch_size'] = trial.hyperparameters.Choice('batch_size', values=cls.default_hyperparameters_analysis()['batch_size'])
+                return super(CustomTuner, self).run_trial(trial, *args, **kwargs)
+
+        tuner = CustomTuner(
+            hypermodel=PredictiveModelTuner(network_object),
+            objective='val_loss',
+            max_trials=50
+        )
+
+        X, Y = network_object.prepare_dataset(TRAINING_SET_SIZE_PER_EPOCH)
+
+        tuner.search(X, Y, epochs=2, validation_split=0.2)
+        """
         # Stack names and lists position
         hyperparameters_to_analyze = cls.default_hyperparameters_analysis()
 
@@ -150,7 +169,7 @@ class PredictiveModel(Document):
                     analysis_ended = True        
 
         return cls.post_grid_search_analysis(networks_list, trajectory_length, trajectory_time, initial_epochs, steps, **kwargs)
-
+        """
     @classmethod
     def post_grid_search_analysis(cls, networks, trajectory_length, trajectory_time, current_epochs, step, **kwargs):
         if len(networks) == 1:
@@ -374,7 +393,7 @@ class PredictiveModel(Document):
     def model_to_label(self, model):
         return self.models_involved_in_predictive_model.index(model.__class__)
 
-    def save_as_file(self):
+    def save_as_file(self, selected_name=None):
         if self.architecture is not None:
             if self.db_persistance:
                 if self.model_weights.get() is not None:
@@ -382,11 +401,11 @@ class PredictiveModel(Document):
                 else:
                     self.model_weights.put(pickle.dumps(self.architecture.get_weights()))
             else:
-                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+                self.architecture.save_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5" if selected_name is None else selected_name))
         else:
             print(f"As architecture is not defined, {self} architecture will not be persisted")
 
-    def load_as_file(self):
+    def load_as_file(self, selected_name=None):
         self.build_network()
         if self.db_persistance:
             weights = pickle.loads(self.model_weights.read())
@@ -394,7 +413,7 @@ class PredictiveModel(Document):
             if weights is not None:
                 self.architecture.set_weights(weights)
         else:
-            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5"))
+            self.architecture.load_weights(join(NETWORKS_DIRECTORY, f"{str(self)}.h5" if selected_name is None else selected_name))
 
     def save(self):
         self.save_as_file()
@@ -424,6 +443,7 @@ class PredictiveModel(Document):
         else:
             callbacks = []
 
+        callbacks += [SafelyStopTrainingCallback()]
         """
         callbacks += [CustomCallback(trajectories_queue)]
 
@@ -443,10 +463,10 @@ class PredictiveModel(Document):
         if self.wadnet_tcn_encoder is None:
             with device(device_name):
                 history_training_info = self.architecture.fit(
-                    TrackGenerator(TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    TrackGenerator(self, TRAINING_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset, 'train'),
                     epochs=real_epochs,
                     callbacks=callbacks,
-                    validation_data=TrackGenerator(VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset),
+                    validation_data=TrackGenerator(self, VALIDATION_SET_SIZE_PER_EPOCH//self.hyperparameters['batch_size'], self.hyperparameters['batch_size'], self.prepare_dataset, 'val'),
                     shuffle=True
                 ).history
         else:
@@ -523,6 +543,8 @@ class PredictiveModel(Document):
         plt.ylabel("Ground truth", fontsize=15)
         plt.xlabel("Predicted label", fontsize=15)
         plt.show()
+        #plt.savefig(f"{str(self)}.jpeg")
+        #plt.clf()
 
     @property
     def models_involved_in_predictive_model(self):

@@ -180,3 +180,5 @@ DockerData*
 public_data_validation_v1*
 single_simulations*
 submits
+*.svg
+new_code_for_other_project

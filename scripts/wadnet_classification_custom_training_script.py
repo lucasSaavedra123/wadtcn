@@ -12,7 +12,8 @@ from PredictiveModel.WaveNetTCNTheoreticalModelClassifier import WaveNetTCNTheor
 
 from CONSTANTS import EXPERIMENT_TIME_FRAME_BY_FRAME, IMMOBILE_THRESHOLD
 
-DatabaseHandler.connect_over_network(None, None, '10.147.20.1', 'anomalous_diffusion_analysis')
+
+DatabaseHandler.connect_over_network(None, None, 'localhost', 'anomalous_diffusion_analysis')
 
 if not os.path.exists('lengths_and_durations_cache.txt'):
     lengths_durations = [(trajectory.length, round(trajectory.duration,2)) for trajectory in Trajectory.objects() if (not trajectory.is_immobile(IMMOBILE_THRESHOLD)) and trajectory.length >= 25]
