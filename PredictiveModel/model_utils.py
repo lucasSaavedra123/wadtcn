@@ -141,6 +141,19 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories,
 
     return X
 
+def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+
+    for index, trajectory in enumerate(trajectories):
+        X[index, -trajectory.length:, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
+        X[index, -trajectory.length:, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
+
+        if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
+            X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
+            X[index, -trajectory.length:, 1] = X[index, -trajectory.length:, 1]/(np.std(X[index, -trajectory.length:, 1]) if np.std(X[index, -trajectory.length:, 1])!= 0 else 1)
+
+    return X
+
 def transform_trajectories_into_states(predictive_model, trajectories):
     Y = np.empty((len(trajectories), predictive_model.trajectory_length))
 
@@ -212,6 +225,14 @@ def transform_trajectories_to_single_level_model(predictive_model, trajectories)
     Y = np.zeros((len(trajectories), trajectories[0].length, len(predictive_model.models_involved_in_predictive_model)))
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
+
+    return Y
+
+def transform_trajectories_to_single_level_model_and_padding(predictive_model, trajectories):
+    Y = np.zeros((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
+    Y[:] = 10
+    for index, trajectory in enumerate(trajectories):
+        Y[index, -trajectory.length:] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
     return Y
 
@@ -589,7 +610,7 @@ class TrackGenerator(Sequence):
             self.files = val_files if label=='val' else train_files
 
     def __getitem__(self, item):
-        if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
+        if self.network.simulator.STRING_LABEL != 'andi2':
             tracks, classes = self.dataset_function(self.batch_size)
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)

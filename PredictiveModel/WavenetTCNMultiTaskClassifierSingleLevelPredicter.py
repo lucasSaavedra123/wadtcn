@@ -43,6 +43,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     def models_involved_in_predictive_model(self):
         if self.simulator.STRING_LABEL == 'andi2':
             return ['trap', 'confined', 'free', 'directed']
+        elif self.simulator.STRING_LABEL == 'deepspt':
+            return ['normal', 'confined', 'directed', 'subdiffusive']#Check this later
         elif self.simulator.STRING_LABEL == 'andi':
             return ANDI_MODELS
 
@@ -50,10 +52,17 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_to_single_level_model(self, trajectories)
+        if self.simulator.STRING_LABEL == 'deepspt':
+            X = transform_trajectories_to_single_level_model_and_padding(self, trajectories)
+        else:
+            X = transform_trajectories_to_single_level_model(self, trajectories)
+        return X
 
     def transform_trajectories_to_input(self, trajectories):
-        X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        if self.simulator.STRING_LABEL == 'deepspt':
+            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories)
+        else:
+            X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
 
     def build_network(self, hp=None):
@@ -137,7 +146,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                         'state_t':df['state_t'].tolist()
                     }
                 )
-        elif self.simulator.STRING_LABEL == 'andi':
+        elif self.simulator.STRING_LABEL in ['andi', 'deepspt']:
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)

@@ -107,16 +107,19 @@ class DeepSPTDataSimulation(DataSimulation):
 
     def simulate_segmentated_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time):
         assert trajectory_length > 25
-        X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, 1000, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
+        X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, trajectory_length, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
 
         trajectories = []
 
         for trajectory_index in range(number_of_trajectories):
-            x = X[trajectory_index][:,0]
-            y = X[trajectory_index][:,1]
+            x = X[trajectory_index][:trajectory_length,0]
+            y = X[trajectory_index][:trajectory_length,1]
 
-            x += (np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([0,1], size=x.shape))
-            y += (np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([0,1], size=y.shape))
+            noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([0,1], size=x.shape)
+            noisy_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([0,1], size=y.shape)
+
+            x = x + noise_x
+            y = y + noisy_y
 
             simulation_result = {
                 'x': x,
@@ -125,7 +128,7 @@ class DeepSPTDataSimulation(DataSimulation):
                 'info': {}
             }
 
-            simulation_result['info']['state_t'] = Y[trajectory_index]
+            simulation_result['info']['state_t'] = Y[trajectory_index][:trajectory_length]
 
             trajectories.append(Trajectory(
                     simulation_result['x'],
