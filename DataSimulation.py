@@ -105,42 +105,87 @@ class DeepSPTDataSimulation(DataSimulation):
     def __init__(self):
         self.andi = False
 
-    def simulate_segmentated_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time):
-        assert trajectory_length > 25
-        X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, trajectory_length, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
+    def simulate_segmentated_trajectories(
+            self, 
+            number_of_trajectories,
+            trajectory_length,
+            trajectory_time,
+            get_from_cache=False,
+            file_label='',
+            read_limit=float('inf')):
+        
+        assert trajectory_length >= 25
+        FILE_NAME = f't_{file_label}_{trajectory_length}_{trajectory_time}_{number_of_trajectories}_segmentated_trajectories.cache'
 
-        trajectories = []
+        if get_from_cache and os.path.exists(FILE_NAME):
+            trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
+        else:
+            trajectories = []
 
-        for trajectory_index in range(number_of_trajectories):
-            x = X[trajectory_index][:trajectory_length,0]
-            y = X[trajectory_index][:trajectory_length,1]
+            X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, trajectory_length, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
 
-            noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([0,1], size=x.shape)
-            noisy_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([0,1], size=y.shape)
+            for trajectory_index in range(number_of_trajectories):
+                x = X[trajectory_index][:trajectory_length,0]
+                y = X[trajectory_index][:trajectory_length,1]
 
-            x = x + noise_x
-            y = y + noisy_y
+                noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([-1,1], size=x.shape)
+                noisy_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([-1,1], size=y.shape)
 
-            simulation_result = {
-                'x': x,
-                'y': y,
-                #'t': np.arange(0,trajectory_length,1)*trajectory_time/trajectory_length,
-                'info': {}
-            }
+                x = x + noise_x
+                y = y + noisy_y
 
-            simulation_result['info']['state_t'] = Y[trajectory_index][:trajectory_length]
+                simulation_result = {
+                    'x': x,
+                    'y': y,
+                    'info': {'state_t': Y[trajectory_index][:trajectory_length]}
+                }
 
-            trajectories.append(Trajectory(
-                    simulation_result['x'],
-                    simulation_result['y'],
-                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
-                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
-                    info=simulation_result['info'],
-                    noisy=True
+                trajectories.append(Trajectory(
+                        simulation_result['x'],
+                        simulation_result['y'],
+                        #noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                        #noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                        info=simulation_result['info'],
+                        noisy=True
+                    )
                 )
-            )
+
+            if get_from_cache:
+                self.save_trajectories(trajectories, FILE_NAME)
 
         return trajectories
+
+    def get_trayectories_from_file(self, file_name, limit=float('inf')):
+        trajectories = []
+        dataframe = pd.read_csv(file_name)
+        for i, unique_id in enumerate(dataframe['id'].unique()):
+            if i > limit-1:
+                break
+            t_dataframe = dataframe[dataframe['id'] == unique_id]
+            trajectories.append(Trajectory(
+                x=t_dataframe['x'].tolist(),
+                y=t_dataframe['y'].tolist(),
+                info={
+                    'state_t': t_dataframe['state_t'].tolist()
+                },
+            ))
+        return trajectories
+
+    def save_trajectories(self, trajectories, file_name):
+        data = {
+            'id':[],
+            'x':[],
+            'y':[],
+            'state_t':[]
+        }
+
+        for i, t in enumerate(trajectories):
+            data['id'] += [i] * t.length
+            data['x'] += t.get_x().tolist()
+            data['y'] += t.get_y().tolist()
+            data['state_t'] += list(t.info['state_t'])
+
+        pd.DataFrame(data).to_csv(file_name, index=False)
 
 class Andi2ndDataSimulation(DataSimulation):
     STRING_LABEL = 'andi2'
