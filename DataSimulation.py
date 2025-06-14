@@ -9,7 +9,8 @@ from andi_datasets.datasets_challenge import challenge_theory_dataset, _get_dic_
 from andi_datasets.datasets_phenom import datasets_phenom, models_phenom
 
 from Trajectory import Trajectory
-
+from TheoreticalModels.DeepSPTRandomWalkSims import Gen_changing_diff
+from CONSTANTS import FOR_MINFLUX
 
 class DataSimulation():
     STRING_LABEL = 'default'
@@ -91,6 +92,46 @@ class AndiDataSimulation(DataSimulation):
                     #noise_y=simulation_result['y_noisy']-simulation_result['y'],
                     exponent_type=simulation_result['exponent_type'],
                     exponent=simulation_result['exponent'],
+                    info=simulation_result['info'],
+                    noisy=True
+                )
+            )
+
+        return trajectories
+
+class DeepSPTDataSimulation(DataSimulation):
+    STRING_LABEL = 'deepspt'
+
+    def __init__(self):
+        self.andi = False
+
+    def simulate_segmentated_trajectories(self, number_of_trajectories, trajectory_length, trajectory_time):
+        assert trajectory_length > 25
+        X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, 1000, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
+
+        trajectories = []
+
+        for trajectory_index in range(number_of_trajectories):
+            x = X[trajectory_index][:,0]
+            y = X[trajectory_index][:,1]
+
+            x += (np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([0,1], size=x.shape))
+            y += (np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([0,1], size=y.shape))
+
+            simulation_result = {
+                'x': x,
+                'y': y,
+                #'t': np.arange(0,trajectory_length,1)*trajectory_time/trajectory_length,
+                'info': {}
+            }
+
+            simulation_result['info']['state_t'] = Y[trajectory_index]
+
+            trajectories.append(Trajectory(
+                    simulation_result['x'],
+                    simulation_result['y'],
+                    #noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                    #noise_y=simulation_result['y_noisy']-simulation_result['y'],
                     info=simulation_result['info'],
                     noisy=True
                 )
