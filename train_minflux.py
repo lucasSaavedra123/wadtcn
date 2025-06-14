@@ -1,0 +1,5 @@
+from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
+from DataSimulation import DeepSPTDataSimulation
+
+
+WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation).fit()

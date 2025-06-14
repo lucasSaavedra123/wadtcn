@@ -623,7 +623,7 @@ def Gen_changing_diff(n_traces, max_changepoints, min_parent_len,
     Ds, r_c, ellipse_dims, angles, vs, wiggle, r_stuck, subalphas, superalphas, sigmaND, sigmaAD, sigmaCD, sigmaDM, sigmaStD = params_matrix[7:]
     trace_list = []
     label_list = []
-    for i in range(n_traces):
+    for i in tqdm(range(n_traces)):
         diff_types = []
         n_changepoints = np.random.choice(list(range(2, max_changepoints+1)))
         while len(diff_types)<=1:
