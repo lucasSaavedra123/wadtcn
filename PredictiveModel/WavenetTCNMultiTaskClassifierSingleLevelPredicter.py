@@ -170,23 +170,6 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                         'state_t':df['state_t'].tolist()
                     }
                 )
-        elif self.simulator.STRING_LABEL == 'deepspt':
-            import time
-            a = time.time()
-            trajectories = [None]*set_size
-            for i in range(set_size):
-                trajectory = np.random.choice(files)
-                df = pd.read_csv(trajectory)
-                df = df.sort_index()
-
-                trajectories[i] = Trajectory(
-                    x=df['x'].tolist(),
-                    y=df['y'].tolist(),
-                    noisy=True,
-                    info={'state_t':df['state_t'].tolist()}
-                )
-            b = time.time()
-            print(b-a)
         elif self.simulator.STRING_LABEL == 'andi':
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 

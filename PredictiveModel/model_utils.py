@@ -611,13 +611,19 @@ class TrackGenerator(Sequence):
             self.files = val_files if label=='val' else train_files
 
         if self.network.simulator.STRING_LABEL == 'deepspt':
-            val_files = glob.glob(f'./DeepSPTTrajectories_val/*_{self.network.dataset_type}.csv')
-            train_files = glob.glob(f'./DeepSPTTrajectories/*_{self.network.dataset_type}.csv')
-            self.files = val_files if label=='val' else train_files
+            if label=='val':
+                self.X = np.load(f"X_minflux_val")
+                self.Y = np.load(f"Y_minflux_val")
+            else:
+                self.X = np.load(f"X_minflux_train")
+                self.Y = np.load(f"Y_minflux_train")
 
     def __getitem__(self, item):
         if self.network.simulator.STRING_LABEL == 'andi':
             tracks, classes = self.dataset_function(self.batch_size)
+        elif self.network.simulator.STRING_LABEL == 'deepspt':
+            indexes = np.random.choice(self.X.shape[0],size=self.batch_size)
+            tracks, classes = self.X[indexes], self.Y[indexes]
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes

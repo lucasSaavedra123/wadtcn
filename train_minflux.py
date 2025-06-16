@@ -27,8 +27,8 @@ def transform_cache_file_chuck_files(cache_files, dataset_type):
 
     X = network.transform_trajectories_to_input(trajectories)
     Y = network.transform_trajectories_to_input(trajectories)
-    np.save(f"X_{dataset_type}", X)
-    np.save(f"Y_{dataset_type}", Y)
+    np.save(f"X_minflux_{dataset_type}", X)
+    np.save(f"Y_minflux_{dataset_type}", Y)
 
 transform_cache_file_chuck_files(glob.glob('*train*_segmentated_trajectories.cache'), 'train')
 transform_cache_file_chuck_files(glob.glob('*val*_segmentated_trajectories.cache'), 'val')
