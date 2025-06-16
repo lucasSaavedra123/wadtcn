@@ -1,6 +1,7 @@
 import os
 import numpy as np
-from keras.layers import Dense, Input, TimeDistributed
+from keras.layers import Dense, Input, TimeDistributed, Masking
+import tensorflow as tf
 from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
@@ -81,7 +82,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         inputs = Input(shape=(None, number_of_features))
 
-        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+        x = Masking(mask_value=-10)(inputs)
+
+        #x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(x)
 
         x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
         x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
@@ -93,9 +96,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        #x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
 
-        #x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
+        x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
@@ -114,7 +117,28 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                 amsgrad=self.hyperparameters['amsgrad']
             )
 
-        self.architecture.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])#, 'auc'])
+        def masked_categorical_crossentropy(y_true, y_pred):
+            """
+            y_true: shape (batch, time, C), one-hot con vectores válidos o [-10,-10,..]
+            y_pred: shape (batch, time, C), softmax
+            """
+            C = tf.shape(y_true)[-1]
+            # Detectar padding: si suma == -10 * C
+            sum_per_t = tf.reduce_sum(y_true, axis=-1)  # shape (batch, time)
+            mask = tf.not_equal(sum_per_t, -10.0 * tf.cast(C, y_true.dtype))
+            mask = tf.cast(mask, y_pred.dtype)
+
+            # Loss por timestep
+            loss_per_t = tf.keras.losses.categorical_crossentropy(y_true, y_pred)  # shape (batch, time)
+            # Aplicar máscara
+            masked_loss = loss_per_t * mask
+
+            # Reducir: suma sobre timesteps válidos / cantidad de ellos
+            total = tf.reduce_sum(masked_loss)
+            count = tf.reduce_sum(mask) + tf.keras.backend.epsilon()
+            return total / count
+
+        self.architecture.compile(optimizer=optimizer, loss=masked_categorical_crossentropy, metrics=['categorical_accuracy'])#, 'auc'])
         #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.75/3, 0.75/3, 0.25, 0.75/3]), metrics=['categorical_accuracy'])
         return self.architecture
 
@@ -146,7 +170,24 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                         'state_t':df['state_t'].tolist()
                     }
                 )
-        elif self.simulator.STRING_LABEL in ['andi', 'deepspt']:
+        elif self.simulator.STRING_LABEL == 'deepspt':
+            import time
+            a = time.time()
+            trajectories = [None]*set_size
+            for i in range(set_size):
+                trajectory = np.random.choice(files)
+                df = pd.read_csv(trajectory)
+                df = df.sort_index()
+
+                trajectories[i] = Trajectory(
+                    x=df['x'].tolist(),
+                    y=df['y'].tolist(),
+                    noisy=True,
+                    info={'state_t':df['state_t'].tolist()}
+                )
+            b = time.time()
+            print(b-a)
+        elif self.simulator.STRING_LABEL == 'andi':
             trajectories = self.simulator().simulate_segmentated_trajectories(set_size, self.trajectory_length, self.trajectory_time)
 
         return self.transform_trajectories_to_input(trajectories), self.transform_trajectories_to_output(trajectories)

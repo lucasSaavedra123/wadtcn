@@ -2,4 +2,6 @@ from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import Wa
 from DataSimulation import DeepSPTDataSimulation
 
 
-WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation).fit()
+a = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
+a.fit()
+a.save_as_file('wavenet_minflux.h5')

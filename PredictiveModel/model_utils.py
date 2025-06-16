@@ -143,6 +143,7 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories,
 
 def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
     X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+    X[:] = -10
 
     for index, trajectory in enumerate(trajectories):
         X[index, -trajectory.length:, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
@@ -230,7 +231,7 @@ def transform_trajectories_to_single_level_model(predictive_model, trajectories)
 
 def transform_trajectories_to_single_level_model_and_padding(predictive_model, trajectories):
     Y = np.zeros((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
-    Y[:] = 10
+    Y[:] = -10
     for index, trajectory in enumerate(trajectories):
         Y[index, -trajectory.length:] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
@@ -609,8 +610,13 @@ class TrackGenerator(Sequence):
             train_files = glob.glob(f'./2ndAndiTrajectories/*_{self.network.dataset_type}.csv')
             self.files = val_files if label=='val' else train_files
 
+        if self.network.simulator.STRING_LABEL == 'deepspt':
+            val_files = glob.glob(f'./DeepSPTTrajectories_val/*_{self.network.dataset_type}.csv')
+            train_files = glob.glob(f'./DeepSPTTrajectories/*_{self.network.dataset_type}.csv')
+            self.files = val_files if label=='val' else train_files
+
     def __getitem__(self, item):
-        if self.network.simulator.STRING_LABEL != 'andi2':
+        if self.network.simulator.STRING_LABEL == 'andi':
             tracks, classes = self.dataset_function(self.batch_size)
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
