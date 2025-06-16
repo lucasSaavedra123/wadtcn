@@ -8,7 +8,7 @@ from DataSimulation import DeepSPTDataSimulation
 from Trajectory import Trajectory
 
 network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
-
+"""
 def transform_cache_file_chuck_files(cache_files, dataset_type):
     trajectories = []
     for cache_i, cache_file_path in enumerate(cache_files):
@@ -32,6 +32,6 @@ def transform_cache_file_chuck_files(cache_files, dataset_type):
 
 transform_cache_file_chuck_files(glob.glob('*train*_segmentated_trajectories.cache'), 'train')
 transform_cache_file_chuck_files(glob.glob('*val*_segmentated_trajectories.cache'), 'val')
-
+"""
 network.fit()
 network.save_as_file('wavenet_minflux.weights.h5')

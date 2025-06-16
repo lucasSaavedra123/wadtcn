@@ -84,7 +84,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = Masking(mask_value=-10)(inputs)
 
-        #x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(x)
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(x)
 
         x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
         x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
@@ -96,7 +96,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        #x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
@@ -138,7 +138,34 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
             count = tf.reduce_sum(mask) + tf.keras.backend.epsilon()
             return total / count
 
-        self.architecture.compile(optimizer=optimizer, loss=masked_categorical_crossentropy, metrics=['categorical_accuracy'])#, 'auc'])
+        def masked_categorical_accuracy(y_true, y_pred):
+            """
+            y_true: shape (batch, time, C), one-hot con vectores válidos o [-10, -10, ...]
+            y_pred: shape (batch, time, C), softmax
+            """
+            C = tf.shape(y_true)[-1]
+            
+            # Detectar padding: si suma == -10 * C
+            sum_per_t = tf.reduce_sum(y_true, axis=-1)  # shape (batch, time)
+            mask = tf.not_equal(sum_per_t, -10.0 * tf.cast(C, y_true.dtype))
+            mask = tf.cast(mask, y_pred.dtype)  # shape (batch, time)
+
+            # Obtener clases verdaderas e inferidas
+            true_classes = tf.argmax(y_true, axis=-1)  # shape (batch, time)
+            pred_classes = tf.argmax(y_pred, axis=-1)  # shape (batch, time)
+
+            # Comparar y convertir a float
+            correct = tf.cast(tf.equal(true_classes, pred_classes), y_pred.dtype)  # shape (batch, time)
+
+            # Aplicar máscara
+            masked_correct = correct * mask
+
+            # Accuracy = correctos válidos / cantidad de válidos
+            total_correct = tf.reduce_sum(masked_correct)
+            total_count = tf.reduce_sum(mask) + tf.keras.backend.epsilon()
+            return total_correct / total_count
+
+        self.architecture.compile(optimizer=optimizer, loss=masked_categorical_crossentropy, metrics=[masked_categorical_accuracy])#, 'auc'])
         #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.75/3, 0.75/3, 0.25, 0.75/3]), metrics=['categorical_accuracy'])
         return self.architecture
 
