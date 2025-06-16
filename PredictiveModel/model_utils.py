@@ -612,11 +612,11 @@ class TrackGenerator(Sequence):
 
         if self.network.simulator.STRING_LABEL == 'deepspt':
             if label=='val':
-                self.X = np.load(f"X_minflux_val")
-                self.Y = np.load(f"Y_minflux_val")
+                self.X = np.load(f"X_minflux_val.npy")
+                self.Y = np.load(f"Y_minflux_val.npy")
             else:
-                self.X = np.load(f"X_minflux_train")
-                self.Y = np.load(f"Y_minflux_train")
+                self.X = np.load(f"X_minflux_train.npy")
+                self.Y = np.load(f"Y_minflux_train.npy")
 
     def __getitem__(self, item):
         if self.network.simulator.STRING_LABEL == 'andi':
