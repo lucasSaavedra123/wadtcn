@@ -122,11 +122,10 @@ class DeepSPTDataSimulation(DataSimulation):
         else:
             trajectories = []
 
-            X, Y = Gen_changing_diff(number_of_trajectories, 5, 5, trajectory_length, 0.001 if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
-
             for trajectory_index in range(number_of_trajectories):
-                x = X[trajectory_index][:trajectory_length,0]
-                y = X[trajectory_index][:trajectory_length,1]
+                X, Y = Gen_changing_diff(1, 5, 5, trajectory_length, np.random.uniform(0.0001,0.0010) if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
+                x = X[0][:trajectory_length,0]
+                y = X[0][:trajectory_length,1]
 
                 noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([-1,1], size=x.shape)
                 noisy_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([-1,1], size=y.shape)
@@ -137,7 +136,7 @@ class DeepSPTDataSimulation(DataSimulation):
                 simulation_result = {
                     'x': x,
                     'y': y,
-                    'info': {'state_t': Y[trajectory_index][:trajectory_length]}
+                    'info': {'state_t': Y[0][:trajectory_length]}
                 }
 
                 trajectories.append(Trajectory(
