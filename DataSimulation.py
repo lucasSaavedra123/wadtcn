@@ -112,6 +112,7 @@ class DeepSPTDataSimulation(DataSimulation):
             trajectory_time,
             get_from_cache=False,
             file_label='',
+            enable_parallelism=False,
             read_limit=float('inf')):
         
         assert trajectory_length >= 25
@@ -120,9 +121,7 @@ class DeepSPTDataSimulation(DataSimulation):
         if get_from_cache and os.path.exists(FILE_NAME):
             trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
-            trajectories = []
-
-            for trajectory_index in range(number_of_trajectories):
+            def generate_trajectory():
                 X, Y = Gen_changing_diff(1, 5, 5, trajectory_length, np.random.uniform(0.0001,0.0010) if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
                 x = X[0][:trajectory_length,0]
                 y = X[0][:trajectory_length,1]
@@ -139,7 +138,7 @@ class DeepSPTDataSimulation(DataSimulation):
                     'info': {'state_t': Y[0][:trajectory_length]}
                 }
 
-                trajectories.append(Trajectory(
+                return Trajectory(
                         simulation_result['x'],
                         simulation_result['y'],
                         #noise_x=simulation_result['x_noisy']-simulation_result['x'],
@@ -147,8 +146,26 @@ class DeepSPTDataSimulation(DataSimulation):
                         info=simulation_result['info'],
                         noisy=True
                     )
-                )
 
+            trajectories = []
+            with tqdm.tqdm(total=number_of_trajectories) as pbar: 
+                if enable_parallelism:
+                    @ray.remote
+                    def generate_trajectory_ray():
+                        return generate_trajectory()
+                    ray.init()
+                    while len(trajectories) < number_of_trajectories:
+                        new_trajectories = ray.get([generate_trajectory_ray.remote() for _ in range(100)])
+                        trajectories += new_trajectories
+                        pbar.update(len(new_trajectories))
+                    ray.shutdown()
+                else:
+                    while len(trajectories) < number_of_trajectories:
+                        new_trajectories = [generate_trajectory()]
+                        trajectories += new_trajectories
+                        pbar.update(len(new_trajectories))
+
+            trajectories = trajectories[:number_of_trajectories]
             if get_from_cache:
                 self.save_trajectories(trajectories, FILE_NAME)
 
