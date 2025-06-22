@@ -9,12 +9,22 @@ import matplotlib.pyplot as plt
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from DataSimulation import DeepSPTDataSimulation
 from Trajectory import Trajectory
+from CONSTANTS import *
 
+assert FOR_MINFLUX
 TRAIN = True
 
 network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
 
 if TRAIN:
+    for i in range(3):
+        print("Train dataset", i)
+        DeepSPTDataSimulation().simulate_segmentated_trajectories(TRAINING_SET_SIZE_PER_EPOCH,1_000,None,True,f'train_{i}', True)
+
+    for i in range(1):
+        print("Val dataset", i)
+        DeepSPTDataSimulation().simulate_segmentated_trajectories(VALIDATION_SET_SIZE_PER_EPOCH,1_000,None,True,f'val_{i}', True)
+
     def transform_cache_file_chuck_files(cache_files, dataset_type):
         trajectories = []
         for cache_i, cache_file_path in enumerate(cache_files):

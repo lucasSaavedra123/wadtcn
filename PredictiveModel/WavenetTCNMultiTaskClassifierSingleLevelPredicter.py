@@ -25,11 +25,11 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
     #These will be updated after hyperparameter search
 
     def default_hyperparameters(self, **kwargs):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999 if not FOR_MINFLUX else 100}
 
     @classmethod
     def selected_hyperparameters(self):
-        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999}
+        return {'lr': 0.0001, 'batch_size': 32, 'amsgrad': True, 'epsilon': 1e-06, 'epochs':999 if not FOR_MINFLUX else 100}
 
     @classmethod
     def default_hyperparameters_analysis(self):
@@ -61,7 +61,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def transform_trajectories_to_input(self, trajectories):
         if self.simulator.STRING_LABEL == 'deepspt':
-            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories)
+            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories, normalize=True)
         else:
             X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X

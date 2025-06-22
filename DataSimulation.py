@@ -122,7 +122,7 @@ class DeepSPTDataSimulation(DataSimulation):
             trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             def generate_trajectory():
-                X, Y = Gen_changing_diff(1, 5, 5, trajectory_length, np.random.uniform(0.0001,0.0010) if FOR_MINFLUX else 0.100, Nrange=[25,trajectory_length])
+                X, Y = Gen_changing_diff(1, 5, 25, trajectory_length, np.random.uniform(0.0001,0.0010) if FOR_MINFLUX else 0.100, Nrange=[100,trajectory_length])
                 x = X[0][:trajectory_length,0]
                 y = X[0][:trajectory_length,1]
 
