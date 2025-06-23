@@ -61,7 +61,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
     def transform_trajectories_to_input(self, trajectories):
         if self.simulator.STRING_LABEL == 'deepspt':
-            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories, normalize=True)
+            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories)
         else:
             X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
