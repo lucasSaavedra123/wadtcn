@@ -619,7 +619,7 @@ class TrackGenerator(Sequence):
                 self.Y = np.load(f"Y_minflux_train.npy")
 
     def __getitem__(self, item):
-        if self.network.simulator.STRING_LABEL == 'andi':
+        if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
             tracks, classes = self.dataset_function(self.batch_size)
         elif self.network.simulator.STRING_LABEL == 'deepspt':
             indexes = np.random.choice(self.X.shape[0],size=self.batch_size)

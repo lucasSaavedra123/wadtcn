@@ -1,0 +1,5 @@
+from DataSimulation import CustomDataSimulation
+from PredictiveModel.RunAndTurnSegmentator import RunAndTurnSegmentator
+
+
+RunAndTurnSegmentator(1000,1000,simulator=CustomDataSimulation).fit()

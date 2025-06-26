@@ -113,3 +113,74 @@ def blockPrint():
 # Restore
 def enablePrint():
     sys.stdout = sys.__stdout__
+
+class IntermittentSelfPropelledParticle:
+    def __init__(self, v0, Dr_phi, Dt_phi, D, psi_r_sampler, psi_t_sampler, p_chi_sampler, dt=0.01):
+        """
+        - v0: velocidad constante en fase 'run'
+        - Dr_phi: coef. de difusión rotacional durante 'run'
+        - Dt_phi: coef. de difusión rotacional durante 'turn'
+        - D: coef. de difusión traslacional (Browniano)
+        - psi_r_sampler: función que genera tiempos de 'run'
+        - psi_t_sampler: función que genera tiempos de 'turn'
+        - p_chi_sampler: función que genera ángulo de reorientación χ
+        - dt: paso de tiempo de integración
+        """
+        self.v0 = v0
+        self.Dr_phi = Dr_phi
+        self.Dt_phi = Dt_phi
+        self.D = D
+        self.psi_r_sampler = psi_r_sampler
+        self.psi_t_sampler = psi_t_sampler
+        self.p_chi_sampler = p_chi_sampler
+        self.dt = dt
+
+        self.r = np.zeros(2)
+        self.phi = 2 * np.pi * np.random.rand()
+        self.mode = 'run'
+        self.time_in_mode = 0
+        self.current_mode_duration = self.psi_r_sampler()
+
+    def _update_orientation(self, D_phi):
+        dphi = np.sqrt(2 * D_phi * self.dt) * np.random.randn()
+        self.phi = (self.phi + dphi) % (2 * np.pi)
+
+    def step(self):
+        if self.time_in_mode >= self.current_mode_duration:
+            if self.mode == 'run':
+                self.mode = 'turn'
+                self.current_mode_duration = self.psi_t_sampler()
+            else:
+                self.mode = 'run'
+                self.current_mode_duration = self.psi_r_sampler()
+                self.phi += self.p_chi_sampler()  # flip angular
+                self.phi %= 2 * np.pi  # asegura ángulo en [0, 2π]
+            self.time_in_mode = 0
+
+        if self.mode == 'run':
+            direction = np.array([np.cos(self.phi), np.sin(self.phi)])
+            velocity = self.v0 * direction
+            D_phi = self.Dr_phi
+        else:
+            velocity = np.zeros(2)
+            D_phi = self.Dt_phi
+
+        noise = np.sqrt(2 * self.D * self.dt) * np.random.randn(2)
+        self.r += velocity * self.dt + noise
+        self._update_orientation(D_phi)
+
+        self.time_in_mode += self.dt
+        return self.r.copy(), self.mode
+
+    def simulate(self, T=None, steps=None, return_states=False):
+        """
+        Simula la trayectoria de la partícula por un tiempo total T.
+        """
+        steps = int(T / self.dt) if T is not None else steps
+        trajectory = np.zeros((steps, 2))
+        states = []
+        for i in range(steps):
+            trajectory[i], state = self.step()
+            states.append(0 if state == 'run' else 1)
+
+        return trajectory if not return_states else (trajectory, states)
