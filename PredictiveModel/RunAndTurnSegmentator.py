@@ -46,7 +46,7 @@ class RunAndTurnSegmentator(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
 
     def transform_trajectories_to_output(self, trajectories):
-        return transform_trajectories_into_states(self, trajectories)
+        return transform_trajectories_into_states(self, trajectories, to_hot_encoding=True)
 
     def transform_trajectories_to_input(self, trajectories):
         return transform_trajectories_into_raw_trajectories(self, trajectories)
@@ -80,7 +80,7 @@ class RunAndTurnSegmentator(PredictiveModel):
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        output = Dense(units=len(self.models_involved_in_predictive_model), activation='sigmoid', name='model_classification_output')(x)
+        output = Dense(units=2, activation='softmax', name='model_classification_output')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
 
@@ -89,7 +89,7 @@ class RunAndTurnSegmentator(PredictiveModel):
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
-        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2), metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2, apply_class_balancing=True), metrics=['categorical_accuracy'])
         return self.architecture
 
     @property
