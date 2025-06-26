@@ -3,7 +3,7 @@ from PredictiveModel.RunAndTurnSegmentator import RunAndTurnSegmentator
 import json
 
 
-network = RunAndTurnSegmentator(1000,1000,simulator=CustomDataSimulation)
+network = RunAndTurnSegmentator(200,200,simulator=CustomDataSimulation)
 network.enable_early_stopping()
 network.fit()
 network.save_as_file('run_and_turn_minflux.weights.h5')
