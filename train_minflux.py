@@ -14,6 +14,9 @@ from CONSTANTS import *
 assert FOR_MINFLUX
 TRAIN = True
 
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
 network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
 
 if TRAIN:
@@ -37,6 +40,7 @@ if TRAIN:
                 trajectories.append(Trajectory(
                     x=trajectory_dataframe['x'].tolist(),
                     y=trajectory_dataframe['y'].tolist(),
+                    t=trajectory_dataframe['t'].tolist(),
                     noisy=True,
                     info={'state_t':trajectory_dataframe['state_t'].tolist()}
                 ))
@@ -46,8 +50,8 @@ if TRAIN:
         np.save(f"X_minflux_{dataset_type}", X)
         np.save(f"Y_minflux_{dataset_type}", Y)
 
-    transform_cache_file_chuck_files(glob.glob('*train*_segmentated_trajectories.cache'), 'train')
-    transform_cache_file_chuck_files(glob.glob('*val*_segmentated_trajectories.cache'), 'val')
+    transform_cache_file_chuck_files(glob.glob('*train*_10000_segmentated_trajectories.cache'), 'train')
+    transform_cache_file_chuck_files(glob.glob('*val*_10000_segmentated_trajectories.cache'), 'val')
 
     network.enable_early_stopping()
     network.fit()
@@ -80,6 +84,9 @@ else:
                     initial_index = i
         return result
 
+    real = []
+    predicted = []
+
     for traj_i in range(X.shape[0]):
         aux_list = Y[traj_i,:,0].tolist()
         try:
@@ -88,9 +95,19 @@ else:
             last_token_position = -1
         real_states = Y[traj_i].argmax(axis=1)[last_token_position+1:]
         predicted_states = Y_predictions[traj_i].argmax(axis=1)[last_token_position+1:]
-        predicted_states = delete_short_changes(predicted_states, umbral=5)
 
+        predicted_states = delete_short_changes(predicted_states, umbral=25)
         accuracies_by_length[len(real_states)].append(np.sum(predicted_states==real_states)/len(real_states))
+
+        real.extend(real_states.tolist())
+        predicted.extend(predicted_states.tolist())
+
+
+    cm = confusion_matrix(real, predicted)#, labels=clf.classes_)
+    cm = cm / cm.sum(axis=1)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)#, display_labels=clf.classes_)
+    disp.plot()
+    plt.show()
 
     lengths = np.sort(list(accuracies_by_length.keys()))
     accuracies = [np.mean(accuracies_by_length[l]) for l in lengths]

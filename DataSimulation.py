@@ -122,7 +122,8 @@ class DeepSPTDataSimulation(DataSimulation):
             trajectories = self.get_trayectories_from_file(FILE_NAME, limit=read_limit)
         else:
             def generate_trajectory():
-                X, Y = Gen_changing_diff(1, 5, 25, trajectory_length, np.random.uniform(0.0001,0.0010) if FOR_MINFLUX else 0.100, Nrange=[100,trajectory_length])
+                selected_dt = np.random.uniform(0.0001,0.0010)
+                X, Y = Gen_changing_diff(1, 5, 25, trajectory_length, selected_dt if FOR_MINFLUX else 0.100, Nrange=[1001,trajectory_length+2])
                 x = X[0][:trajectory_length,0]
                 y = X[0][:trajectory_length,1]
 
@@ -135,12 +136,14 @@ class DeepSPTDataSimulation(DataSimulation):
                 simulation_result = {
                     'x': x,
                     'y': y,
+                    't': np.arange(1000)*selected_dt,
                     'info': {'state_t': Y[0][:trajectory_length]}
                 }
 
                 return Trajectory(
                         simulation_result['x'],
                         simulation_result['y'],
+                        t=simulation_result['t'],
                         #noise_x=simulation_result['x_noisy']-simulation_result['x'],
                         #noise_y=simulation_result['y_noisy']-simulation_result['y'],
                         info=simulation_result['info'],
@@ -181,6 +184,7 @@ class DeepSPTDataSimulation(DataSimulation):
             trajectories.append(Trajectory(
                 x=t_dataframe['x'].tolist(),
                 y=t_dataframe['y'].tolist(),
+                t=t_dataframe['t'].tolist(),
                 info={
                     'state_t': t_dataframe['state_t'].tolist()
                 },
@@ -192,6 +196,7 @@ class DeepSPTDataSimulation(DataSimulation):
             'id':[],
             'x':[],
             'y':[],
+            't':[],
             'state_t':[]
         }
 
@@ -199,6 +204,7 @@ class DeepSPTDataSimulation(DataSimulation):
             data['id'] += [i] * t.length
             data['x'] += t.get_x().tolist()
             data['y'] += t.get_y().tolist()
+            data['t'] += t.get_time().tolist()
             data['state_t'] += list(t.info['state_t'])
 
         pd.DataFrame(data).to_csv(file_name, index=False)

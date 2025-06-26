@@ -1,3 +1,4 @@
+from collections import defaultdict
 import glob
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
@@ -141,17 +142,21 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories,
 
     return X
 
+def normalize_func(an_array):
+    return an_array/np.std(an_array)
+
 def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 3))
     X[:] = -10
 
     for index, trajectory in enumerate(trajectories):
-        X[index, -trajectory.length:, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
-        X[index, -trajectory.length:, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
+        X[index, -trajectory.length+1:, 0] = np.diff(trajectory.get_noisy_x())# - np.mean(trajectory.get_noisy_x())
+        X[index, -trajectory.length+1:, 1] = np.diff(trajectory.get_noisy_y())# - np.mean(trajectory.get_noisy_y())
+        X[index, -trajectory.length+1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
 
-        if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
-            X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
-            X[index, -trajectory.length:, 1] = X[index, -trajectory.length:, 1]/(np.std(X[index, -trajectory.length:, 1]) if np.std(X[index, -trajectory.length:, 1])!= 0 else 1)
+        #if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
+        #    X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
+        #    X[index, -trajectory.length:, 1] = X[index, -trajectory.length:, 1]/(np.std(X[index, -trajectory.length:, 1]) if np.std(X[index, -trajectory.length:, 1])!= 0 else 1)
 
     return X
 
@@ -604,6 +609,7 @@ class TrackGenerator(Sequence):
         self.batch_size = batch_size
         self.dataset_function = dataset_function
         self.label = label
+        self.dataset_by_length = defaultdict(list)
 
         if self.network.simulator.STRING_LABEL == 'andi2':
             val_files = glob.glob(f'./2ndAndiTrajectories_val/*_{self.network.dataset_type}.csv')
@@ -618,12 +624,17 @@ class TrackGenerator(Sequence):
                 self.X = np.load(f"X_minflux_train.npy")
                 self.Y = np.load(f"Y_minflux_train.npy")
 
+            for sample_i in range(self.X.shape[0]):
+                length = 1000-(self.X[sample_i].sum(axis=-1)!=-20).tolist().index(True)
+                self.dataset_by_length[length].append(sample_i)
+
     def __getitem__(self, item):
         if self.network.simulator.STRING_LABEL == 'andi':
             tracks, classes = self.dataset_function(self.batch_size)
         elif self.network.simulator.STRING_LABEL == 'deepspt':
-            indexes = np.random.choice(self.X.shape[0],size=self.batch_size)
-            tracks, classes = self.X[indexes], self.Y[indexes]
+            selected_length = 1000#np.random.choice(list(self.dataset_by_length.keys()))
+            indexes = np.random.choice(self.dataset_by_length[selected_length],size=self.batch_size)
+            tracks, classes = self.X[indexes,-selected_length:,:], self.Y[indexes,-selected_length:,:]
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes
