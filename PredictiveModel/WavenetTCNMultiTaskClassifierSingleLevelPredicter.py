@@ -6,7 +6,7 @@ from keras.models import Model
 from tensorflow.keras.optimizers.legacy import Adam
 import glob
 from tensorflow.keras.losses import MeanSquaredLogarithmicError
-#from tensorflow.keras.losses import CategoricalFocalCrossentropy
+from tensorflow.keras.losses import CategoricalFocalCrossentropy
 from sklearn.metrics import confusion_matrix, f1_score
 from Trajectory import Trajectory
 from .PredictiveModel import PredictiveModel
@@ -67,7 +67,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return X
 
     def build_network(self, hp=None):
-        number_of_features = 2
+        number_of_features = 3
         wavenet_filters = 32
 
         dilation_depth = 8
@@ -82,9 +82,9 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         inputs = Input(shape=(None, number_of_features))
 
-        x = Masking(mask_value=-10)(inputs)
+        #x = Masking(mask_value=-10)(inputs)
 
-        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(x)
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)#(x)
 
         x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
         x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
@@ -117,56 +117,8 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
                 amsgrad=self.hyperparameters['amsgrad']
             )
 
-        def masked_categorical_crossentropy(y_true, y_pred):
-            """
-            y_true: shape (batch, time, C), one-hot con vectores válidos o [-10,-10,..]
-            y_pred: shape (batch, time, C), softmax
-            """
-            C = tf.shape(y_true)[-1]
-            # Detectar padding: si suma == -10 * C
-            sum_per_t = tf.reduce_sum(y_true, axis=-1)  # shape (batch, time)
-            mask = tf.not_equal(sum_per_t, -10.0 * tf.cast(C, y_true.dtype))
-            mask = tf.cast(mask, y_pred.dtype)
-
-            # Loss por timestep
-            loss_per_t = tf.keras.losses.categorical_crossentropy(y_true, y_pred)  # shape (batch, time)
-            # Aplicar máscara
-            masked_loss = loss_per_t * mask
-
-            # Reducir: suma sobre timesteps válidos / cantidad de ellos
-            total = tf.reduce_sum(masked_loss)
-            count = tf.reduce_sum(mask) + tf.keras.backend.epsilon()
-            return total / count
-
-        def masked_categorical_accuracy(y_true, y_pred):
-            """
-            y_true: shape (batch, time, C), one-hot con vectores válidos o [-10, -10, ...]
-            y_pred: shape (batch, time, C), softmax
-            """
-            C = tf.shape(y_true)[-1]
-            
-            # Detectar padding: si suma == -10 * C
-            sum_per_t = tf.reduce_sum(y_true, axis=-1)  # shape (batch, time)
-            mask = tf.not_equal(sum_per_t, -10.0 * tf.cast(C, y_true.dtype))
-            mask = tf.cast(mask, y_pred.dtype)  # shape (batch, time)
-
-            # Obtener clases verdaderas e inferidas
-            true_classes = tf.argmax(y_true, axis=-1)  # shape (batch, time)
-            pred_classes = tf.argmax(y_pred, axis=-1)  # shape (batch, time)
-
-            # Comparar y convertir a float
-            correct = tf.cast(tf.equal(true_classes, pred_classes), y_pred.dtype)  # shape (batch, time)
-
-            # Aplicar máscara
-            masked_correct = correct * mask
-
-            # Accuracy = correctos válidos / cantidad de válidos
-            total_correct = tf.reduce_sum(masked_correct)
-            total_count = tf.reduce_sum(mask) + tf.keras.backend.epsilon()
-            return total_correct / total_count
-
-        self.architecture.compile(optimizer=optimizer, loss=masked_categorical_crossentropy, metrics=[masked_categorical_accuracy])#, 'auc'])
-        #self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2, alpha=[0.75/3, 0.75/3, 0.25, 0.75/3]), metrics=['categorical_accuracy'])
+        #self.architecture.compile(optimizer=optimizer, loss=masked_categorical_crossentropy, metrics=[masked_categorical_accuracy])#, 'auc'])
+        self.architecture.compile(optimizer=optimizer, loss=CategoricalFocalCrossentropy(gamma=2), metrics=['categorical_accuracy'])
         return self.architecture
 
     @property
