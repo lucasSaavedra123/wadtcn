@@ -30,18 +30,20 @@ def delete_short_changes(signal, umbral=5):
     return result
 
 for trajectory in Trajectory.objects():
-    if trajectory.info['immobile'] or trajectory.length < 1000:
+    if 'analysis' not in trajectory.info:
         continue
-
-    plt.plot(np.diff(trajectory.get_time()))
-    plt.show()
-
+    print(trajectory)
     network.trajectory_length = trajectory.length
     prediction = network.predict([trajectory])[0]
 
-    prediction = prediction.argmax(axis=1)
-    prediction = delete_short_changes(prediction, umbral=5)
+    plt.plot(prediction)
+    plt.show()
 
+    prediction = prediction.argmax(axis=1)
+    prediction = delete_short_changes(prediction, umbral=25)
+    trajectory.info['analysis']['deepspt_segmenter_result'] = prediction.tolist()
+    trajectory.save()
+    """
     x = trajectory.get_noisy_x().tolist()
     y = trajectory.get_noisy_y().tolist()
 
@@ -58,6 +60,6 @@ for trajectory in Trajectory.objects():
 
     plt.legend(handles=patches)
     plt.show()
-
+    """
 
 DatabaseHandler.disconnect()

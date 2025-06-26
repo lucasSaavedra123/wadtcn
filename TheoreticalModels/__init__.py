@@ -5,6 +5,7 @@ from .ScaledBrownianMotion import ScaledBrownianMotion, ScaledBrownianMotionBrow
 from .LevyWalk import LevyWalk
 from .TwoStateObstructedDiffusion import TwoStateObstructedDiffusion
 from .TwoStateImmobilizedDiffusion import TwoStateImmobilizedDiffusion
+from .RunAndTurnDiffusion import RunAndTurnDiffusion
 
 ANDI_MODELS = [
     AnnealedTransientTimeMotion,

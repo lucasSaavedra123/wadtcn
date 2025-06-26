@@ -4,7 +4,7 @@ import io
 import numpy as np
 
 from Trajectory import Trajectory
-from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME
+from CONSTANTS import EXPERIMENT_HEIGHT, EXPERIMENT_WIDTH, IMMOBILE_THRESHOLD, EXPERIMENT_TIME_FRAME_BY_FRAME, FOR_MINFLUX
 from andi_datasets.datasets_theory  import datasets_theory
 from andi_datasets.datasets_challenge import challenge_theory_dataset #Slow Functio
 from andi_datasets.datasets_challenge import challenge_phenom_dataset
@@ -75,6 +75,18 @@ class Model():
                 model_category=self,
                 info=simulation_result['info'],
                 noisy=True
+            )
+        elif FOR_MINFLUX:
+            simulation_result = self.custom_simulate_rawly(trajectory_length, trajectory_time)
+
+            trajectory = Trajectory(
+                simulation_result['x'],
+                simulation_result['y'],
+                t=simulation_result['t'],
+                noise_x=simulation_result['x_noisy']-simulation_result['x'],
+                noise_y=simulation_result['y_noisy']-simulation_result['y'],
+                model_category=self,
+                info=simulation_result['info']
             )
         else:
             new_trajectory_time = trajectory_time * np.random.uniform(0.85,1.15)

@@ -629,7 +629,7 @@ class TrackGenerator(Sequence):
                 self.dataset_by_length[length].append(sample_i)
 
     def __getitem__(self, item):
-        if self.network.simulator.STRING_LABEL == 'andi':
+        if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
             tracks, classes = self.dataset_function(self.batch_size)
         elif self.network.simulator.STRING_LABEL == 'deepspt':
             selected_length = 1000#np.random.choice(list(self.dataset_by_length.keys()))
