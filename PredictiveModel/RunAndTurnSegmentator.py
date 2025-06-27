@@ -53,7 +53,7 @@ class RunAndTurnSegmentator(PredictiveModel):
         return transform_trajectories_into_raw_trajectories(self, trajectories)
 
     def build_network(self):
-        number_of_features = 3
+        number_of_features = 2
         wavenet_filters = 32
 
         dilation_depth = 8
@@ -68,7 +68,7 @@ class RunAndTurnSegmentator(PredictiveModel):
 
         inputs = Input(shape=(None, number_of_features))
 
-        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+        x = inputs#WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
 
         x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
         x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
@@ -81,7 +81,7 @@ class RunAndTurnSegmentator(PredictiveModel):
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
-        output = Dense(units=1, activation='sigmoid', name='model_classification_output')(x)
+        output = Dense(units=2, activation='softmax', name='model_classification_output')(x)
 
         self.architecture = Model(inputs=inputs, outputs=output)
 
@@ -90,7 +90,7 @@ class RunAndTurnSegmentator(PredictiveModel):
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
-        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2, apply_class_balancing=True), metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2, apply_class_balancing=False), metrics=['categorical_accuracy'])
         return self.architecture
 
     @property
@@ -104,11 +104,19 @@ class RunAndTurnSegmentator(PredictiveModel):
     def __str__(self):
         return f"{self.type_name}_{self.trajectory_length}_{self.trajectory_time}_{self.simulator.STRING_LABEL}"
 
+    def f1_score(self):
+        trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
+        predicted = (self.predict(trajectories)>0.5).astype(int).argmax(axis=-1).flatten()
+
+        return f1_score(ground_truth, predicted, average="micro")
+
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
-        predicted = self.predict(trajectories).argmax(axis=-1).flatten()
+        predicted = (self.predict(trajectories)>0.5).astype(int).argmax(axis=-1).flatten()
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
 

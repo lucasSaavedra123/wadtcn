@@ -10,7 +10,7 @@ while True:
     """
     trajectory = DeepSPTDataSimulation().simulate_segmentated_trajectories(1,1_000,None, enable_parallelism=False)[0]
     """
-    trajectory = RunAndTurnDiffusion().simulate_trajectory(250,250)
+    trajectory = RunAndTurnDiffusion().simulate_trajectory(1000,1000)
 
     x = trajectory.get_noisy_x().tolist()
     y = trajectory.get_noisy_y().tolist()

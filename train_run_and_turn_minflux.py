@@ -1,6 +1,8 @@
 from DataSimulation import CustomDataSimulation
 from PredictiveModel.RunAndTurnSegmentator import RunAndTurnSegmentator
+import matplotlib.pyplot as plt
 import json
+import tqdm
 
 TRAIN = True
 
@@ -15,4 +17,14 @@ if TRAIN:
         json.dump(network.history_training_info, info_file)
 else:
     network.load_as_file('run_and_turn_minflux.weights.h5')
-    network.plot_confusion_matrix()
+
+lengths = list(range(25,1000,25))
+scores = []
+for length in tqdm.tqdm(lengths):
+    network.trajectory_length = length
+    scores.append(network.f1_score())
+
+plt.plot(lengths,scores)
+plt.show()
+
+network.plot_confusion_matrix()

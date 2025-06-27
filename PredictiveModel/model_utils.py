@@ -130,12 +130,12 @@ def transform_trajectories_into_squared_differences(predictive_model, trajectori
     return X
 
 def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), trajectories[0].length, 3))
+    X = np.zeros((len(trajectories), trajectories[0].length, 2))
 
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
-        X[index, :, 2] = trajectory.get_time()
+        #X[index, :, 2] = trajectory.get_time()
 
         if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
@@ -147,13 +147,13 @@ def normalize_func(an_array):
     return an_array/np.std(an_array)
 
 def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 3))
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
     X[:] = -10
 
     for index, trajectory in enumerate(trajectories):
         X[index, -trajectory.length+1:, 0] = np.diff(trajectory.get_noisy_x())# - np.mean(trajectory.get_noisy_x())
         X[index, -trajectory.length+1:, 1] = np.diff(trajectory.get_noisy_y())# - np.mean(trajectory.get_noisy_y())
-        X[index, -trajectory.length+1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
+        #X[index, -trajectory.length+1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
 
         #if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
         #    X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
@@ -162,11 +162,11 @@ def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, t
     return X
 
 def transform_trajectories_into_states(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 1))
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 2))
 
     for index, trajectory in enumerate(trajectories):
         for state_i, state in enumerate(trajectory.info['state']):
-            Y[index, state_i,0] = state
+            Y[index,state_i,:] = [1,0] if state==0 else [0,1]
 
     return Y
 

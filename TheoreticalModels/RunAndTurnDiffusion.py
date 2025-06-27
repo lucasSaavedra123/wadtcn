@@ -7,10 +7,10 @@ class RunAndTurnDiffusion(Model):
 
     def create_particle(self):
         return IntermittentSelfPropelledParticle(
-            v0=0.01,          # Velocidad de propulsión
-            D=0.001,          # Difusión térmica
-            D_phi_run=0.01,#0.0001,   # Difusión rotacional durante "run"
-            D_phi_turn=2.00,  # Difusión rotacional durante "turn"
+            v0=np.random.uniform(1,0.001),          # Velocidad de propulsión
+            D=np.random.uniform(1,0.001),          # Difusión térmica
+            D_phi_run=np.random.uniform(0,0.1),#0.0001,   # Difusión rotacional durante "run"
+            D_phi_turn=np.random.uniform(0.5,2),  # Difusión rotacional durante "turn"
             p_flip=0.5,      # Probabilidad de flip angular
             dt=1          # Paso de tiempo
         )
@@ -29,8 +29,8 @@ class RunAndTurnDiffusion(Model):
 
         states = [1 if s=='turn' else 0 for s in states]
 
-        x = trajectory[:,0]
-        y = trajectory[:,1]
+        x = trajectory[:,0]/60
+        y = trajectory[:,1]/60
 
         noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([-1,1], size=x.shape)
         noise_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([-1,1], size=y.shape)
