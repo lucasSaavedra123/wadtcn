@@ -115,72 +115,57 @@ def enablePrint():
     sys.stdout = sys.__stdout__
 
 class IntermittentSelfPropelledParticle:
-    def __init__(self, v0, Dr_phi, Dt_phi, D, psi_r_sampler, psi_t_sampler, p_chi_sampler, dt=0.01):
-        """
-        - v0: velocidad constante en fase 'run'
-        - Dr_phi: coef. de difusión rotacional durante 'run'
-        - Dt_phi: coef. de difusión rotacional durante 'turn'
-        - D: coef. de difusión traslacional (Browniano)
-        - psi_r_sampler: función que genera tiempos de 'run'
-        - psi_t_sampler: función que genera tiempos de 'turn'
-        - p_chi_sampler: función que genera ángulo de reorientación χ
-        - dt: paso de tiempo de integración
-        """
+    def __init__(self, v0, D, D_phi_run, D_phi_turn, p_flip, dt):
         self.v0 = v0
-        self.Dr_phi = Dr_phi
-        self.Dt_phi = Dt_phi
         self.D = D
-        self.psi_r_sampler = psi_r_sampler
-        self.psi_t_sampler = psi_t_sampler
-        self.p_chi_sampler = p_chi_sampler
+        self.D_phi_run = D_phi_run
+        self.D_phi_turn = D_phi_turn
+        self.p_flip = p_flip
         self.dt = dt
+        self.reset()
 
+    def reset(self):
         self.r = np.zeros(2)
-        self.phi = 2 * np.pi * np.random.rand()
-        self.mode = 'run'
-        self.time_in_mode = 0
-        self.current_mode_duration = self.psi_r_sampler()
+        self.phi = np.random.uniform(0, 2*np.pi)
+        self.state = 'run'
+        self.t = 0
+        self.trajectory = [self.r.copy()]
+        self.phi_list = [self.phi]
+        self.state_list = [self.state]
 
-    def _update_orientation(self, D_phi):
-        dphi = np.sqrt(2 * D_phi * self.dt) * np.random.randn()
-        self.phi = (self.phi + dphi) % (2 * np.pi)
+    def sample_waiting_time(self, psi):
+        return np.random.exponential(1 / psi)
 
-    def step(self):
-        if self.time_in_mode >= self.current_mode_duration:
-            if self.mode == 'run':
-                self.mode = 'turn'
-                self.current_mode_duration = self.psi_t_sampler()
-            else:
-                self.mode = 'run'
-                self.current_mode_duration = self.psi_r_sampler()
-                self.phi += self.p_chi_sampler()  # flip angular
-                self.phi %= 2 * np.pi  # asegura ángulo en [0, 2π]
-            self.time_in_mode = 0
+    def evolve(self, T=None, steps=None, psi_r=1.0, psi_t=1.0):
+        if T is None:
+          T = steps * self.dt
 
-        if self.mode == 'run':
-            direction = np.array([np.cos(self.phi), np.sin(self.phi)])
-            velocity = self.v0 * direction
-            D_phi = self.Dr_phi
-        else:
-            velocity = np.zeros(2)
-            D_phi = self.Dt_phi
+        t_next_switch = self.sample_waiting_time(psi_r)
+        while self.t < T:
+            noise_trans = np.sqrt(2 * self.D * self.dt) * np.random.randn(2)
 
-        noise = np.sqrt(2 * self.D * self.dt) * np.random.randn(2)
-        self.r += velocity * self.dt + noise
-        self._update_orientation(D_phi)
+            v_vec = self.v0 * np.array([np.cos(self.phi), np.sin(self.phi)]) if self.state == 'run' else np.array([0, 0])
+            D_phi = self.D_phi_run if self.state == 'run' else self.D_phi_turn
 
-        self.time_in_mode += self.dt
-        return self.r.copy(), self.mode
+            self.r += (v_vec * self.dt) + noise_trans
+            self.phi += np.sqrt(2 * D_phi) * np.random.randn()
 
-    def simulate(self, T=None, steps=None, return_states=False):
-        """
-        Simula la trayectoria de la partícula por un tiempo total T.
-        """
-        steps = int(T / self.dt) if T is not None else steps
-        trajectory = np.zeros((steps, 2))
-        states = []
-        for i in range(steps):
-            trajectory[i], state = self.step()
-            states.append(0 if state == 'run' else 1)
+            self.t += self.dt
+            t_next_switch -= self.dt
 
-        return trajectory if not return_states else (trajectory, states)
+            if t_next_switch <= 0:
+                if self.state == 'run':
+                    self.state = 'turn'
+                    t_next_switch = self.sample_waiting_time(psi_t)
+                else:
+                    self.state = 'run'
+                    t_next_switch = self.sample_waiting_time(psi_r)
+                    if np.random.rand() < self.p_flip:
+                        self.phi += np.random.uniform(-np.pi, np.pi)
+
+            self.trajectory.append(self.r.copy())
+            self.phi_list.append(self.phi)
+            self.state_list.append(self.state)
+
+    def get_trajectory(self):
+        return np.array(self.trajectory), np.array(self.phi_list), self.state_list

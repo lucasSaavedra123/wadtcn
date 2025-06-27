@@ -6,19 +6,13 @@ class RunAndTurnDiffusion(Model):
     STRING_LABEL="run_and_turn"
 
     def create_particle(self):
-        psi_r = lambda: np.random.exponential(1.0)
-        psi_t = lambda: np.random.exponential(0.5)
-        p_chi = lambda: np.random.uniform(-np.pi, np.pi)
-
         return IntermittentSelfPropelledParticle(
-            v0=1.0,
-            Dr_phi=0.1,
-            Dt_phi=1.0,
-            D=np.random.uniform(0.001, 2),
-            psi_r_sampler=psi_r,
-            psi_t_sampler=psi_t,
-            p_chi_sampler=p_chi,
-            dt=np.random.uniform(0.0001, 0.0100)
+            v0=2.0,          # Velocidad de propulsión
+            D=0.01,          # Difusión térmica
+            D_phi_run=0.01,#0.0001,   # Difusión rotacional durante "run"
+            D_phi_turn=1.00,  # Difusión rotacional durante "turn"
+            p_flip=0.5,      # Probabilidad de flip angular
+            dt=0.0001          # Paso de tiempo
         )
 
     @classmethod
@@ -30,7 +24,11 @@ class RunAndTurnDiffusion(Model):
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
         particle = self.create_particle()
-        trajectory, states = particle.simulate(steps=trajectory_length, return_states=True)
+        particle.evolve(steps=trajectory_length, psi_r=50, psi_t=50)
+        trajectory, angles, states = particle.get_trajectory()
+
+        states = [1 if s=='turn' else 0 for s in states]
+
         x = trajectory[:,0]
         y = trajectory[:,1]
 
@@ -43,14 +41,14 @@ class RunAndTurnDiffusion(Model):
         t = np.arange(trajectory_length) * particle.dt
 
         return {
-            'x': x,
-            'y': y,
-            't': t,
-            'x_noisy': noisy_x,
-            'y_noisy': noisy_y,
+            'x': x[:trajectory_length],
+            'y': y[:trajectory_length],
+            't': t[:trajectory_length],
+            'x_noisy': noisy_x[:trajectory_length],
+            'y_noisy': noisy_y[:trajectory_length],
             'exponent_type': 'anomalous',
             'exponent': 1,
             'info': {
-                'state': states,
+                'state': states[:trajectory_length],
             }
         }

@@ -130,11 +130,12 @@ def transform_trajectories_into_squared_differences(predictive_model, trajectori
     return X
 
 def transform_trajectories_into_raw_trajectories(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), trajectories[0].length, 2))
+    X = np.zeros((len(trajectories), trajectories[0].length, 3))
 
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
+        X[index, :, 2] = trajectory.get_time()
 
         if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)

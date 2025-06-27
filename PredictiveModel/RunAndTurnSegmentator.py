@@ -6,6 +6,7 @@ from tensorflow.keras.optimizers.legacy import Adam
 import glob
 from tensorflow.keras.losses import MeanSquaredLogarithmicError
 from tensorflow.keras.losses import BinaryFocalCrossentropy
+from tensorflow.keras.metrics import Precision, Recall
 from sklearn.metrics import confusion_matrix, f1_score
 from .PredictiveModel import PredictiveModel
 from .model_utils import *
@@ -52,7 +53,7 @@ class RunAndTurnSegmentator(PredictiveModel):
         return transform_trajectories_into_raw_trajectories(self, trajectories)
 
     def build_network(self):
-        number_of_features = 2
+        number_of_features = 3
         wavenet_filters = 32
 
         dilation_depth = 8
@@ -89,7 +90,7 @@ class RunAndTurnSegmentator(PredictiveModel):
             epsilon=self.hyperparameters['epsilon'],
             amsgrad=self.hyperparameters['amsgrad']
         )
-        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2, apply_class_balancing=True), metrics=['categorical_accuracy'])
+        self.architecture.compile(optimizer=optimizer, loss=BinaryFocalCrossentropy(gamma=2, apply_class_balancing=True), metrics=[Recall, Precision,'categorical_accuracy'])
         return self.architecture
 
     @property
@@ -106,8 +107,8 @@ class RunAndTurnSegmentator(PredictiveModel):
     def plot_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_trajectories_by_model(VALIDATION_SET_SIZE_PER_EPOCH, self.trajectory_length, self.trajectory_time, self.models_involved_in_predictive_model)
 
-        ground_truth = self.transform_trajectories_to_output(trajectories).flatten()
-        predicted = self.predict(trajectories).flatten()
+        ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
+        predicted = self.predict(trajectories).argmax(axis=-1).flatten()
 
         confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
 
