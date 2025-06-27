@@ -7,12 +7,12 @@ class RunAndTurnDiffusion(Model):
 
     def create_particle(self):
         return IntermittentSelfPropelledParticle(
-            v0=2.0,          # Velocidad de propulsión
-            D=0.01,          # Difusión térmica
+            v0=0.01,          # Velocidad de propulsión
+            D=0.001,          # Difusión térmica
             D_phi_run=0.01,#0.0001,   # Difusión rotacional durante "run"
-            D_phi_turn=1.00,  # Difusión rotacional durante "turn"
+            D_phi_turn=2.00,  # Difusión rotacional durante "turn"
             p_flip=0.5,      # Probabilidad de flip angular
-            dt=0.0001          # Paso de tiempo
+            dt=1          # Paso de tiempo
         )
 
     @classmethod
@@ -24,7 +24,7 @@ class RunAndTurnDiffusion(Model):
 
     def custom_simulate_rawly(self, trajectory_length, trajectory_time):
         particle = self.create_particle()
-        particle.evolve(steps=trajectory_length, psi_r=50, psi_t=50)
+        particle.evolve(steps=trajectory_length, psi_r=0.001, psi_t=0.001)
         trajectory, angles, states = particle.get_trajectory()
 
         states = [1 if s=='turn' else 0 for s in states]

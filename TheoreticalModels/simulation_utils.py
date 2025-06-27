@@ -127,7 +127,7 @@ class IntermittentSelfPropelledParticle:
     def reset(self):
         self.r = np.zeros(2)
         self.phi = np.random.uniform(0, 2*np.pi)
-        self.state = 'run'
+        self.state = 'run' if np.random.rand() < 0.5 else 'turn'
         self.t = 0
         self.trajectory = [self.r.copy()]
         self.phi_list = [self.phi]
@@ -148,7 +148,7 @@ class IntermittentSelfPropelledParticle:
             D_phi = self.D_phi_run if self.state == 'run' else self.D_phi_turn
 
             self.r += (v_vec * self.dt) + noise_trans
-            self.phi += np.sqrt(2 * D_phi) * np.random.randn()
+            self.phi += (np.sqrt(2 * D_phi) * np.random.randn()) % (2 * np.pi)
 
             self.t += self.dt
             t_next_switch -= self.dt
@@ -161,7 +161,7 @@ class IntermittentSelfPropelledParticle:
                     self.state = 'run'
                     t_next_switch = self.sample_waiting_time(psi_r)
                     if np.random.rand() < self.p_flip:
-                        self.phi += np.random.uniform(-np.pi, np.pi)
+                        self.phi += (np.random.uniform(-np.pi, np.pi)) % (2 * np.pi)
 
             self.trajectory.append(self.r.copy())
             self.phi_list.append(self.phi)

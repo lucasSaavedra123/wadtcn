@@ -4,7 +4,7 @@ import json
 
 TRAIN = True
 
-network = RunAndTurnSegmentator(200,200,simulator=CustomDataSimulation)
+network = RunAndTurnSegmentator(1000,1000,simulator=CustomDataSimulation)
 
 if TRAIN:
     network.enable_early_stopping()

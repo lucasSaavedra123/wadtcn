@@ -161,19 +161,13 @@ def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, t
 
     return X
 
-def transform_trajectories_into_states(predictive_model, trajectories, to_hot_encoding=False):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length)) if not to_hot_encoding else np.empty((len(trajectories), predictive_model.trajectory_length, 2))
+def transform_trajectories_into_states(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 1))
 
     for index, trajectory in enumerate(trajectories):
-        if not to_hot_encoding:
-            if 'state' in trajectory.info:
-                Y[index, :] = trajectory.info['state']
-            else:
-                Y[index, :] = np.zeros((predictive_model.trajectory_length))
-        else:
-            for state_i, state in enumerate(trajectory.info['state']):
-                Y[index, state_i] = [0,1] if state==0 else [1,0]
-    
+        for state_i, state in enumerate(trajectory.info['state']):
+            Y[index, state_i,0] = state
+
     return Y
 
 def transform_trajectories_to_categorical_vector(predictive_model, trajectories):
