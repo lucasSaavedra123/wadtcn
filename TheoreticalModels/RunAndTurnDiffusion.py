@@ -29,8 +29,8 @@ class RunAndTurnDiffusion(Model):
 
         states = [1 if s=='turn' else 0 for s in states]
 
-        x = trajectory[:,0]/100
-        y = trajectory[:,1]/100
+        x = trajectory[:,0]/200
+        y = trajectory[:,1]/200
 
         noise_x = np.random.normal(0.007, 0.001, size=x.shape)*np.random.choice([-1,1], size=x.shape) * 2.0
         noise_y = np.random.normal(0.007, 0.001, size=y.shape)*np.random.choice([-1,1], size=y.shape) * 2.0

@@ -68,7 +68,7 @@ class RunAndTurnSegmentator(PredictiveModel):
 
         inputs = Input(shape=(None, number_of_features))
 
-        x = inputs#WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
+        x = WaveNetEncoder(wavenet_filters, dilation_depth, initializer=initializer)(inputs)
 
         x1 = convolutional_block(self, x, wavenet_filters, x1_kernel, [1,2,4], initializer)
         x2 = convolutional_block(self, x, wavenet_filters, x2_kernel, [1,2,4], initializer)
