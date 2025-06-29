@@ -3,6 +3,7 @@ from PredictiveModel.RunAndTurnSegmentator import RunAndTurnSegmentator
 import matplotlib.pyplot as plt
 import json
 import tqdm
+import pandas as pd
 
 TRAIN = True
 
@@ -23,6 +24,8 @@ scores = []
 for length in tqdm.tqdm(lengths):
     network.trajectory_length = length
     scores.append(network.f1_score())
+
+pd.DataFrame({'lengths':lengths, 'f1-score':scores}).to_csv("run_and_turn_scores.csv")
 
 plt.plot(lengths,scores)
 plt.show()
