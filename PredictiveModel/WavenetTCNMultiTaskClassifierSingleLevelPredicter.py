@@ -60,6 +60,38 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
 
+    def f1_score(self):
+        trajectories = self.simulator().simulate_segmentated_trajectories(1_000, self.trajectory_length, self.trajectory_length)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
+        predicted = self.predict(trajectories).argmax(axis=-1).astype(int).flatten()
+
+        return f1_score(ground_truth, predicted, average="micro")
+
+    def plot_confusion_matrix(self, normalized=True):
+        trajectories = self.simulator().simulate_segmentated_trajectories(1_000, self.trajectory_length, self.trajectory_length)
+
+        ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
+        predicted = self.predict(trajectories).argmax(axis=-1).astype(int).flatten()
+
+        confusion_mat = confusion_matrix(y_true=ground_truth, y_pred=predicted)
+
+        if normalized:
+            confusion_mat = confusion_mat.astype('float') / confusion_mat.sum(axis=1)[:, np.newaxis]
+
+        labels = ['normal', 'directed', 'confined', 'subdifussive']
+
+        confusion_matrix_dataframe = pd.DataFrame(data=confusion_mat, index=labels, columns=labels)
+        sns.set(font_scale=1.5)
+        color_map = sns.color_palette(palette="Blues", n_colors=7)
+        sns.heatmap(data=confusion_matrix_dataframe, annot=True, annot_kws={"size": 15}, cmap=color_map)
+
+        plt.title(f'Confusion Matrix (F1={round(f1_score(ground_truth, predicted, average="micro"),2)})')
+        plt.rcParams.update({'font.size': 15})
+        plt.ylabel("Ground truth", fontsize=15)
+        plt.xlabel("Predicted label", fontsize=15)
+        plt.show()
+
     def build_network(self, hp=None):
         number_of_features = 2
         wavenet_filters = 32

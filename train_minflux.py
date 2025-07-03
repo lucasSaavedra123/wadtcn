@@ -9,19 +9,14 @@ import matplotlib.pyplot as plt
 
 from PredictiveModel.WavenetTCNMultiTaskClassifierSingleLevelPredicter import WavenetTCNMultiTaskClassifierSingleLevelPredicter
 from DataSimulation import DeepSPTDataSimulation
-from Trajectory import Trajectory
 from CONSTANTS import *
 
 assert FOR_MINFLUX
 TRAIN = True
 
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-
 network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
 
 if TRAIN:
-    """
     for i in range(3):
         print("Train dataset", i)
         DeepSPTDataSimulation().simulate_segmentated_trajectories(TRAINING_SET_SIZE_PER_EPOCH,1_000,None,True,f'train_{i}', True)
@@ -60,7 +55,7 @@ if TRAIN:
 
     transform_cache_file_chuck_files(glob.glob('*train*_segmentated_trajectories.cache'), 'train')
     transform_cache_file_chuck_files(glob.glob('*val*_segmentated_trajectories.cache'), 'val')
-    """
+
     network.enable_early_stopping()
     network.fit()
     network.save_as_file('wavenet_minflux.weights.h5')
@@ -70,56 +65,15 @@ if TRAIN:
 else:
     network.load_as_file('wavenet_minflux.weights.h5')
 
-    X = np.load(f"X_minflux_val.npy")
-    Y = np.load(f"Y_minflux_val.npy")
-    Y_predictions = network.architecture.predict(X)
+lengths = list(range(200,1000,100))
+scores = []
+for length in tqdm.tqdm(lengths):
+    network.trajectory_length = length
+    scores.append(network.f1_score())
 
-    accuracies_by_length = defaultdict(list)
+pd.DataFrame({'lengths':lengths, 'f1-score':scores}).to_csv("run_and_turn_scores.csv")
 
-    def delete_short_changes(signal, umbral=5):
-        signal = np.array(signal)
-        result = signal.copy()
-        actual = signal[0]
-        initial_index = 0
+plt.plot(lengths,scores)
+plt.show()
 
-        for i in range(1, len(signal)):
-            if signal[i] != actual:
-                duracion = i - initial_index
-                if duracion <= umbral:
-                    result[initial_index:i+1] = actual
-                else:
-                    actual = signal[i]
-                    initial_index = i
-        return result
-
-    real = []
-    predicted = []
-
-    for traj_i in range(X.shape[0]):
-        aux_list = Y[traj_i,:,0].tolist()
-        try:
-            last_token_position = len(aux_list) - 1 - list(reversed(aux_list)).index(-10)
-        except ValueError:
-            last_token_position = -1
-        real_states = Y[traj_i].argmax(axis=1)[last_token_position+1:]
-        predicted_states = Y_predictions[traj_i].argmax(axis=1)[last_token_position+1:]
-
-        predicted_states = delete_short_changes(predicted_states, umbral=25)
-        accuracies_by_length[len(real_states)].append(np.sum(predicted_states==real_states)/len(real_states))
-
-        real.extend(real_states.tolist())
-        predicted.extend(predicted_states.tolist())
-
-
-    cm = confusion_matrix(real, predicted)#, labels=clf.classes_)
-    cm = cm / cm.sum(axis=1)
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)#, display_labels=clf.classes_)
-    disp.plot()
-    plt.show()
-
-    lengths = np.sort(list(accuracies_by_length.keys()))
-    accuracies = [np.mean(accuracies_by_length[l]) for l in lengths]
-
-    plt.plot(lengths, accuracies)
-    plt.ylim(0,1)
-    plt.show()
+network.plot_confusion_matrix()

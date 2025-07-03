@@ -136,7 +136,7 @@ class DeepSPTDataSimulation(DataSimulation):
                 simulation_result = {
                     'x': x,
                     'y': y,
-                    't': np.arange(1000)*selected_dt,
+                    't': np.arange(trajectory_length)*selected_dt,
                     'info': {'state_t': Y[0][:trajectory_length]}
                 }
 
