@@ -53,21 +53,15 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
         return self.architecture.predict(self.transform_trajectories_to_input(trajectories), verbose=0)
 
     def transform_trajectories_to_output(self, trajectories):
-        if self.simulator.STRING_LABEL == 'deepspt':
-            X = transform_trajectories_to_single_level_model_and_padding(self, trajectories)
-        else:
-            X = transform_trajectories_to_single_level_model(self, trajectories)
+        X = transform_trajectories_to_single_level_model(self, trajectories)
         return X
 
     def transform_trajectories_to_input(self, trajectories):
-        if self.simulator.STRING_LABEL == 'deepspt':
-            X = transform_trajectories_into_raw_trajectories_and_padding(self, trajectories)
-        else:
-            X = transform_trajectories_into_raw_trajectories(self, trajectories)
+        X = transform_trajectories_into_raw_trajectories(self, trajectories)
         return X
 
     def build_network(self, hp=None):
-        number_of_features = 3
+        number_of_features = 2
         wavenet_filters = 32
 
         dilation_depth = 8
@@ -96,7 +90,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        #x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)

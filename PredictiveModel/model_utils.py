@@ -1,5 +1,8 @@
+import json
+import pickle
 from collections import defaultdict
 import glob
+from Trajectory import Trajectory
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, Dropout, LayerNormalization, MultiHeadAttention, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
@@ -147,13 +150,12 @@ def normalize_func(an_array):
     return an_array/np.std(an_array)
 
 def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
-    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 2))
-    X[:] = -10
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 3))
 
     for index, trajectory in enumerate(trajectories):
-        X[index, -trajectory.length+1:, 0] = np.diff(trajectory.get_noisy_x())# - np.mean(trajectory.get_noisy_x())
-        X[index, -trajectory.length+1:, 1] = np.diff(trajectory.get_noisy_y())# - np.mean(trajectory.get_noisy_y())
-        #X[index, -trajectory.length+1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
+        X[index, 1:, 0] = np.diff(trajectory.get_noisy_x())# - np.mean(trajectory.get_noisy_x())
+        X[index, 1:, 1] = np.diff(trajectory.get_noisy_y())# - np.mean(trajectory.get_noisy_y())
+        X[index, 1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
 
         #if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
         #    X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
@@ -616,24 +618,33 @@ class TrackGenerator(Sequence):
             self.files = val_files if label=='val' else train_files
 
         if self.network.simulator.STRING_LABEL == 'deepspt':
-            if label=='val':
-                self.X = np.load(f"X_minflux_val.npy")
-                self.Y = np.load(f"Y_minflux_val.npy")
-            else:
-                self.X = np.load(f"X_minflux_train.npy")
-                self.Y = np.load(f"Y_minflux_train.npy")
+            self.X, self.Y = [], []
+            number_of_files = len(glob.glob(f'minflux_{label}_*.json'))
+            for file_i in range(number_of_files):
+                with open(f'minflux_{label}_{file_i}.json', 'r') as a_file:
+                    raw_trajs = json.load(a_file)
 
-            for sample_i in range(self.X.shape[0]):
-                length = 1000-(self.X[sample_i].sum(axis=-1)!=-20).tolist().index(True)
-                self.dataset_by_length[length].append(sample_i)
+                for traj in raw_trajs:
+                    traj = Trajectory(
+                        x=np.array(traj['x']).astype(float),
+                        y=np.array(traj['y']).astype(float),
+                        t=np.array(traj['t']).astype(float),
+                        info={'state_t':np.array(traj['info']['state_t']).astype(int)},
+                        noisy=True
+                    )
+                    self.X.append(self.network.transform_trajectories_to_input([traj]))
+                    self.Y.append(self.network.transform_trajectories_to_output([traj]))
+
+            self.X = np.concatenate(self.X)
+            self.Y = np.concatenate(self.Y)
 
     def __getitem__(self, item):
         if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
             tracks, classes = self.dataset_function(self.batch_size)
         elif self.network.simulator.STRING_LABEL == 'deepspt':
-            selected_length = 1000#np.random.choice(list(self.dataset_by_length.keys()))
-            indexes = np.random.choice(self.dataset_by_length[selected_length],size=self.batch_size)
-            tracks, classes = self.X[indexes,-selected_length:,:], self.Y[indexes,-selected_length:,:]
+            indexes = np.random.choice(len(self.X),size=self.batch_size)
+            tracks = self.X[indexes]
+            classes = self.Y[indexes]
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes
