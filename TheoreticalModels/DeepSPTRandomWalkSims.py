@@ -597,7 +597,7 @@ def subtrace_lengths(N, n_changepoints, min_len):
 def Gen_changing_diff(n_traces, max_changepoints, min_parent_len, 
                       total_parents_len, dt, n_classes=4, dim=2,
                       random_D=False, multiple_dt=False,
-                      Nrange: list = [5, 600], Brange: list = [0.1, 2], 
+                      Nrange: list = [5, 600], Brange: list = [0.005, 0.250], 
                       Rrange: list = [2, 25], 
                       subalpharange: list = [0, 0.7],
                       superalpharange: list = [1.3, 2], 
