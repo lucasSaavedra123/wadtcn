@@ -68,7 +68,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         return f1_score(ground_truth, predicted, average="micro")
 
-    def plot_confusion_matrix(self, normalized=True):
+    def plot_minflux_confusion_matrix(self, normalized=True):
         trajectories = self.simulator().simulate_segmentated_trajectories(1_000, self.trajectory_length, self.trajectory_length)
 
         ground_truth = self.transform_trajectories_to_output(trajectories).argmax(axis=-1).flatten()
