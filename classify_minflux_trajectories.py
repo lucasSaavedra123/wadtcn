@@ -49,7 +49,7 @@ for trajectory in Trajectory.objects():
     y = trajectory.get_noisy_y().tolist()
 
     state_to_color = {1:'red', 0:'black', 2:'green', 3:'orange'}
-    state_to_label = {1:'directed', 0:'normal', 2:'confined', 3:'subdifussive'}
+    state_to_label = {1:'Directed', 0:'Normal', 2:'Confined', 3:'Subdifussive'}
     #state_to_color = {1:'red', 0:'black'}
     #state_to_label = {1:'turn', 0:'run'}
     states_as_color = np.vectorize(state_to_color.get)(prediction)
