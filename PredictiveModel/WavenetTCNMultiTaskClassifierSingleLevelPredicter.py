@@ -90,7 +90,7 @@ class WavenetTCNMultiTaskClassifierSingleLevelPredicter(PredictiveModel):
 
         x = concatenate(inputs=[x1, x2, x3, x4, x5])
 
-        #x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
+        x = Transformer(2,4,wavenet_filters*5, wavenet_filters*5*2)(x)
 
         x = Conv1D(filters=wavenet_filters*5, kernel_size=3, padding='causal', activation='relu', kernel_initializer=initializer)(x)
         output = Dense(units=len(self.models_involved_in_predictive_model), activation='softmax', name='model_classification_output')(x)
