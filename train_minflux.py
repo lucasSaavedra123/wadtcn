@@ -17,7 +17,7 @@ TRAIN = True
 network = WavenetTCNMultiTaskClassifierSingleLevelPredicter(1000,1000,simulator=DeepSPTDataSimulation)
 
 if TRAIN:
-    for i in range(3):
+    for i in range(2):
         print("Train dataset", i)
         DeepSPTDataSimulation().simulate_segmentated_trajectories(TRAINING_SET_SIZE_PER_EPOCH,1_000,None,True,f'train_{i}', True)
 
@@ -41,14 +41,6 @@ if TRAIN:
                     't':trajectory_dataframe['t'].tolist(),
                     'info':{'state_t':trajectory_dataframe['state_t'].tolist()}
                 })
-
-            X = network.transform_trajectories_to_input(trajectories)
-            Y = network.transform_trajectories_to_output(trajectories)
-            np.save(f"X_minflux_{dataset_type}_{cache_i}", X)
-            np.save(f"Y_minflux_{dataset_type}_{cache_i}", Y)
-
-            with open(f'minflux_{dataset_type}_{cache_i}.pkl', 'wb') as a_file:
-                pickle.dump(trajectories, a_file)
 
             with open(f'minflux_{dataset_type}_{cache_i}.json', 'w') as a_file:
                 json.dump(trajectories, a_file)

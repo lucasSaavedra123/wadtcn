@@ -30,7 +30,8 @@ def delete_short_changes(signal, umbral=5):
             else:
                 actual = signal[i]
                 initial_index = i
-    return result
+
+    return delete_short_changes(result, umbral=umbral) if any(np.not_equal(result, signal)) else result
 
 for trajectory in Trajectory.objects():
     if 'analysis' not in trajectory.info:
@@ -43,7 +44,7 @@ for trajectory in Trajectory.objects():
     prediction = delete_short_changes(prediction, umbral=25)
     trajectory.info['analysis']['deepspt_segmenter_result'] = prediction.tolist()
     trajectory.save()
-    """
+
     x = trajectory.get_noisy_x().tolist()
     y = trajectory.get_noisy_y().tolist()
 
@@ -62,6 +63,6 @@ for trajectory in Trajectory.objects():
 
     plt.legend(handles=patches)
     plt.show()
-    """
+
 
 DatabaseHandler.disconnect()
