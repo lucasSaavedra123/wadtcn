@@ -56,8 +56,8 @@ if TRAIN:
         json.dump(network.history_training_info, info_file)
 else:
     network.load_as_file('wavenet_minflux.weights.h5')
-
-lengths = list(range(200,1000,100))
+"""
+lengths = list(range(200,1000,50))
 scores = []
 for length in tqdm.tqdm(lengths):
     network.trajectory_length = length
@@ -67,5 +67,5 @@ pd.DataFrame({'lengths':lengths, 'f1-score':scores}).to_csv("run_and_turn_scores
 
 plt.plot(lengths,scores)
 plt.show()
-
-network.plot_confusion_matrix()
+"""
+network.plot_minflux_confusion_matrix()

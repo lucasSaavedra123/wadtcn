@@ -44,7 +44,7 @@ for trajectory in Trajectory.objects():
     prediction = delete_short_changes(prediction, umbral=25)
     trajectory.info['analysis']['deepspt_segmenter_result'] = prediction.tolist()
     trajectory.save()
-
+    """
     x = trajectory.get_noisy_x().tolist()
     y = trajectory.get_noisy_y().tolist()
 
@@ -63,6 +63,6 @@ for trajectory in Trajectory.objects():
 
     plt.legend(handles=patches)
     plt.show()
-
+    """
 
 DatabaseHandler.disconnect()
