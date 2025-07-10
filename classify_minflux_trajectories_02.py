@@ -19,17 +19,29 @@ network.load_as_file('wavenet_minflux.weights.h5')
 #network.load_as_file('run_and_turn_minflux.weights.h5')
 
 for trajectory_dict in tqdm.tqdm(trajs):
-    trajectory = Trajectory(
-        x=trajectory_dict['x'],
-        y=trajectory_dict['y'],
-        info=trajectory_dict['info'],
-        noisy=True
-    )
+    prediction = [] 
 
-    if 'analysis' not in trajectory.info:
-        continue
-    network.trajectory_length = trajectory.length
-    prediction = network.predict([trajectory])[0]
+    intervals = []
+    end = len(trajectory_dict['x'])
+    step = 1000
+
+    for i in range(0, end, step):
+        if i + step < end:
+            intervals.append([i, i + step])
+        else:
+            intervals.append([i, end])
+
+    for interval in intervals:
+        trajectory = Trajectory(
+            x=trajectory_dict['x'],
+            y=trajectory_dict['y'],
+            noisy=True
+        )
+
+        network.trajectory_length = interval[1] - interval[0]
+        prediction += network.predict([trajectory])[0].tolist()
+
+    assert len(prediction) == end
     trajectory_dict['ínfo']['analysis']['deepspt_segmenter_result_probs'] = [max(probs) for probs in prediction.tolist()]
     prediction = prediction.argmax(axis=-1)
     prediction = utils.delete_short_changes(prediction, umbral=25)
