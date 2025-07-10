@@ -16,13 +16,14 @@ def delete_short_changes(signal, umbral=5):
 
     for i in range(1, len(signal)):
         if signal[i] != actual:
-            duration = i - initial_index
-            if duration <= umbral:
+            duracion = i - initial_index
+            if duracion <= umbral:
                 result[initial_index:i+1] = actual
             else:
                 actual = signal[i]
                 initial_index = i
-    return result
+
+    return delete_short_changes(result, umbral=umbral) if any(np.not_equal(result, signal)) else result
 
 def tiff_movie_path_to_numpy_array(tiff_movie_path):
     frames = []
