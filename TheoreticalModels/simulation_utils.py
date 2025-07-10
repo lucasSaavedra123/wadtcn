@@ -113,3 +113,59 @@ def blockPrint():
 # Restore
 def enablePrint():
     sys.stdout = sys.__stdout__
+
+class IntermittentSelfPropelledParticle:
+    def __init__(self, v0, D, D_phi_run, D_phi_turn, p_flip, dt):
+        self.v0 = v0
+        self.D = D
+        self.D_phi_run = D_phi_run
+        self.D_phi_turn = D_phi_turn
+        self.p_flip = p_flip
+        self.dt = dt
+        self.reset()
+
+    def reset(self):
+        self.r = np.zeros(2)
+        self.phi = np.random.uniform(0, 2*np.pi)
+        self.state = 'run' if np.random.rand() < 0.5 else 'turn'
+        self.t = 0
+        self.trajectory = [self.r.copy()]
+        self.phi_list = [self.phi]
+        self.state_list = [self.state]
+
+    def sample_waiting_time(self, psi):
+        return np.random.exponential(1 / psi)
+
+    def evolve(self, T=None, steps=None, psi_r=1.0, psi_t=1.0):
+        if T is None:
+          T = steps * self.dt
+
+        t_next_switch = self.sample_waiting_time(psi_r)
+        while self.t < T:
+            noise_trans = np.sqrt(2 * self.D * self.dt) * np.random.randn(2)
+
+            v_vec = self.v0 * np.array([np.cos(self.phi), np.sin(self.phi)]) if self.state == 'run' else np.array([0, 0])
+            D_phi = self.D_phi_run if self.state == 'run' else self.D_phi_turn
+
+            self.r += (v_vec * self.dt) + noise_trans
+            self.phi += (np.sqrt(2 * D_phi) * np.random.randn()) % (2 * np.pi)
+
+            self.t += self.dt
+            t_next_switch -= self.dt
+
+            if t_next_switch <= 0:
+                if self.state == 'run':
+                    self.state = 'turn'
+                    t_next_switch = self.sample_waiting_time(psi_t)
+                else:
+                    self.state = 'run'
+                    t_next_switch = self.sample_waiting_time(psi_r)
+                    if np.random.rand() < self.p_flip:
+                        self.phi += (np.random.uniform(-np.pi, np.pi)) % (2 * np.pi)
+
+            self.trajectory.append(self.r.copy())
+            self.phi_list.append(self.phi)
+            self.state_list.append(self.state)
+
+    def get_trajectory(self):
+        return np.array(self.trajectory), np.array(self.phi_list), self.state_list

@@ -8,6 +8,23 @@ import AutoStepFinder.stepfindCore as core
 import AutoStepFinder.stepfindTools as st
 
 
+def delete_short_changes(signal, umbral=5):
+    signal = np.array(signal)
+    result = signal.copy()
+    actual = signal[0]
+    initial_index = 0
+
+    for i in range(1, len(signal)):
+        if signal[i] != actual:
+            duracion = i - initial_index
+            if duracion <= umbral:
+                result[initial_index:i+1] = actual
+            else:
+                actual = signal[i]
+                initial_index = i
+
+    return delete_short_changes(result, umbral=umbral) if any(np.not_equal(result, signal)) else result
+
 def tiff_movie_path_to_numpy_array(tiff_movie_path):
     frames = []
     

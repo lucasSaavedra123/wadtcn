@@ -1,4 +1,8 @@
+import json
+import pickle
+from collections import defaultdict
 import glob
+from Trajectory import Trajectory
 import numpy as np
 from tensorflow.keras.utils import to_categorical, Sequence
 from keras.layers import Dense, BatchNormalization, Conv1D, Input, GlobalMaxPooling1D, Conv1DTranspose, Dropout, LayerNormalization, MultiHeadAttention, concatenate, Add, Multiply, Layer, GlobalAveragePooling1D, LeakyReLU, Conv2DTranspose, Conv2D, MaxPooling2D, Concatenate, MaxPooling1D
@@ -134,6 +138,7 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories,
     for index, trajectory in enumerate(trajectories):
         X[index, :, 0] = trajectory.get_noisy_x() - np.mean(trajectory.get_noisy_x())
         X[index, :, 1] = trajectory.get_noisy_y() - np.mean(trajectory.get_noisy_y())
+        #X[index, :, 2] = trajectory.get_time()
 
         if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
             X[index, :, 0] = X[index, :, 0]/(np.std(X[index, :, 0]) if np.std(X[index, :, 0])!= 0 else 1)
@@ -141,14 +146,29 @@ def transform_trajectories_into_raw_trajectories(predictive_model, trajectories,
 
     return X
 
-def transform_trajectories_into_states(predictive_model, trajectories):
-    Y = np.empty((len(trajectories), predictive_model.trajectory_length))
+def normalize_func(an_array):
+    return an_array/np.std(an_array)
+
+def transform_trajectories_into_raw_trajectories_and_padding(predictive_model, trajectories, normalize=False):
+    X = np.zeros((len(trajectories), predictive_model.trajectory_length, 3))
 
     for index, trajectory in enumerate(trajectories):
-        if 'state' in trajectory.info:
-            Y[index, :] = trajectory.info['state']
-        else:
-            Y[index, :] = np.zeros((predictive_model.trajectory_length))
+        X[index, 1:, 0] = np.diff(trajectory.get_noisy_x())# - np.mean(trajectory.get_noisy_x())
+        X[index, 1:, 1] = np.diff(trajectory.get_noisy_y())# - np.mean(trajectory.get_noisy_y())
+        X[index, 1:, 2] = np.diff(trajectory.get_time())# - np.mean(trajectory.get_noisy_y())
+
+        #if predictive_model.simulator.STRING_LABEL == 'andi' or normalize:
+        #    X[index, -trajectory.length:, 0] = X[index, -trajectory.length:, 0]/(np.std(X[index, -trajectory.length:, 0]) if np.std(X[index, -trajectory.length:, 0])!= 0 else 1)
+        #    X[index, -trajectory.length:, 1] = X[index, -trajectory.length:, 1]/(np.std(X[index, -trajectory.length:, 1]) if np.std(X[index, -trajectory.length:, 1])!= 0 else 1)
+
+    return X
+
+def transform_trajectories_into_states(predictive_model, trajectories):
+    Y = np.empty((len(trajectories), predictive_model.trajectory_length, 2))
+
+    for index, trajectory in enumerate(trajectories):
+        for state_i, state in enumerate(trajectory.info['state']):
+            Y[index,state_i,:] = [1,0] if state==0 else [0,1]
 
     return Y
 
@@ -212,6 +232,14 @@ def transform_trajectories_to_single_level_model(predictive_model, trajectories)
     Y = np.zeros((len(trajectories), trajectories[0].length, len(predictive_model.models_involved_in_predictive_model)))
     for index, trajectory in enumerate(trajectories):
         Y[index, :] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
+
+    return Y
+
+def transform_trajectories_to_single_level_model_and_padding(predictive_model, trajectories):
+    Y = np.zeros((len(trajectories), predictive_model.trajectory_length, len(predictive_model.models_involved_in_predictive_model)))
+    Y[:] = -10
+    for index, trajectory in enumerate(trajectories):
+        Y[index, -trajectory.length:] = to_categorical(trajectory.info['state_t'], num_classes=len(predictive_model.models_involved_in_predictive_model))
 
     return Y
 
@@ -582,15 +610,41 @@ class TrackGenerator(Sequence):
         self.batch_size = batch_size
         self.dataset_function = dataset_function
         self.label = label
+        self.dataset_by_length = defaultdict(list)
 
         if self.network.simulator.STRING_LABEL == 'andi2':
             val_files = glob.glob(f'./2ndAndiTrajectories_val/*_{self.network.dataset_type}.csv')
             train_files = glob.glob(f'./2ndAndiTrajectories/*_{self.network.dataset_type}.csv')
             self.files = val_files if label=='val' else train_files
 
+        if self.network.simulator.STRING_LABEL == 'deepspt':
+            self.X, self.Y = [], []
+            number_of_files = len(glob.glob(f'minflux_{label}_*.json'))
+            for file_i in range(number_of_files):
+                with open(f'minflux_{label}_{file_i}.json', 'r') as a_file:
+                    raw_trajs = json.load(a_file)
+
+                for traj in raw_trajs:
+                    traj = Trajectory(
+                        x=np.array(traj['x']).astype(float),
+                        y=np.array(traj['y']).astype(float),
+                        t=np.array(traj['t']).astype(float),
+                        info={'state_t':np.array(traj['info']['state_t']).astype(int)},
+                        noisy=True
+                    )
+                    self.X.append(self.network.transform_trajectories_to_input([traj]))
+                    self.Y.append(self.network.transform_trajectories_to_output([traj]))
+
+            self.X = np.concatenate(self.X)
+            self.Y = np.concatenate(self.Y)
+
     def __getitem__(self, item):
         if self.network.simulator.STRING_LABEL == 'andi' or self.network.simulator.STRING_LABEL == 'custom':
             tracks, classes = self.dataset_function(self.batch_size)
+        elif self.network.simulator.STRING_LABEL == 'deepspt':
+            indexes = np.random.choice(len(self.X),size=self.batch_size)
+            tracks = self.X[indexes]
+            classes = self.Y[indexes]
         else:
             tracks, classes = self.dataset_function(self.batch_size, files=self.files)
         return tracks, classes
